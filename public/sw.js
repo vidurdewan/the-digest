@@ -1,7 +1,7 @@
 /// Service Worker for The Digest
 /// Handles push notifications and offline caching
 
-const CACHE_NAME = "the-digest-v1";
+const CACHE_NAME = "the-digest-v2";
 const OFFLINE_URL = "/offline.html";
 
 // URLs to cache for offline mode
@@ -43,8 +43,9 @@ self.addEventListener("fetch", (event) => {
   // Skip non-GET requests
   if (request.method !== "GET") return;
 
-  // Skip API calls (always network)
+  // Skip API calls and Next.js build assets (always network)
   if (url.pathname.startsWith("/api/")) return;
+  if (url.pathname.startsWith("/_next/")) return;
 
   // For navigation requests, try network first, fall back to cache
   if (request.mode === "navigate") {
