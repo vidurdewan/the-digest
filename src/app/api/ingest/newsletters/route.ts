@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getGmailClient, fetchEmails, refreshTokensIfNeeded } from "@/lib/gmail";
-import { parseNewsletter } from "@/lib/newsletter-parser";
+import { parseNewsletter, isNewsletter } from "@/lib/newsletter-parser";
 import { getStoredTokens, storeTokens } from "@/lib/token-store";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { generateNewsletterSummary } from "@/lib/claude";
 
 /**
  * GET /api/ingest/newsletters
  * Fetches and parses newsletters from connected Gmail account.
+ * Filters to actual newsletters, generates AI summaries.
  * Query params:
  *   - maxResults: number of emails to fetch (default 20)
  *   - afterDate: only fetch emails after this ISO date
@@ -47,13 +49,34 @@ export async function GET(request: NextRequest) {
     const gmail = getGmailClient(freshTokens);
     const messages = await fetchEmails(gmail, maxResults, afterDate);
 
+    // Filter to newsletters only
+    const newsletterMessages = messages.filter(isNewsletter);
+
     // Parse into newsletters
-    const newsletters = messages.map(parseNewsletter);
+    const parsed = newsletterMessages.map(parseNewsletter);
+
+    // Generate AI summaries in parallel (max 5 concurrent)
+    const newslettersWithSummaries = [];
+    const batchSize = 5;
+    for (let i = 0; i < parsed.length; i += batchSize) {
+      const batch = parsed.slice(i, i + batchSize);
+      const summaries = await Promise.all(
+        batch.map((nl) =>
+          generateNewsletterSummary(nl.publication, nl.subject, nl.contentText)
+        )
+      );
+      for (let j = 0; j < batch.length; j++) {
+        newslettersWithSummaries.push({
+          ...batch[j],
+          summary: summaries[j],
+        });
+      }
+    }
 
     // Store in Supabase if configured
     let storedCount = 0;
     if (isSupabaseConfigured() && supabase) {
-      for (const nl of newsletters) {
+      for (const nl of newslettersWithSummaries) {
         const { error } = await supabase.from("newsletters").upsert(
           {
             gmail_message_id: nl.gmailMessageId,
@@ -72,16 +95,24 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      fetched: newsletters.length,
+      totalEmails: messages.length,
+      fetched: newslettersWithSummaries.length,
+      filtered: messages.length - newsletterMessages.length,
       stored: storedCount,
-      newsletters: newsletters.map((nl) => ({
+      newsletters: newslettersWithSummaries.map((nl) => ({
         id: nl.gmailMessageId,
         publication: nl.publication,
         subject: nl.subject,
         senderEmail: nl.senderEmail,
         receivedAt: nl.receivedAt,
-        contentPreview: nl.contentText.slice(0, 300) + "...",
-        contentLength: nl.contentText.length,
+        content: nl.contentText,
+        summary: nl.summary
+          ? {
+              theNews: nl.summary.theNews,
+              whyItMatters: nl.summary.whyItMatters,
+              theContext: nl.summary.theContext,
+            }
+          : null,
       })),
     });
   } catch (error) {

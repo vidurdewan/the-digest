@@ -173,6 +173,142 @@ Include 3-8 key entities. Entity types: company, person, fund, keyword.`,
   }
 }
 
+// ─── Newsletter Summary ──────────────────────────────────────
+export interface NewsletterSummaryResult {
+  theNews: string;
+  whyItMatters: string;
+  theContext: string;
+  inputTokens: number;
+  outputTokens: number;
+}
+
+/**
+ * Generate a structured summary for a newsletter.
+ * Returns "The News", "Why It Matters", and "The Context" sections.
+ */
+export async function generateNewsletterSummary(
+  publication: string,
+  subject: string,
+  content: string
+): Promise<NewsletterSummaryResult | null> {
+  const anthropic = getClient();
+  if (!anthropic) return null;
+
+  const truncated = content.slice(0, 8000);
+
+  try {
+    const response = await anthropic.messages.create({
+      model: SUMMARIZATION_MODEL,
+      max_tokens: 600,
+      messages: [
+        {
+          role: "user",
+          content: `You are a briefing assistant. Summarize this newsletter into three structured sections.
+
+Publication: ${publication}
+Subject: ${subject}
+
+Content:
+${truncated}
+
+Respond in EXACTLY this JSON format (no markdown, no code fences):
+{
+  "theNews": "What are the key stories/updates in this newsletter? Bullet-point the top 2-4 items, each 1-2 sentences.",
+  "whyItMatters": "Why should the reader care? Summarize the significance in 2-3 sentences.",
+  "theContext": "How do these stories connect to broader trends? 1-2 sentences."
+}`,
+        },
+      ],
+    });
+
+    const text =
+      response.content[0].type === "text" ? response.content[0].text : "";
+    const parsed = JSON.parse(text.trim());
+
+    return {
+      theNews: parsed.theNews || "",
+      whyItMatters: parsed.whyItMatters || "",
+      theContext: parsed.theContext || "",
+      inputTokens: response.usage.input_tokens,
+      outputTokens: response.usage.output_tokens,
+    };
+  } catch (error) {
+    console.error("[Claude] Newsletter summary error:", error);
+    return null;
+  }
+}
+
+// ─── Daily Digest ────────────────────────────────────────────
+export interface DailyDigestResult {
+  digest: string;
+  inputTokens: number;
+  outputTokens: number;
+}
+
+/**
+ * Generate a consolidated daily digest from multiple newsletters.
+ * Produces a single readable briefing covering all newsletters.
+ */
+export async function generateDailyDigest(
+  newsletters: Array<{ publication: string; subject: string; content: string }>
+): Promise<DailyDigestResult | null> {
+  const anthropic = getClient();
+  if (!anthropic || newsletters.length === 0) return null;
+
+  const newsletterBlocks = newsletters
+    .map(
+      (nl, i) =>
+        `[${i + 1}] ${nl.publication} — "${nl.subject}"\n${nl.content.slice(0, 3000)}`
+    )
+    .join("\n\n---\n\n");
+
+  try {
+    const response = await anthropic.messages.create({
+      model: SUMMARIZATION_MODEL,
+      max_tokens: 1500,
+      messages: [
+        {
+          role: "user",
+          content: `You are a senior intelligence briefing writer. Create a consolidated daily digest from the following ${newsletters.length} newsletters. The reader is a busy executive who wants to absorb all key information in ~5 minutes.
+
+${newsletterBlocks}
+
+Write a structured daily digest in this EXACT JSON format (no markdown, no code fences):
+{
+  "topStories": "The 3-5 most important stories across all newsletters. Each story as a bullet point with the source in parentheses. 1-2 sentences each.",
+  "marketMoves": "Key market, funding, or deal activity mentioned. 2-4 bullet points. Write 'None reported today.' if nothing relevant.",
+  "peopleMoves": "Executive moves, hires, departures mentioned. 2-3 bullet points. Write 'None reported today.' if nothing relevant.",
+  "trendsAndSignals": "Emerging themes or patterns across the newsletters. 2-3 sentences.",
+  "oneLineSummary": "A single sentence capturing the day's most important takeaway."
+}`,
+        },
+      ],
+    });
+
+    const text =
+      response.content[0].type === "text" ? response.content[0].text : "";
+    const parsed = JSON.parse(text.trim());
+
+    // Format into readable markdown
+    const digest = [
+      `## Today's One-Liner\n${parsed.oneLineSummary || ""}`,
+      `## Top Stories\n${parsed.topStories || ""}`,
+      `## Market & Deal Activity\n${parsed.marketMoves || ""}`,
+      `## People Moves\n${parsed.peopleMoves || ""}`,
+      `## Trends & Signals\n${parsed.trendsAndSignals || ""}`,
+    ].join("\n\n");
+
+    return {
+      digest,
+      inputTokens: response.usage.input_tokens,
+      outputTokens: response.usage.output_tokens,
+    };
+  } catch (error) {
+    console.error("[Claude] Daily digest error:", error);
+    return null;
+  }
+}
+
 // ─── Batch Brief Summaries ───────────────────────────────────
 export interface BatchArticle {
   id: string;

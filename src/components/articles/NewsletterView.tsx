@@ -9,6 +9,11 @@ import {
   RefreshCw,
   AlertCircle,
   Download,
+  Sparkles,
+  Loader2,
+  Newspaper,
+  Lightbulb,
+  Globe,
 } from "lucide-react";
 import type { Newsletter } from "@/types";
 import { getRelativeTime } from "@/lib/mock-data";
@@ -19,10 +24,13 @@ interface NewsletterViewProps {
   isLoading: boolean;
   error: string | null;
   onRefresh: () => Promise<void>;
-  onIngest: () => Promise<{ fetched: number; stored: number } | null>;
+  onIngest: () => Promise<{ fetched: number; filtered: number; totalEmails: number } | null>;
   isIngesting: boolean;
   isGmailConnected: boolean;
   onConnectGmail: () => void;
+  dailyDigest: string | null;
+  isGeneratingDigest: boolean;
+  onGenerateDigest: () => Promise<void>;
 }
 
 function publicationInitials(name: string): string {
@@ -50,7 +58,6 @@ const publicationColors: Record<string, string> = {
 
 function getPublicationColor(name: string): string {
   if (publicationColors[name]) return publicationColors[name];
-  // Generate a deterministic color from the name
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
     hash = name.charCodeAt(i) + ((hash << 5) - hash);
@@ -59,9 +66,128 @@ function getPublicationColor(name: string): string {
   return `hsl(${hue}, 55%, 45%)`;
 }
 
+// ─── Daily Digest Section ────────────────────────────────────
+function DailyDigestSection({
+  digest,
+  isGenerating,
+  onGenerate,
+  newsletterCount,
+}: {
+  digest: string | null;
+  isGenerating: boolean;
+  onGenerate: () => void;
+  newsletterCount: number;
+}) {
+  if (!digest && !isGenerating) {
+    return (
+      <div className="rounded-xl border border-accent-primary/30 bg-gradient-to-br from-accent-primary/5 to-accent-primary/10 p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-primary/15">
+              <Sparkles size={20} className="text-accent-primary" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-text-primary">
+                Daily Digest
+              </h3>
+              <p className="mt-0.5 text-sm text-text-secondary">
+                Generate an AI-powered summary of all {newsletterCount}{" "}
+                newsletter{newsletterCount !== 1 ? "s" : ""} — read everything
+                in 5 minutes.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onGenerate}
+            disabled={newsletterCount === 0}
+            className="shrink-0 rounded-lg bg-accent-primary px-4 py-2 text-sm font-medium text-text-inverse transition-colors hover:bg-accent-primary-hover disabled:opacity-50"
+          >
+            Generate Digest
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (isGenerating) {
+    return (
+      <div className="rounded-xl border border-accent-primary/30 bg-gradient-to-br from-accent-primary/5 to-accent-primary/10 p-6">
+        <div className="flex items-center gap-3">
+          <Loader2 size={20} className="animate-spin text-accent-primary" />
+          <div>
+            <h3 className="font-semibold text-text-primary">
+              Generating Daily Digest...
+            </h3>
+            <p className="text-sm text-text-tertiary">
+              Reading and summarizing {newsletterCount} newsletter
+              {newsletterCount !== 1 ? "s" : ""}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-accent-primary/30 bg-bg-card shadow-sm">
+      <div className="flex items-center justify-between border-b border-border-primary px-5 py-4">
+        <div className="flex items-center gap-2">
+          <Sparkles size={18} className="text-accent-primary" />
+          <h3 className="font-semibold text-text-primary">
+            Daily Digest
+          </h3>
+          <span className="rounded-full bg-accent-primary/10 px-2 py-0.5 text-xs font-medium text-accent-primary">
+            {newsletterCount} sources
+          </span>
+        </div>
+        <button
+          onClick={onGenerate}
+          className="flex items-center gap-1 text-xs text-text-tertiary hover:text-text-secondary"
+        >
+          <RefreshCw size={12} />
+          Regenerate
+        </button>
+      </div>
+      <div className="p-5">
+        <div className="prose-sm max-w-none text-sm leading-relaxed text-text-secondary">
+          {digest!.split("\n").map((line, i) => {
+            if (line.startsWith("## ")) {
+              return (
+                <h4
+                  key={i}
+                  className="mb-2 mt-4 first:mt-0 text-base font-semibold text-text-primary"
+                >
+                  {line.replace("## ", "")}
+                </h4>
+              );
+            }
+            if (line.startsWith("- ") || line.startsWith("• ")) {
+              return (
+                <p key={i} className="mb-1.5 ml-3 flex gap-2">
+                  <span className="shrink-0 text-accent-primary">•</span>
+                  <span>{line.replace(/^[-•]\s*/, "")}</span>
+                </p>
+              );
+            }
+            if (line.trim() === "") return <div key={i} className="h-2" />;
+            return (
+              <p key={i} className="mb-2">
+                {line}
+              </p>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Newsletter Card with Structured Summary ─────────────────
 function NewsletterCard({ newsletter }: { newsletter: Newsletter }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [showRawContent, setShowRawContent] = useState(false);
   const color = getPublicationColor(newsletter.publication);
+  const summary = newsletter.summary;
 
   return (
     <div
@@ -95,6 +221,11 @@ function NewsletterCard({ newsletter }: { newsletter: Newsletter }) {
           <p className="mt-0.5 truncate text-sm text-text-secondary">
             {newsletter.subject}
           </p>
+          {summary && (
+            <p className="mt-1.5 line-clamp-2 text-xs text-text-tertiary">
+              {summary.theNews.slice(0, 150)}...
+            </p>
+          )}
           {!newsletter.isRead && (
             <span className="mt-1 inline-block h-2 w-2 rounded-full bg-accent-primary" />
           )}
@@ -107,15 +238,80 @@ function NewsletterCard({ newsletter }: { newsletter: Newsletter }) {
 
       {isExpanded && (
         <div className="border-t border-border-secondary px-4 py-4 sm:px-5">
-          <div className="prose-sm max-w-none whitespace-pre-wrap text-sm leading-relaxed text-text-secondary">
-            {newsletter.content}
-          </div>
+          {summary ? (
+            <div className="space-y-4">
+              {/* The News */}
+              <div className="rounded-lg bg-bg-secondary p-3.5">
+                <div className="mb-2 flex items-center gap-1.5">
+                  <Newspaper size={14} className="text-accent-primary" />
+                  <span className="text-xs font-semibold uppercase tracking-wide text-accent-primary">
+                    The News
+                  </span>
+                </div>
+                <p className="text-sm leading-relaxed text-text-primary">
+                  {summary.theNews}
+                </p>
+              </div>
+
+              {/* Why It Matters */}
+              <div className="rounded-lg bg-bg-secondary p-3.5">
+                <div className="mb-2 flex items-center gap-1.5">
+                  <Lightbulb size={14} className="text-accent-warning" />
+                  <span className="text-xs font-semibold uppercase tracking-wide text-accent-warning">
+                    Why It Matters
+                  </span>
+                </div>
+                <p className="text-sm leading-relaxed text-text-primary">
+                  {summary.whyItMatters}
+                </p>
+              </div>
+
+              {/* The Context */}
+              <div className="rounded-lg bg-bg-secondary p-3.5">
+                <div className="mb-2 flex items-center gap-1.5">
+                  <Globe size={14} className="text-accent-success" />
+                  <span className="text-xs font-semibold uppercase tracking-wide text-accent-success">
+                    The Context
+                  </span>
+                </div>
+                <p className="text-sm leading-relaxed text-text-primary">
+                  {summary.theContext}
+                </p>
+              </div>
+
+              {/* Toggle raw content */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowRawContent(!showRawContent);
+                }}
+                className="text-xs text-text-tertiary hover:text-text-secondary"
+              >
+                {showRawContent
+                  ? "Hide original content"
+                  : "Show original content"}
+              </button>
+
+              {showRawContent && (
+                <div className="max-h-96 overflow-y-auto rounded-lg border border-border-secondary bg-bg-secondary p-3">
+                  <div className="whitespace-pre-wrap text-xs leading-relaxed text-text-tertiary">
+                    {newsletter.content}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="prose-sm max-w-none whitespace-pre-wrap text-sm leading-relaxed text-text-secondary">
+              {newsletter.content}
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 }
 
+// ─── Main View ───────────────────────────────────────────────
 export function NewsletterView({
   newsletters,
   isLoading,
@@ -125,17 +321,21 @@ export function NewsletterView({
   isIngesting,
   isGmailConnected,
   onConnectGmail,
+  dailyDigest,
+  isGeneratingDigest,
+  onGenerateDigest,
 }: NewsletterViewProps) {
   const [ingestResult, setIngestResult] = useState<{
     fetched: number;
-    stored: number;
+    filtered: number;
+    totalEmails: number;
   } | null>(null);
 
   const handleIngest = async () => {
     const result = await onIngest();
     if (result) {
       setIngestResult(result);
-      setTimeout(() => setIngestResult(null), 5000);
+      setTimeout(() => setIngestResult(null), 8000);
     }
   };
 
@@ -150,7 +350,7 @@ export function NewsletterView({
             </h2>
             <p className="text-sm text-text-tertiary">
               {newsletters.length} newsletter
-              {newsletters.length !== 1 ? "s" : ""} today
+              {newsletters.length !== 1 ? "s" : ""}
             </p>
           </div>
         </div>
@@ -209,8 +409,11 @@ export function NewsletterView({
       {/* Ingest result message */}
       {ingestResult && (
         <div className="rounded-lg border border-accent-success/30 bg-accent-success/10 px-4 py-3 text-sm text-accent-success">
-          Fetched {ingestResult.fetched} emails, stored {ingestResult.stored}{" "}
-          newsletters.
+          Scanned {ingestResult.totalEmails} emails — found{" "}
+          {ingestResult.fetched} newsletter
+          {ingestResult.fetched !== 1 ? "s" : ""}, filtered out{" "}
+          {ingestResult.filtered} non-newsletter email
+          {ingestResult.filtered !== 1 ? "s" : ""}.
         </div>
       )}
 
@@ -222,7 +425,17 @@ export function NewsletterView({
         </div>
       )}
 
-      {/* Loading state */}
+      {/* Daily Digest */}
+      {isGmailConnected && newsletters.length > 0 && (
+        <DailyDigestSection
+          digest={dailyDigest}
+          isGenerating={isGeneratingDigest}
+          onGenerate={onGenerateDigest}
+          newsletterCount={newsletters.length}
+        />
+      )}
+
+      {/* Individual newsletter cards */}
       {isLoading ? (
         <div className="space-y-3">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -230,11 +443,18 @@ export function NewsletterView({
           ))}
         </div>
       ) : (
-        <div className="space-y-3">
-          {newsletters.map((nl) => (
-            <NewsletterCard key={nl.id} newsletter={nl} />
-          ))}
-        </div>
+        <>
+          {newsletters.length > 0 && (
+            <h3 className="text-sm font-semibold text-text-tertiary uppercase tracking-wide">
+              Individual Newsletters
+            </h3>
+          )}
+          <div className="space-y-3">
+            {newsletters.map((nl) => (
+              <NewsletterCard key={nl.id} newsletter={nl} />
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

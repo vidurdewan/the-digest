@@ -12,6 +12,122 @@ export interface ParsedNewsletter {
   contentHtml: string;
 }
 
+// Transactional / non-newsletter sender patterns to exclude
+const TRANSACTIONAL_SENDERS = [
+  /noreply@.*google\.com/i,
+  /no-?reply@/i,
+  /notifications?@/i,
+  /alerts?@/i,
+  /security@/i,
+  /account.*@/i,
+  /billing@/i,
+  /support@/i,
+  /receipts?@/i,
+  /orders?@/i,
+  /shipping@/i,
+  /verify@/i,
+  /confirm@/i,
+  /donotreply@/i,
+  /postmaster@/i,
+  /mailer-daemon@/i,
+];
+
+// Transactional subject patterns
+const TRANSACTIONAL_SUBJECTS = [
+  /password reset/i,
+  /verify your/i,
+  /confirm your/i,
+  /sign.?in/i,
+  /log.?in/i,
+  /security alert/i,
+  /two.?factor/i,
+  /verification code/i,
+  /order confirm/i,
+  /shipping confirm/i,
+  /payment received/i,
+  /invoice/i,
+  /receipt for/i,
+  /your .* has shipped/i,
+  /delivery notification/i,
+  /google alert/i,
+];
+
+// Known newsletter sender domains (strong positive signal)
+const KNOWN_NEWSLETTER_DOMAINS = [
+  "substack.com",
+  "morningbrew.com",
+  "theinformation.com",
+  "axios.com",
+  "finimize.com",
+  "thehustle.co",
+  "strictlyvc.com",
+  "cbinsights.com",
+  "techcrunch.com",
+  "bloomberg.com",
+  "reuters.com",
+  "ft.com",
+  "economist.com",
+  "politico.com",
+  "semafor.com",
+  "beehiiv.com",
+  "convertkit.com",
+  "mailchimp.com",
+  "buttondown.email",
+  "revue.email",
+  "ghost.io",
+  "sendinblue.com",
+  "campaignmonitor.com",
+  "constantcontact.com",
+  "getresponse.com",
+  "mailerlite.com",
+];
+
+/**
+ * Detect whether a Gmail message is a newsletter (vs transactional/alert).
+ * Uses multiple signals: headers, sender patterns, subject, and body content.
+ */
+export function isNewsletter(message: GmailMessage): boolean {
+  const email = message.senderEmail.toLowerCase();
+  const subject = message.subject.toLowerCase();
+  const domain = email.split("@")[1] || "";
+
+  // Strong exclusion: transactional senders
+  if (TRANSACTIONAL_SENDERS.some((pattern) => pattern.test(email))) {
+    // Exception: some newsletters use noreply@ but have List-Unsubscribe
+    if (!message.listUnsubscribe && !message.listId) {
+      return false;
+    }
+  }
+
+  // Strong exclusion: transactional subjects
+  if (TRANSACTIONAL_SUBJECTS.some((pattern) => pattern.test(subject))) {
+    return false;
+  }
+
+  // Strong positive: List-Unsubscribe header
+  if (message.listUnsubscribe) return true;
+
+  // Strong positive: List-Id header
+  if (message.listId) return true;
+
+  // Strong positive: Precedence: bulk or list
+  const prec = message.precedence.toLowerCase();
+  if (prec === "bulk" || prec === "list") return true;
+
+  // Positive: known newsletter platform domain
+  if (KNOWN_NEWSLETTER_DOMAINS.some((d) => domain.includes(d))) return true;
+
+  // Moderate positive: body contains unsubscribe link
+  const bodyText = (message.htmlBody + message.textBody).toLowerCase();
+  if (bodyText.includes("unsubscribe") || bodyText.includes("email preferences") || bodyText.includes("manage your subscription")) {
+    // Extra check: must have substantial content (not a short transactional email)
+    const contentLength = message.textBody.length || message.htmlBody.length;
+    if (contentLength > 500) return true;
+  }
+
+  return false;
+}
+
 /**
  * Parse a Gmail message into a clean newsletter format.
  */

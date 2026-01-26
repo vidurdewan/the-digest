@@ -341,6 +341,9 @@ export default function Home() {
             isIngesting={newsletterData.isIngesting}
             isGmailConnected={gmailStatus.isConnected}
             onConnectGmail={gmailStatus.connect}
+            dailyDigest={newsletterData.dailyDigest}
+            isGeneratingDigest={newsletterData.isGeneratingDigest}
+            onGenerateDigest={newsletterData.generateDigest}
           />
         );
       case "news":

@@ -86,6 +86,9 @@ export interface GmailMessage {
   htmlBody: string;
   textBody: string;
   snippet: string;
+  listUnsubscribe: string;
+  listId: string;
+  precedence: string;
 }
 
 /**
@@ -180,6 +183,9 @@ function parseGmailMessage(
     htmlBody,
     textBody,
     snippet: message.snippet || "",
+    listUnsubscribe: getHeader("List-Unsubscribe"),
+    listId: getHeader("List-Id"),
+    precedence: getHeader("Precedence"),
   };
 }
 
