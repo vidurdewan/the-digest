@@ -11,6 +11,8 @@ import {
   ChevronDown,
   ChevronUp,
   RefreshCw,
+  ArrowUp,
+  Loader2,
 } from "lucide-react";
 import type { Article, Summary, ArticleIntelligence, ArticleWithIntelligence } from "@/types";
 import { assignFeedTiers } from "@/lib/ranking";
@@ -20,6 +22,16 @@ import { CompactListItem } from "./CompactListItem";
 import { ReadingProgress } from "./ReadingProgress";
 import { SurpriseMe } from "./SurpriseMe";
 
+function getRelativeTimeShort(date: Date): string {
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
+
 interface IntelligenceFeedProps {
   articles: (Article & { summary?: Summary; intelligence?: ArticleIntelligence })[];
   onSave: (id: string) => void;
@@ -28,8 +40,16 @@ interface IntelligenceFeedProps {
     article: Article & { summary?: Summary }
   ) => Promise<Summary | null>;
   onExpand?: (articleId: string) => void;
-  onIngest?: () => void;
-  isIngesting?: boolean;
+  /** Number of new articles available (from polling) */
+  newCount?: number;
+  /** Callback to show new articles and refresh feed */
+  onShowNew?: () => void;
+  /** When the feed was last refreshed */
+  lastUpdated?: Date | null;
+  /** Manual force-refresh (triggers full ingest) */
+  onForceRefresh?: () => void;
+  /** Whether a force refresh is in progress */
+  isRefreshing?: boolean;
 }
 
 export function IntelligenceFeed({
@@ -38,8 +58,11 @@ export function IntelligenceFeed({
   onOpenReader,
   onRequestSummary,
   onExpand,
-  onIngest,
-  isIngesting,
+  newCount = 0,
+  onShowNew,
+  lastUpdated,
+  onForceRefresh,
+  isRefreshing,
 }: IntelligenceFeedProps) {
   const [everythingElseOpen, setEverythingElseOpen] = useState(false);
 
@@ -71,6 +94,20 @@ export function IntelligenceFeed({
 
   return (
     <div className="space-y-6">
+      {/* "New stories" pill — Twitter-style */}
+      {newCount > 0 && onShowNew && (
+        <button
+          onClick={() => {
+            onShowNew();
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+          className="sticky top-2 z-30 mx-auto flex items-center gap-2 rounded-full bg-accent-primary px-4 py-2 text-sm font-medium text-text-inverse shadow-lg hover:bg-accent-primary-hover transition-all hover:scale-105"
+        >
+          <ArrowUp size={14} />
+          {newCount} new {newCount === 1 ? "story" : "stories"}
+        </button>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -80,21 +117,25 @@ export function IntelligenceFeed({
               Priority Feed
             </h2>
             <p className="text-sm text-text-tertiary">
-              Your AI intelligence briefing — ranked by importance
+              {lastUpdated
+                ? `Updated ${getRelativeTimeShort(lastUpdated)}`
+                : "Your AI intelligence briefing"}
             </p>
           </div>
         </div>
-        {onIngest && (
+        {/* Subtle refresh icon — tucked away */}
+        {onForceRefresh && (
           <button
-            onClick={onIngest}
-            disabled={isIngesting}
-            className="flex items-center gap-1.5 rounded-lg bg-accent-primary px-3 py-2 text-sm font-medium text-text-inverse hover:bg-accent-primary-hover transition-colors disabled:opacity-50"
+            onClick={onForceRefresh}
+            disabled={isRefreshing}
+            className="rounded-lg p-2 text-text-tertiary hover:text-text-secondary hover:bg-bg-secondary transition-colors disabled:opacity-50"
+            title="Force refresh"
           >
-            <RefreshCw
-              size={14}
-              className={isIngesting ? "animate-spin" : ""}
-            />
-            {isIngesting ? "Fetching..." : "Fetch News"}
+            {isRefreshing ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <RefreshCw size={16} />
+            )}
           </button>
         )}
       </div>
@@ -234,28 +275,33 @@ export function IntelligenceFeed({
         </section>
       )}
 
-      {/* Empty state */}
+      {/* Empty state — only shown on first-time setup */}
       {articles.length === 0 && (
         <div className="rounded-xl border border-border-primary bg-bg-card p-12 text-center">
           <Zap size={48} className="mx-auto mb-4 text-text-tertiary opacity-30" />
           <h3 className="text-lg font-semibold text-text-primary mb-1">
-            No articles yet
+            Setting up your feed
           </h3>
           <p className="text-sm text-text-tertiary mb-4">
-            Click &quot;Fetch News&quot; to pull in articles from your sources.
+            {isRefreshing
+              ? "Fetching articles from your sources..."
+              : "Your feed will populate automatically. You can also force a refresh."}
           </p>
-          {onIngest && (
-            <button
-              onClick={onIngest}
-              disabled={isIngesting}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-accent-primary px-4 py-2 text-sm font-medium text-text-inverse hover:bg-accent-primary-hover transition-colors disabled:opacity-50"
-            >
-              <RefreshCw
-                size={14}
-                className={isIngesting ? "animate-spin" : ""}
-              />
-              {isIngesting ? "Fetching..." : "Fetch News"}
-            </button>
+          {isRefreshing ? (
+            <div className="flex items-center justify-center gap-2 text-accent-primary">
+              <Loader2 size={18} className="animate-spin" />
+              <span className="text-sm font-medium">Loading articles...</span>
+            </div>
+          ) : (
+            onForceRefresh && (
+              <button
+                onClick={onForceRefresh}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-accent-primary px-4 py-2 text-sm font-medium text-text-inverse hover:bg-accent-primary-hover transition-colors"
+              >
+                <RefreshCw size={14} />
+                Refresh Now
+              </button>
+            )
           )}
         </div>
       )}

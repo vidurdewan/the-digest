@@ -12,6 +12,7 @@ import type { Article, Summary, TopicCategory } from "@/types";
 import { useNewsletters } from "@/hooks/useNewsletters";
 import { useGmailStatus } from "@/hooks/useGmailStatus";
 import { useArticles } from "@/hooks/useArticles";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { useWatchlist } from "@/hooks/useWatchlist";
 import { useEngagement } from "@/hooks/useEngagement";
 import { usePreferences } from "@/hooks/usePreferences";
@@ -217,7 +218,6 @@ export default function Home() {
   const [readerArticle, setReaderArticle] = useState<
     (Article & { summary?: Summary }) | null
   >(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   // Service worker registration (push notifications + offline)
@@ -227,9 +227,15 @@ export default function Home() {
   const newsletterData = useNewsletters();
   const gmailStatus = useGmailStatus();
   const articleData = useArticles();
+  const autoRefresh = useAutoRefresh();
   const watchlist = useWatchlist();
   const engagement = useEngagement();
   const preferences = usePreferences();
+
+  // Wire auto-refresh to article data refresh
+  useEffect(() => {
+    autoRefresh.setRefreshFn(articleData.refresh);
+  }, [autoRefresh.setRefreshFn, articleData.refresh]);
 
   // Show onboarding on first visit
   useEffect(() => {
@@ -282,11 +288,8 @@ export default function Home() {
     [articlesWithMatches, preferences.preferences, engagement.topicScores]
   );
 
-  // Simulate loading
-  useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 800);
-    return () => clearTimeout(timer);
-  }, []);
+  // Show skeleton only while initial article fetch is in progress
+  const isLoading = articleData.isLoading && articleData.articles.length === 0;
 
   const handleSave = (id: string) => {
     const article = articlesWithMatches.find((a) => a.id === id);
@@ -301,7 +304,7 @@ export default function Home() {
     }
   };
 
-  const handleIngestNews = async () => {
+  const handleForceRefresh = async () => {
     const result = await articleData.ingest();
     if (result) {
       addToast(
@@ -352,8 +355,11 @@ export default function Home() {
             onOpenReader={handleOpenReader}
             onRequestSummary={articleData.requestFullSummary}
             onExpand={handleExpand}
-            onIngest={handleIngestNews}
-            isIngesting={articleData.isIngesting}
+            newCount={autoRefresh.newCount}
+            onShowNew={autoRefresh.showNew}
+            lastUpdated={autoRefresh.lastUpdated}
+            onForceRefresh={handleForceRefresh}
+            isRefreshing={articleData.isIngesting}
           />
         );
       case "newsletters":
@@ -385,7 +391,7 @@ export default function Home() {
             onOpenReader={handleOpenReader}
             onRequestSummary={articleData.requestFullSummary}
             onExpand={handleExpand}
-            onIngest={handleIngestNews}
+            onIngest={handleForceRefresh}
             isIngesting={articleData.isIngesting}
           />
         );
@@ -457,8 +463,11 @@ export default function Home() {
             onOpenReader={handleOpenReader}
             onRequestSummary={articleData.requestFullSummary}
             onExpand={handleExpand}
-            onIngest={handleIngestNews}
-            isIngesting={articleData.isIngesting}
+            newCount={autoRefresh.newCount}
+            onShowNew={autoRefresh.showNew}
+            lastUpdated={autoRefresh.lastUpdated}
+            onForceRefresh={handleForceRefresh}
+            isRefreshing={articleData.isIngesting}
           />
         );
     }
