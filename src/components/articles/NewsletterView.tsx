@@ -122,11 +122,20 @@ function formatFullDate(dateStr: string): string {
   });
 }
 
+// ─── Source Citation Badge ────────────────────────────────────
+function SourceBadge({ name }: { name: string }) {
+  return (
+    <span className="ml-0.5 inline-flex items-center rounded bg-accent-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-accent-primary">
+      {name}
+    </span>
+  );
+}
+
 // ─── Inline Markdown Renderer ────────────────────────────────
-// Renders **bold**, *italic*, and (Source Name) links inline
+// Renders **bold**, *italic*, and [Source Name] citation badges
 function RichText({ text }: { text: string }) {
-  // Split on bold (**text**), italic (*text* but not **), and source refs (Source Name)
-  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
+  // Split on bold (**text**), italic (*text* but not **), and source citations [Source]
+  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|\[[^\]]+\])/g);
 
   return (
     <>
@@ -148,6 +157,15 @@ function RichText({ text }: { text: string }) {
               {part.slice(1, -1)}
             </em>
           );
+        }
+        // Source citation: [Source Name]
+        if (part.startsWith("[") && part.endsWith("]")) {
+          const sourceName = part.slice(1, -1);
+          // Skip numeric refs like [1], [2] etc
+          if (/^\d+$/.test(sourceName)) {
+            return <span key={i}>{part}</span>;
+          }
+          return <SourceBadge key={i} name={sourceName} />;
         }
         return <span key={i}>{part}</span>;
       })}
@@ -310,8 +328,37 @@ function DigestContent({ content }: { content: string }) {
         }
 
         // Bullet points — each bullet gets more spacing
+        // Also handle inline "→ So What:" by splitting it out
         if (trimmed.startsWith("- ") || trimmed.startsWith("• ")) {
           const bulletText = trimmed.replace(/^[-•]\s*/, "");
+
+          // Check if "→ So What:" is inline — split it out
+          const soWhatMatch = bulletText.match(
+            /(.+?)\s*→\s*So [Ww]hat:\s*([\s\S]*)/
+          );
+          if (soWhatMatch) {
+            const storyPart = soWhatMatch[1].trim();
+            const soWhatPart = soWhatMatch[2].trim();
+            return (
+              <div key={i} className="mb-1">
+                <div className="ml-3 flex gap-2.5">
+                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent-primary/60" />
+                  <p className="text-sm leading-relaxed text-text-secondary">
+                    <RichText text={storyPart} />
+                  </p>
+                </div>
+                <div className="mb-4 ml-7 mt-1.5 rounded-md border-l-2 border-accent-primary/30 bg-accent-primary/5 px-3 py-1.5">
+                  <p className="text-xs italic text-text-secondary">
+                    <span className="font-semibold not-italic text-accent-primary">
+                      So What:{" "}
+                    </span>
+                    <RichText text={soWhatPart} />
+                  </p>
+                </div>
+              </div>
+            );
+          }
+
           return (
             <div key={i} className="mb-1 ml-3 flex gap-2.5">
               <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent-primary/60" />

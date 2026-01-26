@@ -333,10 +333,13 @@ Source quality tiers are marked — prioritize Premium and Strong sources. Stand
 CRITICAL FORMATTING RULES:
 - Each bullet = ONE story only. Never combine multiple stories in one bullet.
 - Bold all **company names** and **people names** so they pop when scanning.
-- Each bullet starts with the story, then on a NEW LINE add "→ So What: " in italics with a one-sentence takeaway.
+- SOURCES: End each bullet with source citations in square brackets: [Bloomberg] [FT]. If a story was covered by multiple newsletters, show ALL of them. The reader needs to know exactly which newsletter each piece of information came from.
+- SO WHAT: After the story text and source citations, you MUST put the "So What" on a SEPARATE LINE using a literal newline character (\\n) in the JSON string. The format is: "- Story text here. [Source1] [Source2]\\n→ So What: One-sentence takeaway." The \\n is critical — "→ So What:" must NEVER appear on the same line as the story.
 - At the END of each section, add "Bottom line: " as a bold one-sentence theme summary.
 - Keep bullets concise: 2 sentences max for the story, 1 sentence for So What.
-- Include the source publication name in parentheses after each bullet.
+
+EXAMPLE OF CORRECT BULLET FORMAT:
+"- **EU** launches formal probe into **Elon Musk**'s **X** over Grok AI chatbot flooding platform with deepfake images. [Bloomberg] [FT]\\n→ So What: This sets up a potential collision between Trump's tech allies and European regulators that could reshape global AI governance."
 
 Here are today's ${newsletters.length} newsletters:
 
@@ -345,12 +348,12 @@ ${newsletterBlocks}
 Respond in EXACTLY this JSON format (no markdown code fences):
 {
   "oneLineSummary": "A bold, memorable one-liner capturing today's most important signal. Make it quotable.",
-  "topStories": "The 3-5 most important stories across ALL topics (not just tech). Each bullet is ONE story: 2 sentences max with **bold names**, source in parentheses. Then a new line with '→ So What: ' and a one-sentence implication. After all bullets, add a blank line then 'Bottom line: ' with one sentence summarizing the theme.",
-  "marketMoves": "Key funding rounds, acquisitions, IPO filings, market shifts, economic data. Each bullet = ONE deal/move with **bold names** and source. New line '→ So What: ' takeaway. End with 'Bottom line: ' summary. Write 'No major deals reported.' if nothing.",
-  "peopleMoves": "TIGHT FORMAT for each move:\n- **Name** (previous role at **Previous Co**) → **New Company**, New Role. One line on why it's notable. (Source)\nIf no significant moves: 'No significant moves detected today.'\nEnd with 'Bottom line: ' if there are moves.",
-  "trendsAndSignals": "The ANALYSIS section. Cover trends across ALL domains — VC/tech, markets, geopolitics, science, regulation. Don't just list — explain WHY each matters. Connect threads across newsletters. What pattern are most people missing? 4-6 sentences. End with 'Bottom line: ' one-sentence theme.",
-  "contrarianTake": "A punchy hot take in 2-3 sentences MAX. Challenge conventional wisdom on today's biggest story. Be provocative but well-reasoned. No hedging.",
-  "workRelevant": "SMALL optional callout: Flag 1-3 items relevant to executive recruiting — C-suite changes, companies scaling (new funding/IPO prep), layoffs creating talent availability, portfolio company news. Keep it brief — 1-2 bullets max. If nothing: 'No direct signals today.'"
+  "topStories": "The 3-5 most important stories across ALL topics (not just tech). Each bullet: 2 sentences max with **bold names**, then [Source1] [Source2] citations in square brackets. Then a LITERAL NEWLINE (\\n) followed by '→ So What: ' and a one-sentence implication. After all bullets, add a blank line then 'Bottom line: ' with one sentence.",
+  "marketMoves": "Key funding rounds, acquisitions, IPO filings, market shifts, economic data. Each bullet = ONE deal/move with **bold names** and [Source] citation. Then \\n followed by '→ So What: ' takeaway. End with 'Bottom line: ' summary. Write 'No major deals reported.' if nothing.",
+  "peopleMoves": "TIGHT FORMAT for each move:\n- **Name** (previous role at **Previous Co**) → **New Company**, New Role. One line on why it's notable. [Source]\nIf no significant moves: 'No significant moves detected today.'\nEnd with 'Bottom line: ' if there are moves.",
+  "trendsAndSignals": "The ANALYSIS section. Cover trends across ALL domains — VC/tech, markets, geopolitics, science, regulation. Don't just list — explain WHY each matters. Connect threads across newsletters. Cite sources with [Source Name]. What pattern are most people missing? 4-6 sentences. End with 'Bottom line: ' one-sentence theme.",
+  "contrarianTake": "A punchy hot take in 2-3 sentences MAX. Challenge conventional wisdom on today's biggest story. Be provocative but well-reasoned. No hedging. Cite [Source] if referencing specific info.",
+  "workRelevant": "SMALL optional callout: Flag 1-3 items relevant to executive recruiting — C-suite changes, companies scaling (new funding/IPO prep), layoffs creating talent availability, portfolio company news. Include [Source] citations. Keep it brief — 1-2 bullets max. If nothing: 'No direct signals today.'"
 }`,
         },
       ],
