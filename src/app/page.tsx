@@ -1,65 +1,447 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useState, useEffect, useMemo } from "react";
+import { MainLayout } from "@/components/layout/MainLayout";
+import { MobileNav } from "@/components/layout/MobileNav";
+import { useSidebarStore } from "@/lib/store";
+import { useToastStore } from "@/components/ui/Toast";
+import {
+  topicLabels,
+} from "@/lib/mock-data";
+import type { Article, Summary, TopicCategory } from "@/types";
+import { useNewsletters } from "@/hooks/useNewsletters";
+import { useGmailStatus } from "@/hooks/useGmailStatus";
+import { useArticles } from "@/hooks/useArticles";
+import { useWatchlist } from "@/hooks/useWatchlist";
+import { useEngagement } from "@/hooks/useEngagement";
+import { usePreferences } from "@/hooks/usePreferences";
+import { rankArticles } from "@/lib/ranking";
+
+// Section components
+import { ArticleCard } from "@/components/articles/ArticleCard";
+import { TopicSection } from "@/components/articles/TopicSection";
+import { FullReaderView } from "@/components/articles/FullReaderView";
+import { NewsletterView } from "@/components/articles/NewsletterView";
+import { SavedView } from "@/components/articles/SavedView";
+import { SearchView } from "@/components/search/SearchBar";
+import { WatchlistView } from "@/components/watchlist/WatchlistView";
+import { SettingsView } from "@/components/settings/SettingsView";
+import { SourceManager } from "@/components/settings/SourceManager";
+import { PageSkeleton } from "@/components/ui/LoadingSkeleton";
+import { PeopleMovesView } from "@/components/intelligence/PeopleMovesView";
+import { CompanyView } from "@/components/intelligence/CompanyView";
+import { ChatView } from "@/components/intelligence/ChatView";
+import { BriefMeView } from "@/components/intelligence/BriefMeView";
+import {
+  OnboardingWizard,
+  type OnboardingData,
+} from "@/components/onboarding/OnboardingWizard";
+import { useServiceWorker } from "@/hooks/useServiceWorker";
+
+import {
+  Zap,
+  Mail,
+  TrendingUp,
+  Eye,
+  Bookmark,
+  RefreshCw,
+} from "lucide-react";
+
+// ─── Priority Feed ──────────────────────────────────────────
+function PriorityFeedSection({
+  articles,
+  onSave,
+  onOpenReader,
+  onRequestSummary,
+  onExpand,
+}: {
+  articles: (Article & { summary?: Summary })[];
+  onSave: (id: string) => void;
+  onOpenReader: (article: Article & { summary?: Summary }) => void;
+  onRequestSummary?: (
+    article: Article & { summary?: Summary }
+  ) => Promise<Summary | null>;
+  onExpand?: (articleId: string) => void;
+}) {
+  const unread = articles.filter((a) => !a.isRead).length;
+  const watchlistCount = articles.filter(
+    (a) => a.watchlistMatches.length > 0
+  ).length;
+  const savedCount = articles.filter((a) => a.isSaved).length;
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <Zap size={24} className="text-accent-primary" />
+        <div>
+          <h2 className="text-2xl font-bold text-text-primary">
+            Priority Feed
+          </h2>
+          <p className="text-sm text-text-tertiary">
+            AI-curated top stories across all your sources
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+      </div>
+
+      {/* Stats bar */}
+      <div className="flex gap-3 overflow-x-auto pb-1">
+        {[
+          { label: "Unread", value: unread.toString(), icon: Mail },
+          {
+            label: "Trending",
+            value: articles.length.toString(),
+            icon: TrendingUp,
+          },
+          { label: "Watchlist", value: watchlistCount.toString(), icon: Eye },
+          { label: "Saved", value: savedCount.toString(), icon: Bookmark },
+        ].map((stat) => (
+          <div
+            key={stat.label}
+            className="flex min-w-[130px] items-center gap-3 rounded-lg border border-border-primary bg-bg-card p-3 transition-theme"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+            <stat.icon size={18} className="shrink-0 text-accent-primary" />
+            <div>
+              <p className="text-lg font-bold text-text-primary">
+                {stat.value}
+              </p>
+              <p className="text-xs text-text-tertiary">{stat.label}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Articles */}
+      <div className="space-y-3">
+        {articles.map((article) => (
+          <ArticleCard
+            key={article.id}
+            article={article}
+            onSave={onSave}
+            onOpenReader={onOpenReader}
+            onRequestSummary={onRequestSummary}
+            onExpand={onExpand}
+          />
+        ))}
+      </div>
     </div>
+  );
+}
+
+// ─── News by Topic ──────────────────────────────────────────
+function NewsByTopicSection({
+  articles,
+  onSave,
+  onOpenReader,
+  onRequestSummary,
+  onExpand,
+  onIngest,
+  isIngesting,
+}: {
+  articles: (Article & { summary?: Summary })[];
+  onSave: (id: string) => void;
+  onOpenReader: (article: Article & { summary?: Summary }) => void;
+  onRequestSummary?: (
+    article: Article & { summary?: Summary }
+  ) => Promise<Summary | null>;
+  onExpand?: (articleId: string) => void;
+  onIngest?: () => void;
+  isIngesting?: boolean;
+}) {
+  // Group by topic
+  const topics = Object.keys(topicLabels) as TopicCategory[];
+  const grouped = topics.reduce(
+    (acc, topic) => {
+      acc[topic] = articles.filter((a) => a.topic === topic);
+      return acc;
+    },
+    {} as Record<TopicCategory, (Article & { summary?: Summary })[]>
+  );
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <TrendingUp size={24} className="text-accent-primary" />
+          <div>
+            <h2 className="text-2xl font-bold text-text-primary">
+              News by Topic
+            </h2>
+            <p className="text-sm text-text-tertiary">
+              Browse by category — click to expand
+            </p>
+          </div>
+        </div>
+        {onIngest && (
+          <button
+            onClick={onIngest}
+            disabled={isIngesting}
+            className="flex items-center gap-1.5 rounded-lg bg-accent-primary px-3 py-2 text-sm font-medium text-text-inverse hover:bg-accent-primary-hover transition-colors disabled:opacity-50"
+          >
+            <RefreshCw
+              size={14}
+              className={isIngesting ? "animate-spin" : ""}
+            />
+            {isIngesting ? "Fetching..." : "Fetch News"}
+          </button>
+        )}
+      </div>
+
+      <div className="space-y-6">
+        {topics
+          .filter((t) => grouped[t].length > 0)
+          .map((topic) => (
+            <TopicSection
+              key={topic}
+              topic={topic}
+              articles={grouped[topic]}
+              onSave={onSave}
+              onOpenReader={onOpenReader}
+              onRequestSummary={onRequestSummary}
+              onExpand={onExpand}
+              defaultOpen={true}
+            />
+          ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Page ──────────────────────────────────────────────
+export default function Home() {
+  const activeSection = useSidebarStore((state) => state.activeSection);
+  const { addToast } = useToastStore();
+  const [readerArticle, setReaderArticle] = useState<
+    (Article & { summary?: Summary }) | null
+  >(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  // Service worker registration (push notifications + offline)
+  useServiceWorker();
+
+  // Data hooks
+  const newsletterData = useNewsletters();
+  const gmailStatus = useGmailStatus();
+  const articleData = useArticles();
+  const watchlist = useWatchlist();
+  const engagement = useEngagement();
+  const preferences = usePreferences();
+
+  // Show onboarding on first visit
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const hasOnboarded = localStorage.getItem("the-digest-onboarded");
+      if (!hasOnboarded) {
+        setShowOnboarding(true);
+      }
+    }
+  }, []);
+
+  const handleOnboardingComplete = async (data: OnboardingData) => {
+    // Save topic preferences
+    for (const [topic, level] of Object.entries(data.topicPreferences)) {
+      preferences.setTopicLevel(
+        topic as import("@/types").TopicCategory,
+        level
+      );
+    }
+    await preferences.save();
+
+    // Add watchlist items
+    for (const item of data.watchlistItems) {
+      await watchlist.addItem(item, "company");
+    }
+
+    localStorage.setItem("the-digest-onboarded", "true");
+    setShowOnboarding(false);
+    addToast("Welcome to The Digest! Your feed is ready.", "success");
+  };
+
+  const handleOnboardingSkip = () => {
+    localStorage.setItem("the-digest-onboarded", "true");
+    setShowOnboarding(false);
+  };
+
+  // Apply watchlist matching to articles
+  const articlesWithMatches = useMemo(
+    () => watchlist.matchArticles(articleData.articles),
+    [watchlist, articleData.articles]
+  );
+
+  // Ranked articles for Priority Feed
+  const rankedArticles = useMemo(
+    () =>
+      rankArticles(articlesWithMatches, {
+        topicPreferences: preferences.preferences,
+        topicEngagementScores: engagement.topicScores,
+      }),
+    [articlesWithMatches, preferences.preferences, engagement.topicScores]
+  );
+
+  // Simulate loading
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 800);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const handleSave = (id: string) => {
+    const article = articlesWithMatches.find((a) => a.id === id);
+    if (article) {
+      engagement.trackEvent(id, "save");
+      addToast(
+        article.isSaved
+          ? `Removed "${article.title.slice(0, 40)}..." from saved`
+          : `Saved "${article.title.slice(0, 40)}..."`,
+        article.isSaved ? "info" : "success"
+      );
+    }
+  };
+
+  const handleIngestNews = async () => {
+    const result = await articleData.ingest();
+    if (result) {
+      addToast(
+        `Fetched ${result.totalFetched} articles, stored ${result.totalStored}`,
+        "success"
+      );
+    }
+  };
+
+  const handleOpenReader = (article: Article & { summary?: Summary }) => {
+    engagement.trackEvent(article.id, "read");
+    setReaderArticle(article);
+  };
+
+  const handleExpand = (articleId: string) => {
+    engagement.trackEvent(articleId, "expand");
+  };
+
+  const renderSection = () => {
+    if (isLoading) return <PageSkeleton />;
+
+    switch (activeSection) {
+      case "priority-feed":
+        return (
+          <PriorityFeedSection
+            articles={rankedArticles}
+            onSave={handleSave}
+            onOpenReader={handleOpenReader}
+            onRequestSummary={articleData.requestFullSummary}
+            onExpand={handleExpand}
+          />
+        );
+      case "newsletters":
+        return (
+          <NewsletterView
+            newsletters={newsletterData.newsletters}
+            isLoading={newsletterData.isLoading}
+            error={newsletterData.error}
+            onRefresh={newsletterData.refresh}
+            onIngest={newsletterData.ingest}
+            isIngesting={newsletterData.isIngesting}
+            isGmailConnected={gmailStatus.isConnected}
+            onConnectGmail={gmailStatus.connect}
+          />
+        );
+      case "news":
+        return (
+          <NewsByTopicSection
+            articles={articlesWithMatches}
+            onSave={handleSave}
+            onOpenReader={handleOpenReader}
+            onRequestSummary={articleData.requestFullSummary}
+            onExpand={handleExpand}
+            onIngest={handleIngestNews}
+            isIngesting={articleData.isIngesting}
+          />
+        );
+      case "watchlist":
+        return (
+          <WatchlistView
+            watchlist={watchlist.items}
+            articles={articlesWithMatches}
+            onSave={handleSave}
+            onOpenReader={handleOpenReader}
+            onRequestSummary={articleData.requestFullSummary}
+            onAddItem={watchlist.addItem}
+            onRemoveItem={watchlist.removeItem}
+            onExpand={handleExpand}
+          />
+        );
+      case "saved":
+        return (
+          <SavedView
+            articles={articlesWithMatches}
+            onSave={handleSave}
+            onOpenReader={handleOpenReader}
+            onRequestSummary={articleData.requestFullSummary}
+            onExpand={handleExpand}
+          />
+        );
+      case "search":
+        return (
+          <SearchView
+            articles={articlesWithMatches}
+            onSave={handleSave}
+            onOpenReader={handleOpenReader}
+            onRequestSummary={articleData.requestFullSummary}
+            onExpand={handleExpand}
+          />
+        );
+      case "people-moves":
+        return (
+          <PeopleMovesView
+            articles={articlesWithMatches}
+            onOpenReader={handleOpenReader}
+          />
+        );
+      case "companies":
+        return (
+          <CompanyView
+            articles={articlesWithMatches}
+            onSave={handleSave}
+            onOpenReader={handleOpenReader}
+            onRequestSummary={articleData.requestFullSummary}
+            onExpand={handleExpand}
+          />
+        );
+      case "chat":
+        return <ChatView articles={articlesWithMatches} />;
+      case "brief":
+        return <BriefMeView articles={articlesWithMatches} />;
+      case "sources":
+        return <SourceManager />;
+      case "settings":
+        return <SettingsView />;
+      default:
+        return (
+          <PriorityFeedSection
+            articles={rankedArticles}
+            onSave={handleSave}
+            onOpenReader={handleOpenReader}
+            onRequestSummary={articleData.requestFullSummary}
+            onExpand={handleExpand}
+          />
+        );
+    }
+  };
+
+  return (
+    <MainLayout>
+      <div className="mx-auto max-w-5xl pb-20 lg:pb-0">
+        {renderSection()}
+      </div>
+      <MobileNav />
+      <FullReaderView
+        article={readerArticle}
+        onClose={() => setReaderArticle(null)}
+      />
+      {showOnboarding && (
+        <OnboardingWizard
+          onComplete={handleOnboardingComplete}
+          onSkip={handleOnboardingSkip}
+        />
+      )}
+    </MainLayout>
   );
 }
