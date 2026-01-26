@@ -173,18 +173,49 @@ Include 3-8 key entities. Entity types: company, person, fund, keyword.`,
   }
 }
 
+// ─── Source Quality Weighting ─────────────────────────────────
+// Higher-weight sources get more detailed analysis and priority in digest
+export const SOURCE_QUALITY_TIERS: Record<string, number> = {
+  // Tier 1: Premium (weight 3) — deep reporting, unique insights
+  "The Information": 3,
+  Stratechery: 3,
+  Bloomberg: 3,
+  "Financial Times": 3,
+  "The Economist": 3,
+  Reuters: 3,
+  "Wall Street Journal": 3,
+  // Tier 2: Strong (weight 2) — good analysis, well-sourced
+  StrictlyVC: 2,
+  "CB Insights": 2,
+  Axios: 2,
+  Semafor: 2,
+  Politico: 2,
+  TechCrunch: 2,
+  // Tier 3: Standard (weight 1) — aggregation, lighter analysis
+  "Morning Brew": 1,
+  "The Hustle": 1,
+  Finimize: 1,
+};
+
+export function getSourceWeight(publication: string): number {
+  return SOURCE_QUALITY_TIERS[publication] || 1;
+}
+
 // ─── Newsletter Summary ──────────────────────────────────────
 export interface NewsletterSummaryResult {
   theNews: string;
   whyItMatters: string;
   theContext: string;
+  soWhat: string;
+  watchNext: string;
+  recruiterRelevance: string;
   inputTokens: number;
   outputTokens: number;
 }
 
 /**
- * Generate a structured summary for a newsletter.
- * Returns "The News", "Why It Matters", and "The Context" sections.
+ * Generate a structured summary for a newsletter with deep analysis.
+ * Includes recruiter-relevant insights, second-order implications, and "So What?" section.
  */
 export async function generateNewsletterSummary(
   publication: string,
@@ -194,28 +225,34 @@ export async function generateNewsletterSummary(
   const anthropic = getClient();
   if (!anthropic) return null;
 
-  const truncated = content.slice(0, 8000);
+  const weight = getSourceWeight(publication);
+  const truncated = content.slice(0, weight >= 2 ? 10000 : 6000);
 
   try {
     const response = await anthropic.messages.create({
       model: SUMMARIZATION_MODEL,
-      max_tokens: 600,
+      max_tokens: 1000,
       messages: [
         {
           role: "user",
-          content: `You are a briefing assistant. Summarize this newsletter into three structured sections.
+          content: `You are a senior intelligence briefing analyst for an executive recruiter at a firm that partners with top-tier VC firms (Sequoia, a16z, Lightspeed, Benchmark, Founders Fund, Greylock, Accel, NEA). Your reader needs deep, actionable analysis — not surface-level summaries.
 
-Publication: ${publication}
+Source: ${publication} (Quality tier: ${weight >= 3 ? "Premium" : weight >= 2 ? "Strong" : "Standard"})
 Subject: ${subject}
 
 Content:
 ${truncated}
 
+Provide a deep-dive structured analysis. Think about second-order implications, who wins/loses, what this means for talent markets and executive hiring.
+
 Respond in EXACTLY this JSON format (no markdown, no code fences):
 {
-  "theNews": "What are the key stories/updates in this newsletter? Bullet-point the top 2-4 items, each 1-2 sentences.",
-  "whyItMatters": "Why should the reader care? Summarize the significance in 2-3 sentences.",
-  "theContext": "How do these stories connect to broader trends? 1-2 sentences."
+  "theNews": "What happened? Be specific with names, numbers, and details. Cover the 2-4 most important items. Each as a bullet point, 1-2 sentences.",
+  "whyItMatters": "Go DEEP. What are the second-order implications? Who wins and who loses? How does this affect the broader ecosystem? 3-4 sentences. Don't just restate the news — analyze it.",
+  "theContext": "Connect to broader market trends, recent deals, or industry shifts. What pattern is this part of? 2-3 sentences.",
+  "soWhat": "One bold, opinionated sentence: the single most important takeaway a busy executive should remember from this newsletter.",
+  "watchNext": "What should the reader watch for next? A specific development, announcement, or trend to monitor. 1 sentence.",
+  "recruiterRelevance": "Is there anything directly relevant to executive recruiting? Flag: leadership changes, new C-suite hires, company scaling (new funding/IPO prep), layoffs/reorgs creating talent availability, or portfolio company movements. If nothing relevant, write 'No direct recruiting signals.' 1-2 sentences."
 }`,
         },
       ],
@@ -229,6 +266,9 @@ Respond in EXACTLY this JSON format (no markdown, no code fences):
       theNews: parsed.theNews || "",
       whyItMatters: parsed.whyItMatters || "",
       theContext: parsed.theContext || "",
+      soWhat: parsed.soWhat || "",
+      watchNext: parsed.watchNext || "",
+      recruiterRelevance: parsed.recruiterRelevance || "",
       inputTokens: response.usage.input_tokens,
       outputTokens: response.usage.output_tokens,
     };
@@ -241,13 +281,22 @@ Respond in EXACTLY this JSON format (no markdown, no code fences):
 // ─── Daily Digest ────────────────────────────────────────────
 export interface DailyDigestResult {
   digest: string;
+  sections: {
+    relevantToMyWork: string;
+    topStories: string;
+    marketMoves: string;
+    peopleMoves: string;
+    trendsAndSignals: string;
+    contrarianTake: string;
+    oneLineSummary: string;
+  };
   inputTokens: number;
   outputTokens: number;
 }
 
 /**
  * Generate a consolidated daily digest from multiple newsletters.
- * Produces a single readable briefing covering all newsletters.
+ * Deep analysis with recruiter focus, source weighting, contrarian takes, and "So What?" sections.
  */
 export async function generateDailyDigest(
   newsletters: Array<{ publication: string; subject: string; content: string }>
@@ -255,31 +304,44 @@ export async function generateDailyDigest(
   const anthropic = getClient();
   if (!anthropic || newsletters.length === 0) return null;
 
-  const newsletterBlocks = newsletters
+  // Sort by source quality weight (premium sources first, more content)
+  const weighted = newsletters
+    .map((nl) => ({ ...nl, weight: getSourceWeight(nl.publication) }))
+    .sort((a, b) => b.weight - a.weight);
+
+  const newsletterBlocks = weighted
     .map(
       (nl, i) =>
-        `[${i + 1}] ${nl.publication} — "${nl.subject}"\n${nl.content.slice(0, 3000)}`
+        `[${i + 1}] ${nl.publication} (Quality: ${nl.weight >= 3 ? "Premium" : nl.weight >= 2 ? "Strong" : "Standard"}) — "${nl.subject}"\n${nl.content.slice(0, nl.weight >= 3 ? 5000 : nl.weight >= 2 ? 3500 : 2000)}`
     )
     .join("\n\n---\n\n");
 
   try {
     const response = await anthropic.messages.create({
       model: SUMMARIZATION_MODEL,
-      max_tokens: 1500,
+      max_tokens: 2500,
       messages: [
         {
           role: "user",
-          content: `You are a senior intelligence briefing writer. Create a consolidated daily digest from the following ${newsletters.length} newsletters. The reader is a busy executive who wants to absorb all key information in ~5 minutes.
+          content: `You are a senior intelligence analyst writing a daily briefing for an executive recruiter at a firm partnering with top-tier VCs (Sequoia, a16z, Lightspeed, Benchmark, Founders Fund, Greylock, Accel, NEA). The reader needs to be the most informed person in any room.
+
+Source quality tiers are marked — prioritize Premium and Strong sources for key insights. Standard sources are useful for breadth.
+
+Here are today's ${newsletters.length} newsletters:
 
 ${newsletterBlocks}
 
-Write a structured daily digest in this EXACT JSON format (no markdown, no code fences):
+Write a comprehensive daily digest. Go DEEP — don't just summarize, ANALYZE. Connect threads across newsletters. Identify what others will miss.
+
+Respond in EXACTLY this JSON format (no markdown, no code fences):
 {
-  "topStories": "The 3-5 most important stories across all newsletters. Each story as a bullet point with the source in parentheses. 1-2 sentences each.",
-  "marketMoves": "Key market, funding, or deal activity mentioned. 2-4 bullet points. Write 'None reported today.' if nothing relevant.",
-  "peopleMoves": "Executive moves, hires, departures mentioned. 2-3 bullet points. Write 'None reported today.' if nothing relevant.",
-  "trendsAndSignals": "Emerging themes or patterns across the newsletters. 2-3 sentences.",
-  "oneLineSummary": "A single sentence capturing the day's most important takeaway."
+  "relevantToMyWork": "CRITICAL SECTION — Flag anything directly relevant to executive recruiting: C-suite changes, leadership transitions, companies scaling rapidly (just raised funding, IPO prep, hypergrowth), layoffs/reorgs creating talent availability, portfolio company news from Sequoia/a16z/Lightspeed/Benchmark/Founders Fund/Greylock. Each item as a bullet. If nothing, write 'No direct signals today — here is what to keep on radar:' followed by the closest indirect signals.",
+  "topStories": "The 3-5 most important stories. Each as a bullet with source in parentheses. 2-3 sentences each — include the SO WHAT in bold at the end of each bullet. Prioritize Premium/Strong sources.",
+  "marketMoves": "Key funding rounds, acquisitions, IPO filings, market shifts. Each bullet should end with a bold **So What:** one-liner. 3-5 bullets. Write 'No major deals today.' if nothing.",
+  "peopleMoves": "Executive moves, hires, departures, board appointments. Include company, role, and where they came from. 3-5 bullets. Write 'None reported today.' if nothing.",
+  "trendsAndSignals": "This is the ANALYSIS section. Don't just list trends — explain WHY they matter from a VC/tech/recruiting perspective. Connect threads across multiple newsletters. Include at least one contrarian take or non-obvious insight. What pattern are most people missing? 4-6 sentences.",
+  "contrarianTake": "One provocative, well-reasoned contrarian perspective on today's news. Challenge conventional wisdom. 2-3 sentences.",
+  "oneLineSummary": "A bold, memorable one-liner capturing the day's most important signal. Make it quotable."
 }`,
         },
       ],
@@ -289,17 +351,28 @@ Write a structured daily digest in this EXACT JSON format (no markdown, no code 
       response.content[0].type === "text" ? response.content[0].text : "";
     const parsed = JSON.parse(text.trim());
 
-    // Format into readable markdown
+    // Format into readable markdown with So What sections
     const digest = [
+      `## Relevant to My Work\n${parsed.relevantToMyWork || "No direct signals today."}`,
       `## Today's One-Liner\n${parsed.oneLineSummary || ""}`,
       `## Top Stories\n${parsed.topStories || ""}`,
       `## Market & Deal Activity\n${parsed.marketMoves || ""}`,
       `## People Moves\n${parsed.peopleMoves || ""}`,
       `## Trends & Signals\n${parsed.trendsAndSignals || ""}`,
+      `## Contrarian Take\n${parsed.contrarianTake || ""}`,
     ].join("\n\n");
 
     return {
       digest,
+      sections: {
+        relevantToMyWork: parsed.relevantToMyWork || "",
+        topStories: parsed.topStories || "",
+        marketMoves: parsed.marketMoves || "",
+        peopleMoves: parsed.peopleMoves || "",
+        trendsAndSignals: parsed.trendsAndSignals || "",
+        contrarianTake: parsed.contrarianTake || "",
+        oneLineSummary: parsed.oneLineSummary || "",
+      },
       inputTokens: response.usage.input_tokens,
       outputTokens: response.usage.output_tokens,
     };

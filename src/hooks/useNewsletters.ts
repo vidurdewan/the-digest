@@ -10,6 +10,13 @@ interface IngestResult {
   totalEmails: number;
 }
 
+interface StoredDigest {
+  date: string; // YYYY-MM-DD
+  digest: string;
+  newsletterCount: number;
+  generatedAt: string;
+}
+
 interface UseNewslettersReturn {
   newsletters: Newsletter[];
   isLoading: boolean;
@@ -20,11 +27,90 @@ interface UseNewslettersReturn {
   dailyDigest: string | null;
   isGeneratingDigest: boolean;
   generateDigest: () => Promise<void>;
+  // Historical digests
+  digestHistory: StoredDigest[];
+  selectedDigestDate: string | null;
+  selectDigestDate: (date: string | null) => void;
+  // Read/save
+  toggleRead: (id: string) => void;
+  toggleSave: (id: string) => void;
+}
+
+function getDateKey(date?: Date): string {
+  const d = date || new Date();
+  return d.toISOString().slice(0, 10);
+}
+
+function estimateReadingTime(content: string): number {
+  const words = content.trim().split(/\s+/).length;
+  const minutes = Math.ceil(words / 200); // ~200 words per minute
+  return Math.max(1, minutes);
+}
+
+// Local storage keys
+const DIGEST_HISTORY_KEY = "the-digest-history";
+const READ_STATE_KEY = "the-digest-nl-read";
+const SAVED_STATE_KEY = "the-digest-nl-saved";
+
+function loadDigestHistory(): StoredDigest[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(DIGEST_HISTORY_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveDigestToHistory(digest: StoredDigest) {
+  if (typeof window === "undefined") return;
+  const history = loadDigestHistory();
+  // Replace if same date exists
+  const idx = history.findIndex((d) => d.date === digest.date);
+  if (idx >= 0) {
+    history[idx] = digest;
+  } else {
+    history.unshift(digest);
+  }
+  // Keep last 30 days
+  const trimmed = history.slice(0, 30);
+  localStorage.setItem(DIGEST_HISTORY_KEY, JSON.stringify(trimmed));
+}
+
+function loadReadState(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = localStorage.getItem(READ_STATE_KEY);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function saveReadState(ids: Set<string>) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(READ_STATE_KEY, JSON.stringify([...ids]));
+}
+
+function loadSavedState(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = localStorage.getItem(SAVED_STATE_KEY);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function saveSavedState(ids: Set<string>) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(SAVED_STATE_KEY, JSON.stringify([...ids]));
 }
 
 /**
  * Hook for fetching newsletters.
  * Tries to fetch from API (Supabase), falls back to mock data.
+ * Supports historical digests, reading time, read/save state.
  */
 export function useNewsletters(): UseNewslettersReturn {
   const [newsletters, setNewsletters] = useState<Newsletter[]>(mockNewsletters);
@@ -33,6 +119,75 @@ export function useNewsletters(): UseNewslettersReturn {
   const [isIngesting, setIsIngesting] = useState(false);
   const [dailyDigest, setDailyDigest] = useState<string | null>(null);
   const [isGeneratingDigest, setIsGeneratingDigest] = useState(false);
+  const [digestHistory, setDigestHistory] = useState<StoredDigest[]>([]);
+  const [selectedDigestDate, setSelectedDigestDate] = useState<string | null>(null);
+  const [readIds, setReadIds] = useState<Set<string>>(new Set());
+  const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+
+  // Load persisted state on mount
+  useEffect(() => {
+    setDigestHistory(loadDigestHistory());
+    setReadIds(loadReadState());
+    setSavedIds(loadSavedState());
+  }, []);
+
+  // Apply reading time + read/save state to newsletters
+  const enrichNewsletters = useCallback(
+    (nls: Newsletter[]): Newsletter[] => {
+      return nls.map((nl) => ({
+        ...nl,
+        readingTimeMinutes: estimateReadingTime(nl.content),
+        isRead: readIds.has(nl.id),
+        isSaved: savedIds.has(nl.id),
+      }));
+    },
+    [readIds, savedIds]
+  );
+
+  // Re-enrich when read/save state changes
+  useEffect(() => {
+    setNewsletters((prev) => enrichNewsletters(prev));
+  }, [readIds, savedIds, enrichNewsletters]);
+
+  const toggleRead = useCallback((id: string) => {
+    setReadIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      saveReadState(next);
+      return next;
+    });
+  }, []);
+
+  const toggleSave = useCallback((id: string) => {
+    setSavedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      saveSavedState(next);
+      return next;
+    });
+  }, []);
+
+  const selectDigestDate = useCallback((date: string | null) => {
+    setSelectedDigestDate(date);
+    if (date) {
+      const history = loadDigestHistory();
+      const found = history.find((d) => d.date === date);
+      setDailyDigest(found ? found.digest : null);
+    } else {
+      // Show today's digest if available
+      const history = loadDigestHistory();
+      const today = history.find((d) => d.date === getDateKey());
+      setDailyDigest(today ? today.digest : null);
+    }
+  }, []);
 
   const fetchNewsletters = useCallback(async () => {
     setIsLoading(true);
@@ -59,18 +214,19 @@ export function useNewsletters(): UseNewslettersReturn {
             receivedAt: nl.received_at,
             content: nl.content,
             isRead: nl.is_read,
+            readingTimeMinutes: estimateReadingTime(nl.content),
           })
         );
-        setNewsletters(mapped);
+        setNewsletters(enrichNewsletters(mapped));
       } else {
-        setNewsletters(mockNewsletters);
+        setNewsletters(enrichNewsletters(mockNewsletters));
       }
     } catch {
-      setNewsletters(mockNewsletters);
+      setNewsletters(enrichNewsletters(mockNewsletters));
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [enrichNewsletters]);
 
   const ingest = useCallback(async () => {
     setIsIngesting(true);
@@ -106,9 +262,10 @@ export function useNewsletters(): UseNewslettersReturn {
             receivedAt: nl.received_at,
             content: nl.content,
             isRead: nl.is_read,
+            readingTimeMinutes: estimateReadingTime(nl.content),
           })
         );
-        setNewsletters(mapped);
+        setNewsletters(enrichNewsletters(mapped));
       } else if (data.newsletters && data.newsletters.length > 0) {
         // Use newsletters directly from the ingest response (includes summaries)
         const mapped: Newsletter[] = data.newsletters.map(
@@ -123,6 +280,9 @@ export function useNewsletters(): UseNewslettersReturn {
               theNews: string;
               whyItMatters: string;
               theContext: string;
+              soWhat: string;
+              watchNext: string;
+              recruiterRelevance: string;
             } | null;
           }) => ({
             id: nl.id,
@@ -131,6 +291,17 @@ export function useNewsletters(): UseNewslettersReturn {
             receivedAt: nl.receivedAt,
             content: nl.content,
             isRead: false,
+            readingTimeMinutes: estimateReadingTime(nl.content),
+            newsletterSummary: nl.summary
+              ? {
+                  theNews: nl.summary.theNews,
+                  whyItMatters: nl.summary.whyItMatters,
+                  theContext: nl.summary.theContext,
+                  soWhat: nl.summary.soWhat || "",
+                  watchNext: nl.summary.watchNext || "",
+                  recruiterRelevance: nl.summary.recruiterRelevance || "",
+                }
+              : undefined,
             summary: nl.summary
               ? {
                   id: `summary-${nl.id}`,
@@ -145,7 +316,7 @@ export function useNewsletters(): UseNewslettersReturn {
               : undefined,
           })
         );
-        setNewsletters(mapped);
+        setNewsletters(enrichNewsletters(mapped));
       }
 
       return {
@@ -161,7 +332,7 @@ export function useNewsletters(): UseNewslettersReturn {
     } finally {
       setIsIngesting(false);
     }
-  }, []);
+  }, [enrichNewsletters]);
 
   const generateDigest = useCallback(async () => {
     setIsGeneratingDigest(true);
@@ -180,6 +351,16 @@ export function useNewsletters(): UseNewslettersReturn {
       const data = await res.json();
       if (res.ok && data.digest) {
         setDailyDigest(data.digest);
+
+        // Store in history
+        const stored: StoredDigest = {
+          date: getDateKey(),
+          digest: data.digest,
+          newsletterCount: newsletters.length,
+          generatedAt: new Date().toISOString(),
+        };
+        saveDigestToHistory(stored);
+        setDigestHistory(loadDigestHistory());
       } else {
         setError(data.error || "Failed to generate digest");
       }
@@ -191,6 +372,15 @@ export function useNewsletters(): UseNewslettersReturn {
       setIsGeneratingDigest(false);
     }
   }, [newsletters]);
+
+  // Load today's digest from history on mount
+  useEffect(() => {
+    const history = loadDigestHistory();
+    const today = history.find((d) => d.date === getDateKey());
+    if (today) {
+      setDailyDigest(today.digest);
+    }
+  }, []);
 
   useEffect(() => {
     fetchNewsletters();
@@ -206,5 +396,10 @@ export function useNewsletters(): UseNewslettersReturn {
     dailyDigest,
     isGeneratingDigest,
     generateDigest,
+    digestHistory,
+    selectedDigestDate,
+    selectDigestDate,
+    toggleRead,
+    toggleSave,
   };
 }

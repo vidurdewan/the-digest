@@ -111,6 +111,9 @@ export async function GET(request: NextRequest) {
               theNews: nl.summary.theNews,
               whyItMatters: nl.summary.whyItMatters,
               theContext: nl.summary.theContext,
+              soWhat: nl.summary.soWhat,
+              watchNext: nl.summary.watchNext,
+              recruiterRelevance: nl.summary.recruiterRelevance,
             }
           : null,
       })),

@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       digest: result.digest,
+      sections: result.sections,
       newsletterCount: newsletters.length,
       usage: {
         inputTokens: result.inputTokens,

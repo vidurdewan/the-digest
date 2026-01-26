@@ -30,6 +30,14 @@ const TRANSACTIONAL_SENDERS = [
   /donotreply@/i,
   /postmaster@/i,
   /mailer-daemon@/i,
+  /updates@/i,
+  /info@.*\.google\.com/i,
+  /feedback@/i,
+  /team@.*\.google\.com/i,
+  /admin@/i,
+  /service@/i,
+  /helpdesk@/i,
+  /customercare@/i,
 ];
 
 // Transactional subject patterns
@@ -50,6 +58,85 @@ const TRANSACTIONAL_SUBJECTS = [
   /your .* has shipped/i,
   /delivery notification/i,
   /google alert/i,
+  /action required/i,
+  /action needed/i,
+  /complete your/i,
+  /update your/i,
+  /activate your/i,
+  /reset your/i,
+  /expir(es?|ing|ation)/i,
+  /suspicious (activity|sign)/i,
+  /welcome to/i,
+  /thanks for (signing|registering|joining|subscribing)/i,
+  /successfully (created|registered)/i,
+  /your (order|booking|reservation|appointment)/i,
+  /calendar (invitation|event|reminder)/i,
+  /shared .* with you/i,
+  /invitation to/i,
+  /you have been (added|invited|granted)/i,
+  /storage (is )?(full|almost|running)/i,
+  /critical.*update/i,
+];
+
+// Blocked transactional domains — always exclude emails from these
+const BLOCKED_DOMAINS = [
+  "google.com",
+  "accounts.google.com",
+  "apple.com",
+  "amazon.com",
+  "amazon.co.uk",
+  "paypal.com",
+  "stripe.com",
+  "chase.com",
+  "bankofamerica.com",
+  "wellsfargo.com",
+  "citi.com",
+  "capitalone.com",
+  "americanexpress.com",
+  "discover.com",
+  "facebook.com",
+  "facebookmail.com",
+  "meta.com",
+  "twitter.com",
+  "x.com",
+  "instagram.com",
+  "linkedin.com",
+  "github.com",
+  "gitlab.com",
+  "microsoft.com",
+  "outlook.com",
+  "live.com",
+  "hotmail.com",
+  "yahoo.com",
+  "aol.com",
+  "icloud.com",
+  "dropbox.com",
+  "zoom.us",
+  "slack.com",
+  "notion.so",
+  "figma.com",
+  "canva.com",
+  "shopify.com",
+  "squarespace.com",
+  "godaddy.com",
+  "uber.com",
+  "lyft.com",
+  "doordash.com",
+  "grubhub.com",
+  "airbnb.com",
+  "booking.com",
+  "expedia.com",
+  "netflix.com",
+  "spotify.com",
+  "hulu.com",
+  "disneyland.com",
+  "disney.com",
+  "vercel.com",
+  "heroku.com",
+  "netlify.com",
+  "cloudflare.com",
+  "digitalocean.com",
+  "aws.amazon.com",
 ];
 
 // Known newsletter sender domains (strong positive signal)
@@ -84,47 +171,58 @@ const KNOWN_NEWSLETTER_DOMAINS = [
 
 /**
  * Detect whether a Gmail message is a newsletter (vs transactional/alert).
- * Uses multiple signals: headers, sender patterns, subject, and body content.
+ * AGGRESSIVE filtering: requires List-Unsubscribe OR known newsletter domain.
+ * Blocks all known transactional domains outright.
  */
 export function isNewsletter(message: GmailMessage): boolean {
   const email = message.senderEmail.toLowerCase();
   const subject = message.subject.toLowerCase();
   const domain = email.split("@")[1] || "";
 
-  // Strong exclusion: transactional senders
-  if (TRANSACTIONAL_SENDERS.some((pattern) => pattern.test(email))) {
-    // Exception: some newsletters use noreply@ but have List-Unsubscribe
-    if (!message.listUnsubscribe && !message.listId) {
-      return false;
-    }
+  // 1. HARD BLOCK: emails from blocked transactional domains
+  if (BLOCKED_DOMAINS.some((d) => domain === d || domain.endsWith("." + d))) {
+    return false;
   }
 
-  // Strong exclusion: transactional subjects
+  // 2. HARD BLOCK: transactional subject lines
   if (TRANSACTIONAL_SUBJECTS.some((pattern) => pattern.test(subject))) {
     return false;
   }
 
-  // Strong positive: List-Unsubscribe header
-  if (message.listUnsubscribe) return true;
-
-  // Strong positive: List-Id header
-  if (message.listId) return true;
-
-  // Strong positive: Precedence: bulk or list
-  const prec = message.precedence.toLowerCase();
-  if (prec === "bulk" || prec === "list") return true;
-
-  // Positive: known newsletter platform domain
-  if (KNOWN_NEWSLETTER_DOMAINS.some((d) => domain.includes(d))) return true;
-
-  // Moderate positive: body contains unsubscribe link
-  const bodyText = (message.htmlBody + message.textBody).toLowerCase();
-  if (bodyText.includes("unsubscribe") || bodyText.includes("email preferences") || bodyText.includes("manage your subscription")) {
-    // Extra check: must have substantial content (not a short transactional email)
-    const contentLength = message.textBody.length || message.htmlBody.length;
-    if (contentLength > 500) return true;
+  // 3. HARD BLOCK: transactional sender patterns (unless from known newsletter domain)
+  const isKnownDomain = KNOWN_NEWSLETTER_DOMAINS.some((d) => domain.includes(d));
+  if (TRANSACTIONAL_SENDERS.some((pattern) => pattern.test(email))) {
+    if (!isKnownDomain) {
+      return false;
+    }
   }
 
+  // 4. REQUIRE at least one strong newsletter signal:
+  //    - List-Unsubscribe header
+  //    - List-Id header
+  //    - Known newsletter platform domain
+  //    - Body unsubscribe link + substantial content (1000+ chars)
+  const hasListUnsubscribe = !!message.listUnsubscribe;
+  const hasListId = !!message.listId;
+  const hasBulkPrecedence = ["bulk", "list"].includes(message.precedence.toLowerCase());
+
+  if (hasListUnsubscribe || hasListId) return true;
+  if (isKnownDomain) return true;
+  if (hasBulkPrecedence && !TRANSACTIONAL_SENDERS.some((p) => p.test(email))) return true;
+
+  // Body-based detection: must have unsubscribe text AND substantial content
+  const bodyText = (message.htmlBody + message.textBody).toLowerCase();
+  const hasUnsubscribeText =
+    bodyText.includes("unsubscribe") ||
+    bodyText.includes("email preferences") ||
+    bodyText.includes("manage your subscription") ||
+    bodyText.includes("opt out") ||
+    bodyText.includes("manage notifications");
+  const contentLength = Math.max(message.textBody.length, message.htmlBody.length);
+
+  if (hasUnsubscribeText && contentLength > 1000) return true;
+
+  // Default: reject — err on the side of filtering out
   return false;
 }
 

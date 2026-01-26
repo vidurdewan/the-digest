@@ -344,6 +344,11 @@ export default function Home() {
             dailyDigest={newsletterData.dailyDigest}
             isGeneratingDigest={newsletterData.isGeneratingDigest}
             onGenerateDigest={newsletterData.generateDigest}
+            digestHistory={newsletterData.digestHistory}
+            selectedDigestDate={newsletterData.selectedDigestDate}
+            onSelectDigestDate={newsletterData.selectDigestDate}
+            onToggleRead={newsletterData.toggleRead}
+            onToggleSave={newsletterData.toggleSave}
           />
         );
       case "news":

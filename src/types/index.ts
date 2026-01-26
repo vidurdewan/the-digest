@@ -45,6 +45,15 @@ export interface Entity {
   type: "company" | "person" | "fund" | "keyword";
 }
 
+export interface NewsletterSummary {
+  theNews: string;
+  whyItMatters: string;
+  theContext: string;
+  soWhat: string;
+  watchNext: string;
+  recruiterRelevance: string;
+}
+
 export interface Newsletter {
   id: string;
   publication: string;
@@ -52,7 +61,10 @@ export interface Newsletter {
   receivedAt: string;
   content: string;
   summary?: Summary;
+  newsletterSummary?: NewsletterSummary;
   isRead: boolean;
+  isSaved?: boolean;
+  readingTimeMinutes?: number;
 }
 
 export interface WatchlistItem {
