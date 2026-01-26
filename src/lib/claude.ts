@@ -215,7 +215,7 @@ export interface NewsletterSummaryResult {
 
 /**
  * Generate a structured summary for a newsletter with deep analysis.
- * Includes recruiter-relevant insights, second-order implications, and "So What?" section.
+ * Broad intelligence briefing with optional work-relevant callout.
  */
 export async function generateNewsletterSummary(
   publication: string,
@@ -235,7 +235,11 @@ export async function generateNewsletterSummary(
       messages: [
         {
           role: "user",
-          content: `You are a senior intelligence briefing analyst for an executive recruiter at a firm that partners with top-tier VC firms (Sequoia, a16z, Lightspeed, Benchmark, Founders Fund, Greylock, Accel, NEA). Your reader needs deep, actionable analysis — not surface-level summaries.
+          content: `You are a senior intelligence briefing analyst. Your reader is a well-connected professional who wants deep, actionable analysis across VC/tech, markets, geopolitics, and the business world.
+
+FORMATTING RULES:
+- Bold all **company names** and **people names** so they pop when scanning.
+- Each item in "theNews" should be ONE story per bullet, not multiple crammed together.
 
 Source: ${publication} (Quality tier: ${weight >= 3 ? "Premium" : weight >= 2 ? "Strong" : "Standard"})
 Subject: ${subject}
@@ -243,16 +247,14 @@ Subject: ${subject}
 Content:
 ${truncated}
 
-Provide a deep-dive structured analysis. Think about second-order implications, who wins/loses, what this means for talent markets and executive hiring.
-
 Respond in EXACTLY this JSON format (no markdown, no code fences):
 {
-  "theNews": "What happened? Be specific with names, numbers, and details. Cover the 2-4 most important items. Each as a bullet point, 1-2 sentences.",
+  "theNews": "What happened? Be specific with **names**, numbers, and details. Cover the 2-4 most important items. Each as a separate bullet point, 1-2 sentences each. Bold company and people names.",
   "whyItMatters": "Go DEEP. What are the second-order implications? Who wins and who loses? How does this affect the broader ecosystem? 3-4 sentences. Don't just restate the news — analyze it.",
   "theContext": "Connect to broader market trends, recent deals, or industry shifts. What pattern is this part of? 2-3 sentences.",
-  "soWhat": "One bold, opinionated sentence: the single most important takeaway a busy executive should remember from this newsletter.",
+  "soWhat": "One bold, opinionated sentence: the single most important takeaway from this newsletter.",
   "watchNext": "What should the reader watch for next? A specific development, announcement, or trend to monitor. 1 sentence.",
-  "recruiterRelevance": "Is there anything directly relevant to executive recruiting? Flag: leadership changes, new C-suite hires, company scaling (new funding/IPO prep), layoffs/reorgs creating talent availability, or portfolio company movements. If nothing relevant, write 'No direct recruiting signals.' 1-2 sentences."
+  "recruiterRelevance": "Brief optional callout: any leadership changes, company scaling signals (funding/IPO), or talent availability (layoffs/reorgs)? If nothing: 'No direct signals.' 1 sentence max."
 }`,
         },
       ],
@@ -282,13 +284,13 @@ Respond in EXACTLY this JSON format (no markdown, no code fences):
 export interface DailyDigestResult {
   digest: string;
   sections: {
-    relevantToMyWork: string;
+    oneLineSummary: string;
     topStories: string;
     marketMoves: string;
     peopleMoves: string;
     trendsAndSignals: string;
     contrarianTake: string;
-    oneLineSummary: string;
+    workRelevant: string;
   };
   inputTokens: number;
   outputTokens: number;
@@ -296,7 +298,8 @@ export interface DailyDigestResult {
 
 /**
  * Generate a consolidated daily digest from multiple newsletters.
- * Deep analysis with recruiter focus, source weighting, contrarian takes, and "So What?" sections.
+ * Broad intelligence briefing covering VC/tech, markets, geopolitics, science.
+ * Source-weighted, with "Bottom line" per section and tight formatting.
  */
 export async function generateDailyDigest(
   newsletters: Array<{ publication: string; subject: string; content: string }>
@@ -319,29 +322,35 @@ export async function generateDailyDigest(
   try {
     const response = await anthropic.messages.create({
       model: SUMMARIZATION_MODEL,
-      max_tokens: 2500,
+      max_tokens: 3000,
       messages: [
         {
           role: "user",
-          content: `You are a senior intelligence analyst writing a daily briefing for an executive recruiter at a firm partnering with top-tier VCs (Sequoia, a16z, Lightspeed, Benchmark, Founders Fund, Greylock, Accel, NEA). The reader needs to be the most informed person in any room.
+          content: `You are a senior intelligence analyst writing a daily briefing. The reader is a well-connected professional who wants a BROAD overview of what's happening across VC/tech, financial markets, geopolitics, science, and the business world. They want to be the most informed person in any room.
 
-Source quality tiers are marked — prioritize Premium and Strong sources for key insights. Standard sources are useful for breadth.
+Source quality tiers are marked — prioritize Premium and Strong sources. Standard sources provide breadth.
+
+CRITICAL FORMATTING RULES:
+- Each bullet = ONE story only. Never combine multiple stories in one bullet.
+- Bold all **company names** and **people names** so they pop when scanning.
+- Each bullet starts with the story, then on a NEW LINE add "→ So What: " in italics with a one-sentence takeaway.
+- At the END of each section, add "Bottom line: " as a bold one-sentence theme summary.
+- Keep bullets concise: 2 sentences max for the story, 1 sentence for So What.
+- Include the source publication name in parentheses after each bullet.
 
 Here are today's ${newsletters.length} newsletters:
 
 ${newsletterBlocks}
 
-Write a comprehensive daily digest. Go DEEP — don't just summarize, ANALYZE. Connect threads across newsletters. Identify what others will miss.
-
-Respond in EXACTLY this JSON format (no markdown, no code fences):
+Respond in EXACTLY this JSON format (no markdown code fences):
 {
-  "relevantToMyWork": "CRITICAL SECTION — Flag anything directly relevant to executive recruiting: C-suite changes, leadership transitions, companies scaling rapidly (just raised funding, IPO prep, hypergrowth), layoffs/reorgs creating talent availability, portfolio company news from Sequoia/a16z/Lightspeed/Benchmark/Founders Fund/Greylock. Each item as a bullet. If nothing, write 'No direct signals today — here is what to keep on radar:' followed by the closest indirect signals.",
-  "topStories": "The 3-5 most important stories. Each as a bullet with source in parentheses. 2-3 sentences each — include the SO WHAT in bold at the end of each bullet. Prioritize Premium/Strong sources.",
-  "marketMoves": "Key funding rounds, acquisitions, IPO filings, market shifts. Each bullet should end with a bold **So What:** one-liner. 3-5 bullets. Write 'No major deals today.' if nothing.",
-  "peopleMoves": "Executive moves, hires, departures, board appointments. Include company, role, and where they came from. 3-5 bullets. Write 'None reported today.' if nothing.",
-  "trendsAndSignals": "This is the ANALYSIS section. Don't just list trends — explain WHY they matter from a VC/tech/recruiting perspective. Connect threads across multiple newsletters. Include at least one contrarian take or non-obvious insight. What pattern are most people missing? 4-6 sentences.",
-  "contrarianTake": "One provocative, well-reasoned contrarian perspective on today's news. Challenge conventional wisdom. 2-3 sentences.",
-  "oneLineSummary": "A bold, memorable one-liner capturing the day's most important signal. Make it quotable."
+  "oneLineSummary": "A bold, memorable one-liner capturing today's most important signal. Make it quotable.",
+  "topStories": "The 3-5 most important stories across ALL topics (not just tech). Each bullet is ONE story: 2 sentences max with **bold names**, source in parentheses. Then a new line with '→ So What: ' and a one-sentence implication. After all bullets, add a blank line then 'Bottom line: ' with one sentence summarizing the theme.",
+  "marketMoves": "Key funding rounds, acquisitions, IPO filings, market shifts, economic data. Each bullet = ONE deal/move with **bold names** and source. New line '→ So What: ' takeaway. End with 'Bottom line: ' summary. Write 'No major deals reported.' if nothing.",
+  "peopleMoves": "TIGHT FORMAT for each move:\n- **Name** (previous role at **Previous Co**) → **New Company**, New Role. One line on why it's notable. (Source)\nIf no significant moves: 'No significant moves detected today.'\nEnd with 'Bottom line: ' if there are moves.",
+  "trendsAndSignals": "The ANALYSIS section. Cover trends across ALL domains — VC/tech, markets, geopolitics, science, regulation. Don't just list — explain WHY each matters. Connect threads across newsletters. What pattern are most people missing? 4-6 sentences. End with 'Bottom line: ' one-sentence theme.",
+  "contrarianTake": "A punchy hot take in 2-3 sentences MAX. Challenge conventional wisdom on today's biggest story. Be provocative but well-reasoned. No hedging.",
+  "workRelevant": "SMALL optional callout: Flag 1-3 items relevant to executive recruiting — C-suite changes, companies scaling (new funding/IPO prep), layoffs creating talent availability, portfolio company news. Keep it brief — 1-2 bullets max. If nothing: 'No direct signals today.'"
 }`,
         },
       ],
@@ -351,27 +360,27 @@ Respond in EXACTLY this JSON format (no markdown, no code fences):
       response.content[0].type === "text" ? response.content[0].text : "";
     const parsed = JSON.parse(text.trim());
 
-    // Format into readable markdown with So What sections
+    // Format into readable markdown — broad overview first, work callout last
     const digest = [
-      `## Relevant to My Work\n${parsed.relevantToMyWork || "No direct signals today."}`,
       `## Today's One-Liner\n${parsed.oneLineSummary || ""}`,
       `## Top Stories\n${parsed.topStories || ""}`,
       `## Market & Deal Activity\n${parsed.marketMoves || ""}`,
       `## People Moves\n${parsed.peopleMoves || ""}`,
       `## Trends & Signals\n${parsed.trendsAndSignals || ""}`,
       `## Contrarian Take\n${parsed.contrarianTake || ""}`,
+      `## Work Radar\n${parsed.workRelevant || "No direct signals today."}`,
     ].join("\n\n");
 
     return {
       digest,
       sections: {
-        relevantToMyWork: parsed.relevantToMyWork || "",
+        oneLineSummary: parsed.oneLineSummary || "",
         topStories: parsed.topStories || "",
         marketMoves: parsed.marketMoves || "",
         peopleMoves: parsed.peopleMoves || "",
         trendsAndSignals: parsed.trendsAndSignals || "",
         contrarianTake: parsed.contrarianTake || "",
-        oneLineSummary: parsed.oneLineSummary || "",
+        workRelevant: parsed.workRelevant || "",
       },
       inputTokens: response.usage.input_tokens,
       outputTokens: response.usage.output_tokens,

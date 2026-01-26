@@ -22,9 +22,8 @@ import {
   CheckCheck,
   ChevronLeft,
   ChevronRight,
-  Calendar,
   AlertTriangle,
-  Target,
+  Briefcase,
 } from "lucide-react";
 import type { Newsletter } from "@/types";
 import { getRelativeTime } from "@/lib/mock-data";
@@ -53,11 +52,9 @@ interface NewsletterViewProps {
   dailyDigest: string | null;
   isGeneratingDigest: boolean;
   onGenerateDigest: () => Promise<void>;
-  // Historical digests
   digestHistory: StoredDigest[];
   selectedDigestDate: string | null;
   onSelectDigestDate: (date: string | null) => void;
-  // Read/save
   onToggleRead: (id: string) => void;
   onToggleSave: (id: string) => void;
 }
@@ -115,8 +112,51 @@ function formatDateLabel(dateStr: string): string {
   });
 }
 
-// ─── Digest History Navigation ──────────────────────────────
-function DigestHistoryNav({
+function formatFullDate(dateStr: string): string {
+  const date = new Date(dateStr + "T12:00:00");
+  return date.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+// ─── Inline Markdown Renderer ────────────────────────────────
+// Renders **bold**, *italic*, and (Source Name) links inline
+function RichText({ text }: { text: string }) {
+  // Split on bold (**text**), italic (*text* but not **), and source refs (Source Name)
+  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
+
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (part.startsWith("**") && part.endsWith("**")) {
+          return (
+            <strong key={i} className="font-semibold text-text-primary">
+              {part.slice(2, -2)}
+            </strong>
+          );
+        }
+        if (
+          part.startsWith("*") &&
+          part.endsWith("*") &&
+          !part.startsWith("**")
+        ) {
+          return (
+            <em key={i} className="text-text-secondary">
+              {part.slice(1, -1)}
+            </em>
+          );
+        }
+        return <span key={i}>{part}</span>;
+      })}
+    </>
+  );
+}
+
+// ─── Day Tabs for Digest History ─────────────────────────────
+function DigestDayTabs({
   history,
   selectedDate,
   onSelect,
@@ -125,51 +165,184 @@ function DigestHistoryNav({
   selectedDate: string | null;
   onSelect: (date: string | null) => void;
 }) {
-  if (history.length <= 1) return null;
+  if (history.length === 0) return null;
 
-  const currentIdx = selectedDate
-    ? history.findIndex((d) => d.date === selectedDate)
-    : 0;
+  // Show up to 7 recent days as tabs, rest in a dropdown
+  const tabDays = history.slice(0, 7);
+  const moreDays = history.slice(7);
+  const activeDate = selectedDate || history[0]?.date;
 
   return (
-    <div className="flex items-center gap-2">
-      <Calendar size={14} className="text-text-tertiary" />
-      <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1 overflow-x-auto pb-1">
+      {tabDays.map((d) => (
         <button
-          onClick={() => {
-            const prev = currentIdx + 1;
-            if (prev < history.length) onSelect(history[prev].date);
-          }}
-          disabled={currentIdx >= history.length - 1}
-          className="rounded p-1 text-text-tertiary hover:text-text-primary disabled:opacity-30"
-        >
-          <ChevronLeft size={14} />
-        </button>
-        <select
-          value={selectedDate || history[0]?.date || ""}
-          onChange={(e) =>
-            onSelect(e.target.value === history[0]?.date ? null : e.target.value)
+          key={d.date}
+          onClick={() =>
+            onSelect(d.date === history[0]?.date ? null : d.date)
           }
-          className="rounded border border-border-primary bg-bg-secondary px-2 py-0.5 text-xs text-text-secondary"
+          className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+            activeDate === d.date
+              ? "bg-accent-primary text-text-inverse"
+              : "bg-bg-secondary text-text-tertiary hover:text-text-secondary"
+          }`}
         >
-          {history.map((d) => (
+          {formatDateLabel(d.date)}
+        </button>
+      ))}
+      {moreDays.length > 0 && (
+        <select
+          value={
+            moreDays.some((d) => d.date === activeDate)
+              ? activeDate
+              : ""
+          }
+          onChange={(e) => {
+            if (e.target.value) onSelect(e.target.value);
+          }}
+          className="shrink-0 rounded-lg border border-border-primary bg-bg-secondary px-2 py-1.5 text-xs text-text-tertiary"
+        >
+          <option value="">Older...</option>
+          {moreDays.map((d) => (
             <option key={d.date} value={d.date}>
-              {formatDateLabel(d.date)} ({d.newsletterCount} sources)
+              {formatDateLabel(d.date)} ({d.newsletterCount})
             </option>
           ))}
         </select>
-        <button
-          onClick={() => {
-            const next = currentIdx - 1;
-            if (next >= 0) onSelect(history[next].date);
-            if (next < 0) onSelect(null);
-          }}
-          disabled={currentIdx <= 0 && !selectedDate}
-          className="rounded p-1 text-text-tertiary hover:text-text-primary disabled:opacity-30"
-        >
-          <ChevronRight size={14} />
-        </button>
-      </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Digest Content Renderer ─────────────────────────────────
+// Renders the markdown digest with proper visual hierarchy
+function DigestContent({ content }: { content: string }) {
+  const lines = content.split("\n");
+
+  return (
+    <div className="space-y-1">
+      {lines.map((line, i) => {
+        const trimmed = line.trim();
+
+        // Empty line = spacer
+        if (trimmed === "") return <div key={i} className="h-3" />;
+
+        // Section headers
+        if (trimmed.startsWith("## Work Radar")) {
+          return (
+            <div key={i} className="mt-6 mb-2 flex items-center gap-2">
+              <Briefcase size={15} className="text-text-tertiary" />
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-text-tertiary">
+                {trimmed.replace("## ", "")}
+              </h4>
+            </div>
+          );
+        }
+        if (trimmed.startsWith("## Contrarian Take")) {
+          return (
+            <div key={i} className="mt-6 mb-2 flex items-center gap-2">
+              <AlertTriangle size={16} className="text-accent-warning" />
+              <h4 className="text-sm font-bold text-accent-warning">
+                {trimmed.replace("## ", "")}
+              </h4>
+            </div>
+          );
+        }
+        if (trimmed.startsWith("## Today's One-Liner")) {
+          return (
+            <h4
+              key={i}
+              className="mb-1 text-xs font-semibold uppercase tracking-wider text-text-tertiary"
+            >
+              {trimmed.replace("## ", "")}
+            </h4>
+          );
+        }
+        if (trimmed.startsWith("## ")) {
+          return (
+            <h4
+              key={i}
+              className="mt-6 mb-3 border-b border-border-primary pb-2 text-sm font-bold text-text-primary"
+            >
+              {trimmed.replace("## ", "")}
+            </h4>
+          );
+        }
+
+        // "→ So What:" lines — render as subtle callout
+        if (
+          trimmed.startsWith("→ So What:") ||
+          trimmed.startsWith("→ So what:")
+        ) {
+          const soWhatText = trimmed.replace(/^→\s*So [Ww]hat:\s*/, "");
+          return (
+            <div
+              key={i}
+              className="mb-4 ml-7 rounded-md border-l-2 border-accent-primary/30 bg-accent-primary/5 px-3 py-1.5"
+            >
+              <p className="text-xs italic text-text-secondary">
+                <span className="font-semibold not-italic text-accent-primary">
+                  So What:{" "}
+                </span>
+                <RichText text={soWhatText} />
+              </p>
+            </div>
+          );
+        }
+
+        // "Bottom line:" — render as bold callout
+        if (
+          trimmed.startsWith("Bottom line:") ||
+          trimmed.startsWith("**Bottom line:**")
+        ) {
+          const blText = trimmed
+            .replace(/^\*?\*?Bottom line:\*?\*?\s*/, "");
+          return (
+            <div
+              key={i}
+              className="mt-3 mb-2 rounded-lg bg-bg-secondary px-4 py-2.5"
+            >
+              <p className="text-xs font-semibold text-text-primary">
+                <span className="text-accent-primary">Bottom line: </span>
+                <RichText text={blText} />
+              </p>
+            </div>
+          );
+        }
+
+        // Bullet points — each bullet gets more spacing
+        if (trimmed.startsWith("- ") || trimmed.startsWith("• ")) {
+          const bulletText = trimmed.replace(/^[-•]\s*/, "");
+          return (
+            <div key={i} className="mb-1 ml-3 flex gap-2.5">
+              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent-primary/60" />
+              <p className="text-sm leading-relaxed text-text-secondary">
+                <RichText text={bulletText} />
+              </p>
+            </div>
+          );
+        }
+
+        // One-liner (first non-header text after "Today's One-Liner")
+        // Check if previous line was the one-liner header
+        const prevLine = i > 0 ? lines[i - 1]?.trim() : "";
+        if (prevLine === "## Today's One-Liner") {
+          return (
+            <p
+              key={i}
+              className="mb-4 border-l-4 border-accent-primary pl-4 text-base font-medium leading-relaxed text-text-primary"
+            >
+              <RichText text={trimmed} />
+            </p>
+          );
+        }
+
+        // Regular paragraph
+        return (
+          <p key={i} className="mb-2 text-sm leading-relaxed text-text-secondary">
+            <RichText text={trimmed} />
+          </p>
+        );
+      })}
     </div>
   );
 }
@@ -194,39 +367,38 @@ function DailyDigestSection({
 }) {
   if (!digest && !isGenerating) {
     return (
-      <div className="rounded-xl border border-accent-primary/30 bg-gradient-to-br from-accent-primary/5 to-accent-primary/10 p-5">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-primary/15">
-              <Sparkles size={20} className="text-accent-primary" />
+      <div className="space-y-3">
+        <div className="rounded-xl border border-accent-primary/30 bg-gradient-to-br from-accent-primary/5 to-accent-primary/10 p-5">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-primary/15">
+                <Sparkles size={20} className="text-accent-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-text-primary">
+                  Intelligence Briefing
+                </h3>
+                <p className="mt-0.5 text-sm text-text-secondary">
+                  Generate a source-weighted daily briefing from {newsletterCount}{" "}
+                  newsletter{newsletterCount !== 1 ? "s" : ""}.
+                </p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-semibold text-text-primary">Daily Digest</h3>
-              <p className="mt-0.5 text-sm text-text-secondary">
-                Generate an AI-powered intelligence briefing from all{" "}
-                {newsletterCount} newsletter
-                {newsletterCount !== 1 ? "s" : ""} — deep analysis with
-                recruiter-relevant insights, contrarian takes, and source-weighted
-                prioritization.
-              </p>
-            </div>
+            <button
+              onClick={onGenerate}
+              disabled={newsletterCount === 0}
+              className="shrink-0 rounded-lg bg-accent-primary px-4 py-2 text-sm font-medium text-text-inverse transition-colors hover:bg-accent-primary-hover disabled:opacity-50"
+            >
+              Generate
+            </button>
           </div>
-          <button
-            onClick={onGenerate}
-            disabled={newsletterCount === 0}
-            className="shrink-0 rounded-lg bg-accent-primary px-4 py-2 text-sm font-medium text-text-inverse transition-colors hover:bg-accent-primary-hover disabled:opacity-50"
-          >
-            Generate Digest
-          </button>
         </div>
         {digestHistory.length > 0 && (
-          <div className="mt-3 border-t border-accent-primary/20 pt-3">
-            <DigestHistoryNav
-              history={digestHistory}
-              selectedDate={selectedDigestDate}
-              onSelect={onSelectDigestDate}
-            />
-          </div>
+          <DigestDayTabs
+            history={digestHistory}
+            selectedDate={selectedDigestDate}
+            onSelect={onSelectDigestDate}
+          />
         )}
       </div>
     );
@@ -243,7 +415,7 @@ function DailyDigestSection({
             </h3>
             <p className="text-sm text-text-tertiary">
               Analyzing {newsletterCount} newsletter
-              {newsletterCount !== 1 ? "s" : ""} with source-weighted deep analysis
+              {newsletterCount !== 1 ? "s" : ""} with source-weighted analysis
             </p>
           </div>
         </div>
@@ -251,119 +423,91 @@ function DailyDigestSection({
     );
   }
 
+  // Determine display date
+  const displayDate = selectedDigestDate || new Date().toISOString().slice(0, 10);
+
   return (
-    <div className="rounded-xl border border-accent-primary/30 bg-bg-card shadow-sm">
-      <div className="flex items-center justify-between border-b border-border-primary px-5 py-4">
-        <div className="flex items-center gap-2">
-          <Sparkles size={18} className="text-accent-primary" />
-          <h3 className="font-semibold text-text-primary">
-            Intelligence Briefing
-          </h3>
-          <span className="rounded-full bg-accent-primary/10 px-2 py-0.5 text-xs font-medium text-accent-primary">
-            {newsletterCount} sources
-          </span>
-        </div>
-        <div className="flex items-center gap-3">
-          <DigestHistoryNav
-            history={digestHistory}
-            selectedDate={selectedDigestDate}
-            onSelect={onSelectDigestDate}
-          />
-          <button
-            onClick={onGenerate}
-            className="flex items-center gap-1 text-xs text-text-tertiary hover:text-text-secondary"
-          >
-            <RefreshCw size={12} />
-            Regenerate
-          </button>
-        </div>
-      </div>
-      <div className="p-5">
-        <div className="prose-sm max-w-none text-sm leading-relaxed text-text-secondary">
-          {digest!.split("\n").map((line, i) => {
-            if (line.startsWith("## Relevant to My Work")) {
-              return (
-                <h4
-                  key={i}
-                  className="mb-2 mt-4 first:mt-0 flex items-center gap-2 text-base font-semibold text-accent-danger"
-                >
-                  <Target size={16} className="text-accent-danger" />
-                  {line.replace("## ", "")}
-                </h4>
-              );
-            }
-            if (line.startsWith("## Contrarian Take")) {
-              return (
-                <h4
-                  key={i}
-                  className="mb-2 mt-4 flex items-center gap-2 text-base font-semibold text-accent-warning"
-                >
-                  <AlertTriangle size={16} className="text-accent-warning" />
-                  {line.replace("## ", "")}
-                </h4>
-              );
-            }
-            if (line.startsWith("## ")) {
-              return (
-                <h4
-                  key={i}
-                  className="mb-2 mt-4 first:mt-0 text-base font-semibold text-text-primary"
-                >
-                  {line.replace("## ", "")}
-                </h4>
-              );
-            }
-            if (line.startsWith("- ") || line.startsWith("• ")) {
-              // Check for bold **So What:** pattern
-              const soWhatMatch = line.match(
-                /^[-•]\s*(.*?)(\*\*So What:\*\*.*)/
-              );
-              if (soWhatMatch) {
-                return (
-                  <p key={i} className="mb-1.5 ml-3 flex gap-2">
-                    <span className="shrink-0 text-accent-primary">•</span>
-                    <span>
-                      {soWhatMatch[1]}
-                      <strong className="text-text-primary">
-                        {soWhatMatch[2]
-                          .replace(/\*\*/g, "")}
-                      </strong>
-                    </span>
-                  </p>
-                );
-              }
-              return (
-                <p key={i} className="mb-1.5 ml-3 flex gap-2">
-                  <span className="shrink-0 text-accent-primary">•</span>
-                  <span>{line.replace(/^[-•]\s*/, "")}</span>
-                </p>
-              );
-            }
-            if (line.trim() === "") return <div key={i} className="h-2" />;
-            // Bold text rendering
-            const parts = line.split(/(\*\*[^*]+\*\*)/g);
-            return (
-              <p key={i} className="mb-2">
-                {parts.map((part, j) => {
-                  if (part.startsWith("**") && part.endsWith("**")) {
-                    return (
-                      <strong key={j} className="text-text-primary">
-                        {part.slice(2, -2)}
-                      </strong>
-                    );
-                  }
-                  return part;
-                })}
+    <div className="space-y-3">
+      {/* Day tabs */}
+      {digestHistory.length > 1 && (
+        <DigestDayTabs
+          history={digestHistory}
+          selectedDate={selectedDigestDate}
+          onSelect={onSelectDigestDate}
+        />
+      )}
+
+      {/* Digest card */}
+      <div className="rounded-xl border border-accent-primary/30 bg-bg-card shadow-sm">
+        {/* Header with date */}
+        <div className="border-b border-border-primary px-5 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <Sparkles size={16} className="text-accent-primary" />
+                <h3 className="text-sm font-bold text-text-primary">
+                  Intelligence Briefing
+                </h3>
+                <span className="rounded-full bg-accent-primary/10 px-2 py-0.5 text-[10px] font-medium text-accent-primary">
+                  {newsletterCount} sources
+                </span>
+              </div>
+              <p className="mt-0.5 text-xs text-text-tertiary">
+                {formatFullDate(displayDate)}
               </p>
-            );
-          })}
+            </div>
+            <div className="flex items-center gap-2">
+              {digestHistory.length > 1 && (
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => {
+                      const currentIdx = digestHistory.findIndex(
+                        (d) => d.date === displayDate
+                      );
+                      const prev = currentIdx + 1;
+                      if (prev < digestHistory.length)
+                        onSelectDigestDate(digestHistory[prev].date);
+                    }}
+                    className="rounded p-1 text-text-tertiary hover:text-text-primary"
+                  >
+                    <ChevronLeft size={14} />
+                  </button>
+                  <button
+                    onClick={() => {
+                      const currentIdx = digestHistory.findIndex(
+                        (d) => d.date === displayDate
+                      );
+                      const next = currentIdx - 1;
+                      if (next >= 0) onSelectDigestDate(digestHistory[next].date);
+                      if (next < 0) onSelectDigestDate(null);
+                    }}
+                    className="rounded p-1 text-text-tertiary hover:text-text-primary"
+                  >
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
+              )}
+              <button
+                onClick={onGenerate}
+                className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-text-tertiary hover:bg-bg-secondary hover:text-text-secondary"
+              >
+                <RefreshCw size={11} />
+                Regenerate
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Digest content */}
+        <div className="px-5 py-5">
+          <DigestContent content={digest!} />
         </div>
       </div>
     </div>
   );
 }
 
-// ─── Newsletter Card with Enhanced Summary ───────────────────
+// ─── Newsletter Card ─────────────────────────────────────────
 function NewsletterCard({
   newsletter,
   onToggleRead,
@@ -486,30 +630,6 @@ function NewsletterCard({
         <div className="border-t border-border-secondary px-4 py-4 sm:px-5">
           {summary && "theNews" in summary ? (
             <div className="space-y-4">
-              {/* Recruiter Relevance — shown first if present */}
-              {"recruiterRelevance" in summary &&
-                (summary as { recruiterRelevance?: string })
-                  .recruiterRelevance &&
-                (
-                  summary as { recruiterRelevance: string }
-                ).recruiterRelevance.toLowerCase() !==
-                  "no direct recruiting signals." && (
-                  <div className="rounded-lg border border-accent-danger/20 bg-accent-danger/5 p-3.5">
-                    <div className="mb-2 flex items-center gap-1.5">
-                      <Target size={14} className="text-accent-danger" />
-                      <span className="text-xs font-semibold uppercase tracking-wide text-accent-danger">
-                        Relevant to My Work
-                      </span>
-                    </div>
-                    <p className="text-sm leading-relaxed text-text-primary">
-                      {
-                        (summary as { recruiterRelevance: string })
-                          .recruiterRelevance
-                      }
-                    </p>
-                  </div>
-                )}
-
               {/* The News */}
               <div className="rounded-lg bg-bg-secondary p-3.5">
                 <div className="mb-2 flex items-center gap-1.5">
@@ -518,9 +638,11 @@ function NewsletterCard({
                     The News
                   </span>
                 </div>
-                <p className="text-sm leading-relaxed text-text-primary">
-                  {(summary as { theNews: string }).theNews}
-                </p>
+                <div className="text-sm leading-relaxed text-text-primary">
+                  <RichText
+                    text={(summary as { theNews: string }).theNews}
+                  />
+                </div>
               </div>
 
               {/* Why It Matters */}
@@ -531,9 +653,13 @@ function NewsletterCard({
                     Why It Matters
                   </span>
                 </div>
-                <p className="text-sm leading-relaxed text-text-primary">
-                  {(summary as { whyItMatters: string }).whyItMatters}
-                </p>
+                <div className="text-sm leading-relaxed text-text-primary">
+                  <RichText
+                    text={
+                      (summary as { whyItMatters: string }).whyItMatters
+                    }
+                  />
+                </div>
               </div>
 
               {/* The Context */}
@@ -544,23 +670,27 @@ function NewsletterCard({
                     The Context
                   </span>
                 </div>
-                <p className="text-sm leading-relaxed text-text-primary">
-                  {(summary as { theContext: string }).theContext}
-                </p>
+                <div className="text-sm leading-relaxed text-text-primary">
+                  <RichText
+                    text={(summary as { theContext: string }).theContext}
+                  />
+                </div>
               </div>
 
               {/* So What? */}
               {"soWhat" in summary &&
                 (summary as { soWhat?: string }).soWhat && (
-                  <div className="rounded-lg border border-accent-primary/20 bg-accent-primary/5 p-3.5">
-                    <div className="mb-2 flex items-center gap-1.5">
-                      <Zap size={14} className="text-accent-primary" />
-                      <span className="text-xs font-semibold uppercase tracking-wide text-accent-primary">
+                  <div className="rounded-lg border-l-2 border-accent-primary/40 bg-accent-primary/5 px-4 py-3">
+                    <div className="mb-1 flex items-center gap-1.5">
+                      <Zap size={13} className="text-accent-primary" />
+                      <span className="text-xs font-semibold text-accent-primary">
                         So What?
                       </span>
                     </div>
-                    <p className="text-sm font-medium leading-relaxed text-text-primary">
-                      {(summary as { soWhat: string }).soWhat}
+                    <p className="text-sm font-medium italic leading-relaxed text-text-primary">
+                      <RichText
+                        text={(summary as { soWhat: string }).soWhat}
+                      />
                     </p>
                   </div>
                 )}
@@ -575,8 +705,38 @@ function NewsletterCard({
                         Watch Next
                       </span>
                     </div>
-                    <p className="text-sm leading-relaxed text-text-secondary">
-                      {(summary as { watchNext: string }).watchNext}
+                    <div className="text-sm leading-relaxed text-text-secondary">
+                      <RichText
+                        text={
+                          (summary as { watchNext: string }).watchNext
+                        }
+                      />
+                    </div>
+                  </div>
+                )}
+
+              {/* Recruiter Relevance — small callout at bottom if present */}
+              {"recruiterRelevance" in summary &&
+                (summary as { recruiterRelevance?: string })
+                  .recruiterRelevance &&
+                (
+                  summary as { recruiterRelevance: string }
+                ).recruiterRelevance.toLowerCase() !==
+                  "no direct signals." && (
+                  <div className="rounded-lg border border-border-secondary bg-bg-secondary/50 p-3">
+                    <div className="mb-1 flex items-center gap-1.5">
+                      <Briefcase size={12} className="text-text-tertiary" />
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">
+                        Work Radar
+                      </span>
+                    </div>
+                    <p className="text-xs leading-relaxed text-text-tertiary">
+                      <RichText
+                        text={
+                          (summary as { recruiterRelevance: string })
+                            .recruiterRelevance
+                        }
+                      />
                     </p>
                   </div>
                 )}
@@ -678,8 +838,7 @@ export function NewsletterView({
               {unreadCount === 0 && "all read"}
               {savedCount > 0 && (
                 <span className="text-text-tertiary">
-                  {" "}
-                  · {savedCount} saved
+                  {" "}· {savedCount} saved
                 </span>
               )}
             </p>
