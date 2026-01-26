@@ -1,6 +1,6 @@
 import { supabase, isSupabaseConfigured } from "./supabase";
-import * as fs from "fs";
-import * as path from "path";
+import { cookies } from "next/headers";
+import * as crypto from "crypto";
 
 interface StoredTokens {
   access_token: string | null;
@@ -10,15 +10,44 @@ interface StoredTokens {
   token_type: string | null;
 }
 
-const LOCAL_TOKEN_PATH = path.join(process.cwd(), ".gmail-tokens.json");
+const COOKIE_NAME = "gmail-tokens";
+
+// Derive a 32-byte key from the Google client secret
+function getEncryptionKey(): Buffer {
+  const secret = process.env.GOOGLE_CLIENT_SECRET || "fallback-dev-secret";
+  return crypto.scryptSync(secret, "the-digest-salt", 32);
+}
+
+function encrypt(data: string): string {
+  const key = getEncryptionKey();
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
+  const encrypted = Buffer.concat([
+    cipher.update(data, "utf8"),
+    cipher.final(),
+  ]);
+  const tag = cipher.getAuthTag();
+  // iv (12) + tag (16) + encrypted data
+  return Buffer.concat([iv, tag, encrypted]).toString("base64url");
+}
+
+function decrypt(encoded: string): string {
+  const key = getEncryptionKey();
+  const buf = Buffer.from(encoded, "base64url");
+  const iv = buf.subarray(0, 12);
+  const tag = buf.subarray(12, 28);
+  const encrypted = buf.subarray(28);
+  const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
+  decipher.setAuthTag(tag);
+  return decipher.update(encrypted) + decipher.final("utf8");
+}
 
 /**
  * Store Gmail OAuth tokens.
- * Uses Supabase if configured, falls back to local file for development.
+ * Uses Supabase if configured, otherwise stores in an encrypted cookie.
  */
 export async function storeTokens(tokens: StoredTokens): Promise<void> {
   if (isSupabaseConfigured() && supabase) {
-    // Upsert into a gmail_tokens table
     const { error } = await supabase.from("gmail_tokens").upsert(
       {
         id: "default",
@@ -33,18 +62,47 @@ export async function storeTokens(tokens: StoredTokens): Promise<void> {
     );
     if (error) {
       console.error("Failed to store tokens in Supabase:", error.message);
-      // Fall back to local file
-      storeTokensLocally(tokens);
     }
-  } else {
-    storeTokensLocally(tokens);
   }
+
+  // Always store in cookie as well for serverless environments
+  try {
+    const cookieStore = await cookies();
+    const encrypted = encrypt(JSON.stringify(tokens));
+    cookieStore.set(COOKIE_NAME, encrypted, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365, // 1 year
+    });
+  } catch {
+    // cookies() may not be available in all contexts
+  }
+}
+
+/**
+ * Build a Set-Cookie header value for the token cookie.
+ * Used in redirect responses where cookies() API isn't available.
+ */
+export function buildTokenCookieHeader(tokens: StoredTokens): string {
+  const encrypted = encrypt(JSON.stringify(tokens));
+  const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
+  return `${COOKIE_NAME}=${encrypted}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${60 * 60 * 24 * 365}${secure}`;
+}
+
+/**
+ * Build a Set-Cookie header value that clears the token cookie.
+ */
+export function buildClearTokenCookieHeader(): string {
+  return `${COOKIE_NAME}=; HttpOnly; Path=/; Max-Age=0`;
 }
 
 /**
  * Retrieve stored Gmail OAuth tokens.
  */
 export async function getStoredTokens(): Promise<StoredTokens | null> {
+  // Try Supabase first
   if (isSupabaseConfigured() && supabase) {
     const { data, error } = await supabase
       .from("gmail_tokens")
@@ -61,10 +119,20 @@ export async function getStoredTokens(): Promise<StoredTokens | null> {
         token_type: data.token_type,
       };
     }
-    // Fall through to local file
   }
 
-  return getTokensLocally();
+  // Try cookie
+  try {
+    const cookieStore = await cookies();
+    const cookie = cookieStore.get(COOKIE_NAME);
+    if (cookie?.value) {
+      return JSON.parse(decrypt(cookie.value));
+    }
+  } catch {
+    // Cookie not available or decryption failed
+  }
+
+  return null;
 }
 
 /**
@@ -82,33 +150,16 @@ export async function clearTokens(): Promise<void> {
   if (isSupabaseConfigured() && supabase) {
     await supabase.from("gmail_tokens").delete().eq("id", "default");
   }
+
+  // Clear cookie
   try {
-    if (fs.existsSync(LOCAL_TOKEN_PATH)) {
-      fs.unlinkSync(LOCAL_TOKEN_PATH);
-    }
+    const cookieStore = await cookies();
+    cookieStore.set(COOKIE_NAME, "", {
+      httpOnly: true,
+      path: "/",
+      maxAge: 0,
+    });
   } catch {
-    // Ignore file deletion errors
+    // cookies() may not be available
   }
-}
-
-// ─── Local file helpers ─────────────────────────────────────
-
-function storeTokensLocally(tokens: StoredTokens): void {
-  try {
-    fs.writeFileSync(LOCAL_TOKEN_PATH, JSON.stringify(tokens, null, 2));
-  } catch (err) {
-    console.error("Failed to store tokens locally:", err);
-  }
-}
-
-function getTokensLocally(): StoredTokens | null {
-  try {
-    if (fs.existsSync(LOCAL_TOKEN_PATH)) {
-      const data = fs.readFileSync(LOCAL_TOKEN_PATH, "utf-8");
-      return JSON.parse(data);
-    }
-  } catch {
-    // Ignore parse errors
-  }
-  return null;
 }

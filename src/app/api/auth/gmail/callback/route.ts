@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTokensFromCode } from "@/lib/gmail";
-import { storeTokens } from "@/lib/token-store";
+import { storeTokens, buildTokenCookieHeader } from "@/lib/token-store";
 
 /**
  * GET /api/auth/gmail/callback
@@ -33,17 +33,21 @@ export async function GET(request: NextRequest) {
     // Exchange code for tokens
     const tokens = await getTokensFromCode(code);
 
-    // Store tokens
-    await storeTokens({
+    const storedTokens = {
       access_token: tokens.access_token || null,
       refresh_token: tokens.refresh_token || null,
       expiry_date: tokens.expiry_date || null,
       scope: tokens.scope || null,
       token_type: tokens.token_type || null,
-    });
+    };
 
-    // Redirect back to the app with success
-    return NextResponse.redirect(`${appUrl}?gmail_connected=true`);
+    // Store tokens (Supabase if available)
+    await storeTokens(storedTokens);
+
+    // Redirect back to the app with success, setting token cookie on the response
+    const response = NextResponse.redirect(`${appUrl}?gmail_connected=true`);
+    response.headers.append("Set-Cookie", buildTokenCookieHeader(storedTokens));
+    return response;
   } catch (err) {
     console.error("Gmail OAuth callback error:", err);
     return NextResponse.redirect(

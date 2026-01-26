@@ -77,8 +77,51 @@ export function useNewsletters(): UseNewslettersReturn {
         return null;
       }
 
-      // Refresh the newsletter list after ingestion
-      await fetchNewsletters();
+      // Try refreshing from the database first
+      const listRes = await fetch("/api/newsletters");
+      const listData = await listRes.json();
+
+      if (listData.newsletters && listData.newsletters.length > 0) {
+        const mapped: Newsletter[] = listData.newsletters.map(
+          (nl: {
+            id: string;
+            publication: string;
+            subject: string;
+            sender_email: string;
+            received_at: string;
+            content: string;
+            is_read: boolean;
+          }) => ({
+            id: nl.id,
+            publication: nl.publication,
+            subject: nl.subject,
+            receivedAt: nl.received_at,
+            content: nl.content,
+            isRead: nl.is_read,
+          })
+        );
+        setNewsletters(mapped);
+      } else if (data.newsletters && data.newsletters.length > 0) {
+        // Use newsletters directly from the ingest response
+        const mapped: Newsletter[] = data.newsletters.map(
+          (nl: {
+            id: string;
+            publication: string;
+            subject: string;
+            senderEmail: string;
+            receivedAt: string;
+            contentPreview: string;
+          }) => ({
+            id: nl.id,
+            publication: nl.publication,
+            subject: nl.subject,
+            receivedAt: nl.receivedAt,
+            content: nl.contentPreview,
+            isRead: false,
+          })
+        );
+        setNewsletters(mapped);
+      }
 
       return {
         fetched: data.fetched as number,
@@ -92,7 +135,7 @@ export function useNewsletters(): UseNewslettersReturn {
     } finally {
       setIsIngesting(false);
     }
-  }, [fetchNewsletters]);
+  }, []);
 
   useEffect(() => {
     fetchNewsletters();
