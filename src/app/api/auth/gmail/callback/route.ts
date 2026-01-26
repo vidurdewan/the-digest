@@ -12,9 +12,10 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get("code");
   const error = searchParams.get("error");
 
+  const appUrl = `${request.nextUrl.protocol}//${request.nextUrl.host}`;
+
   // Handle user denial
   if (error) {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     return NextResponse.redirect(
       `${appUrl}?gmail_error=${encodeURIComponent(error)}`
     );
@@ -42,11 +43,9 @@ export async function GET(request: NextRequest) {
     });
 
     // Redirect back to the app with success
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     return NextResponse.redirect(`${appUrl}?gmail_connected=true`);
   } catch (err) {
     console.error("Gmail OAuth callback error:", err);
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     return NextResponse.redirect(
       `${appUrl}?gmail_error=${encodeURIComponent("Failed to connect Gmail")}`
     );
