@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import type { Article, Summary, TopicCategory, Entity } from "@/types";
-import { mockArticles } from "@/lib/mock-data";
 
 interface UseArticlesReturn {
   articles: (Article & { summary?: Summary })[];
@@ -56,7 +55,7 @@ function mapSummary(
  */
 export function useArticles(): UseArticlesReturn {
   const [articles, setArticles] =
-    useState<(Article & { summary?: Summary })[]>(mockArticles);
+    useState<(Article & { summary?: Summary })[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isIngesting, setIsIngesting] = useState(false);
@@ -102,12 +101,9 @@ export function useArticles(): UseArticlesReturn {
             })
           );
         setArticles(mapped);
-      } else {
-        // Fallback to mock
-        setArticles(mockArticles);
       }
     } catch {
-      setArticles(mockArticles);
+      // API unavailable — keep current state
     } finally {
       setIsLoading(false);
     }

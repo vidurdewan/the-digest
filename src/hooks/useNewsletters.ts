@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import type { Newsletter } from "@/types";
-import { mockNewsletters } from "@/lib/mock-data";
 
 interface IngestResult {
   fetched: number;
@@ -113,7 +112,7 @@ function saveSavedState(ids: Set<string>) {
  * Supports historical digests, reading time, read/save state.
  */
 export function useNewsletters(): UseNewslettersReturn {
-  const [newsletters, setNewsletters] = useState<Newsletter[]>(mockNewsletters);
+  const [newsletters, setNewsletters] = useState<Newsletter[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isIngesting, setIsIngesting] = useState(false);
@@ -218,11 +217,9 @@ export function useNewsletters(): UseNewslettersReturn {
           })
         );
         setNewsletters(enrichNewsletters(mapped));
-      } else {
-        setNewsletters(enrichNewsletters(mockNewsletters));
       }
     } catch {
-      setNewsletters(enrichNewsletters(mockNewsletters));
+      // API unavailable — keep current state
     } finally {
       setIsLoading(false);
     }

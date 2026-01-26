@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import type { WatchlistItem, Article, Summary } from "@/types";
-import { mockWatchlist } from "@/lib/mock-data";
 
 interface UseWatchlistReturn {
   items: WatchlistItem[];
@@ -19,7 +18,7 @@ interface UseWatchlistReturn {
  * Falls back to mock data when API isn't available.
  */
 export function useWatchlist(): UseWatchlistReturn {
-  const [items, setItems] = useState<WatchlistItem[]>(mockWatchlist);
+  const [items, setItems] = useState<WatchlistItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchItems = useCallback(async () => {
@@ -30,12 +29,9 @@ export function useWatchlist(): UseWatchlistReturn {
 
       if (data.items && data.items.length > 0) {
         setItems(data.items);
-      } else if (data.source === "none") {
-        // No Supabase — use mock data
-        setItems(mockWatchlist);
       }
     } catch {
-      setItems(mockWatchlist);
+      // API unavailable — keep current state
     } finally {
       setIsLoading(false);
     }
