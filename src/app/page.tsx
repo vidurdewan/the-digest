@@ -311,6 +311,8 @@ export default function Home() {
         `Fetched ${result.totalFetched} articles, stored ${result.totalStored}`,
         "success"
       );
+    } else if (articleData.error) {
+      addToast(`Refresh failed: ${articleData.error}`, "error");
     }
   };
 

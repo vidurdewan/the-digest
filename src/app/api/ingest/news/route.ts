@@ -41,10 +41,11 @@ export async function GET(request: NextRequest) {
     if (isClaudeConfigured() && result.articles.length > 0) {
       // Get stored articles with their DB IDs for intelligence processing
       const { articles: storedArticles } = await getStoredArticles({ limit: 20 });
-      const intelligenceArticles = storedArticles
-        .filter((a: { content?: string | null }) => a.content && (a.content as string).length > 50)
+      const typedArticles = storedArticles as { id: string; title: string; content?: string | null; url?: string | null; topic?: string | null }[];
+      const intelligenceArticles = typedArticles
+        .filter((a) => a.content && a.content.length > 50)
         .slice(0, 20)
-        .map((a: { id: string; title: string; content?: string | null; url?: string | null; topic?: string | null }) => ({
+        .map((a) => ({
           id: a.id,
           title: a.title,
           content: a.content || a.title,

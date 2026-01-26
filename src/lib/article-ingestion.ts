@@ -93,38 +93,37 @@ export async function ingestAllNews(options?: {
       (result.bySource[article.sourceName] || 0) + 1;
   }
 
-  // Store in Supabase
+  // Store in Supabase — batch upsert for performance (avoids Vercel function timeout)
   if (isSupabaseConfigured() && supabase) {
-    for (const article of uniqueArticles) {
-      try {
-        const readingTime = estimateReadingTime(article.content || "");
+    const rows = uniqueArticles.map((article) => ({
+      title: article.title,
+      url: article.url,
+      author: article.author,
+      content: article.content,
+      image_url: article.imageUrl,
+      published_at: article.publishedAt,
+      topic: article.topic,
+      reading_time_minutes: estimateReadingTime(article.content || ""),
+      content_hash: article.contentHash,
+    }));
 
-        const { error } = await supabase.from("articles").upsert(
-          {
-            title: article.title,
-            url: article.url,
-            author: article.author,
-            content: article.content,
-            image_url: article.imageUrl,
-            published_at: article.publishedAt,
-            topic: article.topic,
-            reading_time_minutes: readingTime,
-            content_hash: article.contentHash,
-          },
-          { onConflict: "content_hash" }
-        );
+    // Batch in groups of 50 to stay within Supabase payload limits
+    const BATCH_SIZE = 50;
+    for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+      const batch = rows.slice(i, i + BATCH_SIZE);
+      try {
+        const { error, count } = await supabase
+          .from("articles")
+          .upsert(batch, { onConflict: "content_hash", count: "exact" });
 
         if (!error) {
-          result.totalStored++;
-        } else if (error.code === "23505") {
-          // Duplicate — already exists
-          result.totalDuplicates++;
+          result.totalStored += count ?? batch.length;
         } else {
-          result.totalErrors++;
-          console.error(`Failed to store article "${article.title}":`, error.message);
+          result.totalErrors += batch.length;
+          console.error(`Batch upsert error:`, error.message);
         }
       } catch {
-        result.totalErrors++;
+        result.totalErrors += batch.length;
       }
     }
   }
@@ -135,20 +134,21 @@ export async function ingestAllNews(options?: {
 
 /**
  * Fetch articles from Supabase, optionally filtered by topic.
- * Joins summaries table to include AI-generated summaries.
+ * Tries to join summaries + article_intelligence; falls back gracefully
+ * if the intelligence table or FK relationship doesn't exist yet.
  */
 export async function getStoredArticles(options?: {
   topic?: string;
   limit?: number;
   offset?: number;
-}) {
+}): Promise<{ articles: Record<string, unknown>[]; count: number }> {
   if (!isSupabaseConfigured() || !supabase) {
     return { articles: [], count: 0 };
   }
 
   const { topic, limit = 50, offset = 0 } = options || {};
 
-  // Join with summaries and article_intelligence tables
+  // Try full query with intelligence join first
   let query = supabase
     .from("articles")
     .select(
@@ -164,10 +164,37 @@ export async function getStoredArticles(options?: {
 
   const { data, error, count } = await query;
 
-  if (error) {
-    console.error("Failed to fetch articles:", error.message);
+  if (!error) {
+    return { articles: (data as Record<string, unknown>[]) || [], count: count || 0 };
+  }
+
+  // If the error is about a missing relationship, retry without intelligence join
+  if (error.message.includes("relationship")) {
+    console.warn("Falling back to query without article_intelligence join");
+
+    let fallbackQuery = supabase
+      .from("articles")
+      .select(
+        "*, summaries(id, brief, the_news, why_it_matters, the_context, key_entities, generated_at)",
+        { count: "exact" }
+      )
+      .order("published_at", { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (topic) {
+      fallbackQuery = fallbackQuery.eq("topic", topic);
+    }
+
+    const { data: fbData, error: fbError, count: fbCount } = await fallbackQuery;
+
+    if (!fbError) {
+      return { articles: (fbData as Record<string, unknown>[]) || [], count: fbCount || 0 };
+    }
+
+    console.error("Fallback query also failed:", fbError.message);
     return { articles: [], count: 0 };
   }
 
-  return { articles: data || [], count: count || 0 };
+  console.error("Failed to fetch articles:", error.message);
+  return { articles: [], count: 0 };
 }
