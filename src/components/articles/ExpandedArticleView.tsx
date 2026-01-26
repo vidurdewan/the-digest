@@ -1,14 +1,20 @@
 "use client";
 
-import { ExternalLink, Share2, FileText, Tag } from "lucide-react";
-import type { Summary, Entity } from "@/types";
+import { ExternalLink, Share2, FileText, Tag, ArrowRight } from "lucide-react";
+import type { Summary, Entity, ArticleIntelligence } from "@/types";
 import { AnnotationsPanel } from "./AnnotationsPanel";
+import { QuickReactions } from "@/components/intelligence/QuickReactions";
+import { GoDeeper } from "@/components/intelligence/GoDeeper";
+import { RemindMeButton } from "@/components/intelligence/RemindMeButton";
 
 interface ExpandedArticleViewProps {
   summary: Summary;
   onOpenFull?: (e: React.MouseEvent) => void;
   sourceUrl: string;
   articleId?: string;
+  intelligence?: ArticleIntelligence;
+  articleTitle?: string;
+  articleContent?: string;
 }
 
 export function ExpandedArticleView({
@@ -16,6 +22,9 @@ export function ExpandedArticleView({
   onOpenFull,
   sourceUrl,
   articleId,
+  intelligence,
+  articleTitle,
+  articleContent,
 }: ExpandedArticleViewProps) {
   return (
     <div className="space-y-4 px-4 py-4 sm:px-5">
@@ -67,6 +76,55 @@ export function ExpandedArticleView({
             ))}
           </div>
         </div>
+      )}
+
+      {/* Watch for next */}
+      {intelligence?.watchForNext && (
+        <div className="flex items-start gap-2 rounded-lg border border-border-secondary bg-bg-secondary/50 px-3 py-2">
+          <ArrowRight size={14} className="mt-0.5 shrink-0 text-accent-primary" />
+          <div>
+            <span className="text-xs font-semibold uppercase tracking-wider text-accent-primary">
+              Watch for next
+            </span>
+            <p className="text-sm text-text-secondary">
+              {intelligence.watchForNext}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Connections */}
+      {intelligence?.connectsTo && intelligence.connectsTo.length > 0 && (
+        <div className="rounded-lg border border-border-secondary bg-bg-secondary/30 px-3 py-2">
+          <span className="text-xs font-semibold uppercase tracking-wider text-text-tertiary">
+            This connects to...
+          </span>
+          <div className="mt-1 space-y-1">
+            {intelligence.connectsTo.map((conn, i) => (
+              <p key={i} className="text-sm text-text-secondary">
+                <span className="font-medium text-text-primary">{conn.articleTitle}</span>
+                {" — "}{conn.reason}
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Quick Reactions + Remind Me */}
+      {articleId && (
+        <div className="flex items-center justify-between">
+          <QuickReactions articleId={articleId} />
+          <RemindMeButton articleId={articleId} />
+        </div>
+      )}
+
+      {/* Go Deeper / Explain This */}
+      {articleId && articleTitle && (
+        <GoDeeper
+          articleId={articleId}
+          articleTitle={articleTitle}
+          articleContent={articleContent}
+        />
       )}
 
       {/* Annotations */}

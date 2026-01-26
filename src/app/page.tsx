@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { useSidebarStore } from "@/lib/store";
@@ -18,6 +18,7 @@ import { usePreferences } from "@/hooks/usePreferences";
 import { rankArticles } from "@/lib/ranking";
 
 // Section components
+import { IntelligenceFeed } from "@/components/feed/IntelligenceFeed";
 import { ArticleCard } from "@/components/articles/ArticleCard";
 import { TopicSection } from "@/components/articles/TopicSection";
 import { FullReaderView } from "@/components/articles/FullReaderView";
@@ -32,11 +33,14 @@ import { PeopleMovesView } from "@/components/intelligence/PeopleMovesView";
 import { CompanyView } from "@/components/intelligence/CompanyView";
 import { ChatView } from "@/components/intelligence/ChatView";
 import { BriefMeView } from "@/components/intelligence/BriefMeView";
+import { WeeklySynthesisView } from "@/components/intelligence/WeeklySynthesisView";
 import {
   OnboardingWizard,
   type OnboardingData,
 } from "@/components/onboarding/OnboardingWizard";
 import { useServiceWorker } from "@/hooks/useServiceWorker";
+import { KeyboardShortcutHandler } from "@/components/ui/KeyboardShortcutHandler";
+import { useFeedNavigationStore } from "@/lib/store";
 
 import {
   Zap,
@@ -316,18 +320,40 @@ export default function Home() {
     engagement.trackEvent(articleId, "expand");
   };
 
+  // Keyboard shortcut callbacks
+  const handleSaveFocused = useCallback(() => {
+    const idx = useFeedNavigationStore.getState().focusedIndex;
+    if (idx < 0 || idx >= rankedArticles.length) return;
+    handleSave(rankedArticles[idx].id);
+  }, [rankedArticles]);
+
+  const handleExpandFocused = useCallback(() => {
+    const idx = useFeedNavigationStore.getState().focusedIndex;
+    if (idx < 0) return;
+    // Simulate a click on the focused card to expand it
+    const elements = document.querySelectorAll("[data-feed-index]");
+    const el = elements[idx] as HTMLElement | undefined;
+    if (el) el.click();
+  }, []);
+
+  const handleCloseReader = useCallback(() => {
+    setReaderArticle(null);
+  }, []);
+
   const renderSection = () => {
     if (isLoading) return <PageSkeleton />;
 
     switch (activeSection) {
       case "priority-feed":
         return (
-          <PriorityFeedSection
+          <IntelligenceFeed
             articles={rankedArticles}
             onSave={handleSave}
             onOpenReader={handleOpenReader}
             onRequestSummary={articleData.requestFullSummary}
             onExpand={handleExpand}
+            onIngest={handleIngestNews}
+            isIngesting={articleData.isIngesting}
           />
         );
       case "newsletters":
@@ -417,18 +443,22 @@ export default function Home() {
         return <ChatView articles={articlesWithMatches} />;
       case "brief":
         return <BriefMeView articles={articlesWithMatches} />;
+      case "weekly-synthesis":
+        return <WeeklySynthesisView />;
       case "sources":
         return <SourceManager />;
       case "settings":
         return <SettingsView />;
       default:
         return (
-          <PriorityFeedSection
+          <IntelligenceFeed
             articles={rankedArticles}
             onSave={handleSave}
             onOpenReader={handleOpenReader}
             onRequestSummary={articleData.requestFullSummary}
             onExpand={handleExpand}
+            onIngest={handleIngestNews}
+            isIngesting={articleData.isIngesting}
           />
         );
     }
@@ -443,6 +473,11 @@ export default function Home() {
       <FullReaderView
         article={readerArticle}
         onClose={() => setReaderArticle(null)}
+      />
+      <KeyboardShortcutHandler
+        onSaveFocused={handleSaveFocused}
+        onExpandFocused={handleExpandFocused}
+        onCloseReader={handleCloseReader}
       />
       {showOnboarding && (
         <OnboardingWizard

@@ -1,4 +1,4 @@
-import type { Article, Summary, TopicCategory, InterestLevel } from "@/types";
+import type { Article, Summary, TopicCategory, InterestLevel, ArticleIntelligence, FeedTier, ArticleWithIntelligence, ReactionType } from "@/types";
 
 type TopicPreferences = Record<TopicCategory, InterestLevel>;
 
@@ -19,14 +19,17 @@ const INTEREST_WEIGHTS: Record<InterestLevel, number> = {
  * 3. Recency (newer articles rank higher)
  * 4. Engagement-based topic boosting (topics the user engages with more)
  * 5. Has summary (articles with summaries are more useful)
+ * 6. Unread boost
+ * 7. Significance score from AI intelligence (0-5 points)
+ * 8. Reaction-based adjustments (boost useful/surprising, downrank not_important)
  */
 export function rankArticles(
-  articles: (Article & { summary?: Summary })[],
+  articles: (Article & { summary?: Summary; intelligence?: ArticleIntelligence; reactions?: ReactionType[] })[],
   options: {
     topicPreferences?: TopicPreferences;
     topicEngagementScores?: Record<string, number>;
   } = {}
-): (Article & { summary?: Summary })[] {
+): (Article & { summary?: Summary; intelligence?: ArticleIntelligence; reactions?: ReactionType[] })[] {
   const { topicPreferences, topicEngagementScores } = options;
 
   // Calculate max engagement score for normalization
@@ -82,6 +85,19 @@ export function rankArticles(
       score += 0.5;
     }
 
+    // 7. AI significance score (0-5 points, normalized from 1-10 scale)
+    if (article.intelligence?.significanceScore) {
+      score += (article.intelligence.significanceScore / 10) * 5;
+    }
+
+    // 8. Reaction-based adjustments
+    if (article.reactions) {
+      if (article.reactions.includes("useful")) score += 1;
+      if (article.reactions.includes("surprising")) score += 1.5;
+      if (article.reactions.includes("not_important")) score -= 3;
+      if (article.reactions.includes("bad_connection")) score -= 1;
+    }
+
     return { article, score };
   });
 
@@ -90,6 +106,32 @@ export function rankArticles(
     .filter((s) => s.score >= 0)
     .sort((a, b) => b.score - a.score)
     .map((s) => s.article);
+}
+
+/**
+ * Assign feed tiers to ranked articles.
+ * First 5 = "start-here" (full AI treatment)
+ * Next 15 = "also-notable" (brief summary visible)
+ * Rest = "everything-else" (compact list)
+ */
+export function assignFeedTiers(
+  rankedArticles: (Article & { summary?: Summary; intelligence?: ArticleIntelligence })[]
+): ArticleWithIntelligence[] {
+  return rankedArticles.map((article, index) => {
+    let feedTier: FeedTier;
+    if (index < 5) {
+      feedTier = "start-here";
+    } else if (index < 20) {
+      feedTier = "also-notable";
+    } else {
+      feedTier = "everything-else";
+    }
+
+    return {
+      ...article,
+      feedTier,
+    };
+  });
 }
 
 /**

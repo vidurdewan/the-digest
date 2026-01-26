@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { Search, X, SlidersHorizontal, Calendar, Tag } from "lucide-react";
-import type { Article, Summary, TopicCategory } from "@/types";
+import { useState, useMemo, useCallback } from "react";
+import { Search, X, SlidersHorizontal, Calendar, Tag, TrendingUp } from "lucide-react";
+import type { Article, Summary, TopicCategory, ArticleIntelligence } from "@/types";
 import { topicLabels, getRelativeTime } from "@/lib/mock-data";
 import { ArticleCard } from "@/components/articles/ArticleCard";
 
 interface SearchViewProps {
-  articles: (Article & { summary?: Summary })[];
+  articles: (Article & { summary?: Summary; intelligence?: ArticleIntelligence })[];
   onSave?: (id: string) => void;
   onOpenReader?: (article: Article & { summary?: Summary }) => void;
   onRequestSummary?: (
@@ -15,6 +15,15 @@ interface SearchViewProps {
   ) => Promise<Summary | null>;
   onExpand?: (articleId: string) => void;
 }
+
+const STORY_TYPE_LABELS: Record<string, { label: string; color: string }> = {
+  breaking: { label: "Breaking", color: "text-red-600" },
+  developing: { label: "Developing", color: "text-orange-600" },
+  analysis: { label: "Analysis", color: "text-blue-600" },
+  opinion: { label: "Opinion", color: "text-purple-600" },
+  feature: { label: "Feature", color: "text-green-600" },
+  update: { label: "Update", color: "text-gray-500" },
+};
 
 export function SearchView({ articles, onSave, onOpenReader, onRequestSummary, onExpand }: SearchViewProps) {
   const [query, setQuery] = useState("");
@@ -25,6 +34,7 @@ export function SearchView({ articles, onSave, onOpenReader, onRequestSummary, o
   const [dateRange, setDateRange] = useState<"today" | "week" | "month" | "all">(
     "all"
   );
+  const [specificDate, setSpecificDate] = useState("");
 
   const filteredArticles = useMemo(() => {
     let results = articles;
@@ -51,8 +61,13 @@ export function SearchView({ articles, onSave, onOpenReader, onRequestSummary, o
       results = results.filter((a) => a.topic === selectedTopic);
     }
 
-    // Date filter
-    if (dateRange !== "all") {
+    // Specific date filter (takes precedence over date range)
+    if (specificDate) {
+      results = results.filter((a) => {
+        const articleDate = new Date(a.publishedAt).toISOString().slice(0, 10);
+        return articleDate === specificDate;
+      });
+    } else if (dateRange !== "all") {
       const now = Date.now();
       const cutoffs: Record<string, number> = {
         today: 24 * 60 * 60 * 1000,
@@ -68,7 +83,14 @@ export function SearchView({ articles, onSave, onOpenReader, onRequestSummary, o
     }
 
     return results;
-  }, [articles, query, selectedTopic, dateRange]);
+  }, [articles, query, selectedTopic, dateRange, specificDate]);
+
+  const handleClearDate = useCallback(() => {
+    setSpecificDate("");
+    setDateRange("all");
+  }, []);
+
+  const hasActiveFilters = query || selectedTopic !== "all" || dateRange !== "all" || specificDate;
 
   return (
     <div className="space-y-6">
@@ -141,37 +163,102 @@ export function SearchView({ articles, onSave, onOpenReader, onRequestSummary, o
               Date Range
             </label>
             <select
-              value={dateRange}
-              onChange={(e) =>
+              value={specificDate ? "specific" : dateRange}
+              onChange={(e) => {
+                if (e.target.value === "specific") return;
+                setSpecificDate("");
                 setDateRange(
                   e.target.value as "today" | "week" | "month" | "all"
-                )
-              }
+                );
+              }}
               className="rounded-lg border border-border-primary bg-bg-card px-3 py-1.5 text-sm text-text-primary outline-none focus:border-accent-primary"
             >
               <option value="all">Any Time</option>
               <option value="today">Today</option>
               <option value="week">Past Week</option>
               <option value="month">Past Month</option>
+              {specificDate && <option value="specific">Specific Date</option>}
             </select>
+          </div>
+          <div>
+            <label className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-text-tertiary">
+              <Calendar size={12} />
+              Specific Date
+            </label>
+            <div className="flex items-center gap-1.5">
+              <input
+                type="date"
+                value={specificDate}
+                onChange={(e) => {
+                  setSpecificDate(e.target.value);
+                  if (e.target.value) setDateRange("all");
+                }}
+                className="rounded-lg border border-border-primary bg-bg-card px-3 py-1.5 text-sm text-text-primary outline-none focus:border-accent-primary"
+              />
+              {specificDate && (
+                <button
+                  onClick={handleClearDate}
+                  className="rounded-md p-1 text-text-tertiary hover:text-text-primary"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
 
       {/* Results */}
-      {query || selectedTopic !== "all" || dateRange !== "all" ? (
+      {hasActiveFilters ? (
         <div className="space-y-3">
-          <p className="text-sm text-text-tertiary">
-            {filteredArticles.length} result
-            {filteredArticles.length !== 1 ? "s" : ""}
-            {query && (
-              <>
-                {" "}
-                for &ldquo;<span className="text-text-primary">{query}</span>
-                &rdquo;
-              </>
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-text-tertiary">
+              {filteredArticles.length} result
+              {filteredArticles.length !== 1 ? "s" : ""}
+              {query && (
+                <>
+                  {" "}
+                  for &ldquo;<span className="text-text-primary">{query}</span>
+                  &rdquo;
+                </>
+              )}
+              {specificDate && (
+                <span> on {specificDate}</span>
+              )}
+            </p>
+            {/* Intelligence summary of results */}
+            {filteredArticles.length > 0 && (
+              <div className="flex items-center gap-2">
+                {(() => {
+                  const withIntel = filteredArticles.filter(
+                    (a) => (a as Article & { intelligence?: ArticleIntelligence }).intelligence
+                  );
+                  if (withIntel.length === 0) return null;
+
+                  const types = new Map<string, number>();
+                  withIntel.forEach((a) => {
+                    const st = (a as Article & { intelligence?: ArticleIntelligence }).intelligence?.storyType;
+                    if (st) types.set(st, (types.get(st) || 0) + 1);
+                  });
+
+                  return Array.from(types.entries())
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 3)
+                    .map(([type, count]) => {
+                      const style = STORY_TYPE_LABELS[type];
+                      return (
+                        <span
+                          key={type}
+                          className={`text-[10px] font-medium ${style?.color || "text-text-tertiary"}`}
+                        >
+                          {count} {style?.label || type}
+                        </span>
+                      );
+                    });
+                })()}
+              </div>
             )}
-          </p>
+          </div>
           {filteredArticles.map((article) => (
             <ArticleCard
               key={article.id}

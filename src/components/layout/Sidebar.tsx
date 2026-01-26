@@ -17,6 +17,7 @@ import {
   Building2,
   MessageSquare,
   FileText,
+  BookOpen,
 } from "lucide-react";
 
 const iconMap: Record<string, React.ReactNode> = {
@@ -32,6 +33,7 @@ const iconMap: Record<string, React.ReactNode> = {
   Building2: <Building2 size={20} />,
   MessageSquare: <MessageSquare size={20} />,
   FileText: <FileText size={20} />,
+  BookOpen: <BookOpen size={20} />,
 };
 
 export function Sidebar() {

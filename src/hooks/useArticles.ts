@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import type { Article, Summary, TopicCategory, Entity } from "@/types";
+import type { Article, Summary, TopicCategory, Entity, ArticleIntelligence, ArticleConnection, SignificanceLevel, StoryType } from "@/types";
 
 interface UseArticlesReturn {
-  articles: (Article & { summary?: Summary })[];
+  articles: (Article & { summary?: Summary; intelligence?: ArticleIntelligence })[];
   isLoading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
@@ -27,6 +27,32 @@ interface DbSummaryRow {
   the_context: string | null;
   key_entities: Entity[] | null;
   generated_at: string | null;
+}
+
+// Map Supabase intelligence row to ArticleIntelligence type
+interface DbIntelligenceRow {
+  significance_score: number | null;
+  story_type: string | null;
+  connects_to: ArticleConnection[] | null;
+  story_thread_id: string | null;
+  watch_for_next: string | null;
+  is_surprise_candidate: boolean | null;
+}
+
+function mapIntelligence(
+  row: DbIntelligenceRow | DbIntelligenceRow[] | null
+): ArticleIntelligence | undefined {
+  const data = Array.isArray(row) ? row[0] : row;
+  if (!data || !data.significance_score) return undefined;
+
+  return {
+    significanceScore: (data.significance_score || 5) as SignificanceLevel,
+    storyType: (data.story_type || 'update') as StoryType,
+    connectsTo: (data.connects_to as ArticleConnection[]) || [],
+    storyThreadId: data.story_thread_id || undefined,
+    watchForNext: data.watch_for_next || undefined,
+    isSurpriseCandidate: data.is_surprise_candidate || false,
+  };
 }
 
 function mapSummary(
@@ -55,7 +81,7 @@ function mapSummary(
  */
 export function useArticles(): UseArticlesReturn {
   const [articles, setArticles] =
-    useState<(Article & { summary?: Summary })[]>([]);
+    useState<(Article & { summary?: Summary; intelligence?: ArticleIntelligence })[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isIngesting, setIsIngesting] = useState(false);
@@ -70,7 +96,7 @@ export function useArticles(): UseArticlesReturn {
       const data = await res.json();
 
       if (data.articles && data.articles.length > 0) {
-        const mapped: (Article & { summary?: Summary })[] =
+        const mapped: (Article & { summary?: Summary; intelligence?: ArticleIntelligence })[] =
           data.articles.map(
             (a: {
               id: string;
@@ -83,6 +109,7 @@ export function useArticles(): UseArticlesReturn {
               image_url: string | null;
               reading_time_minutes: number;
               summaries: DbSummaryRow | DbSummaryRow[] | null;
+              article_intelligence: DbIntelligenceRow | DbIntelligenceRow[] | null;
             }) => ({
               id: a.id,
               title: a.title,
@@ -98,6 +125,7 @@ export function useArticles(): UseArticlesReturn {
               isSaved: false,
               watchlistMatches: [],
               summary: mapSummary(a.summaries, a.id),
+              intelligence: mapIntelligence(a.article_intelligence),
             })
           );
         setArticles(mapped);

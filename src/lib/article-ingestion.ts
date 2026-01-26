@@ -148,11 +148,11 @@ export async function getStoredArticles(options?: {
 
   const { topic, limit = 50, offset = 0 } = options || {};
 
-  // Join with summaries table to include AI-generated content
+  // Join with summaries and article_intelligence tables
   let query = supabase
     .from("articles")
     .select(
-      "*, summaries(id, brief, the_news, why_it_matters, the_context, key_entities, generated_at)",
+      "*, summaries(id, brief, the_news, why_it_matters, the_context, key_entities, generated_at), article_intelligence(significance_score, story_type, connects_to, story_thread_id, watch_for_next, is_surprise_candidate)",
       { count: "exact" }
     )
     .order("published_at", { ascending: false })

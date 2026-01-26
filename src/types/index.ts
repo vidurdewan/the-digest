@@ -88,3 +88,71 @@ export interface NavigationSection {
   icon: string;
   path: string;
 }
+
+// ─── Intelligence Types ──────────────────────────────────────
+
+export type StoryType = 'breaking' | 'developing' | 'analysis' | 'opinion' | 'feature' | 'update';
+
+export type SignificanceLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+
+export interface ArticleConnection {
+  articleId: string;
+  articleTitle: string;
+  reason: string;
+  strength: 'strong' | 'moderate' | 'weak';
+}
+
+export interface ArticleIntelligence {
+  significanceScore: SignificanceLevel;
+  storyType: StoryType;
+  connectsTo: ArticleConnection[];
+  storyThreadId?: string;
+  watchForNext?: string;
+  isSurpriseCandidate: boolean;
+}
+
+export interface StoryThread {
+  id: string;
+  title: string;
+  summary?: string;
+  firstSeenAt: string;
+  lastUpdatedAt: string;
+  articleCount: number;
+  status: 'active' | 'resolved' | 'stale';
+}
+
+export type ReactionType = 'already_knew' | 'useful' | 'surprising' | 'bad_connection' | 'not_important';
+
+export interface ArticleReaction {
+  id: string;
+  articleId: string;
+  reaction: ReactionType;
+  createdAt: string;
+}
+
+export interface Reminder {
+  id: string;
+  articleId: string;
+  remindAt: string;
+  note?: string;
+  isDismissed: boolean;
+}
+
+export interface WeeklySynthesis {
+  id: string;
+  weekStart: string;
+  weekEnd: string;
+  synthesis: string;
+  threads: StoryThread[];
+  patterns: string[];
+  generatedAt: string;
+}
+
+export type FeedTier = 'start-here' | 'also-notable' | 'everything-else';
+
+export type ArticleWithIntelligence = Article & {
+  summary?: Summary;
+  intelligence?: ArticleIntelligence;
+  feedTier?: FeedTier;
+  reactions?: ReactionType[];
+};
