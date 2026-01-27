@@ -184,6 +184,12 @@ export async function ingestNewsletters(
       is_read: false,
       is_vip: nl.isVip,
       source_tier: nl.sourceTier,
+      summary_the_news: nl.summary?.theNews || null,
+      summary_why_it_matters: nl.summary?.whyItMatters || null,
+      summary_the_context: nl.summary?.theContext || null,
+      summary_so_what: nl.summary?.soWhat || null,
+      summary_watch_next: nl.summary?.watchNext || null,
+      summary_recruiter_relevance: nl.summary?.recruiterRelevance || null,
     }));
 
     const BATCH_SIZE = 20;

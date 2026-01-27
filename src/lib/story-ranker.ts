@@ -553,7 +553,7 @@ export async function getTopStories(
   const { data, error } = await supabase
     .from("articles")
     .select(
-      "*, summaries(brief, the_news, why_it_matters), article_intelligence(significance_score, story_type, watch_for_next)"
+      "*, summaries(brief, the_news, why_it_matters), article_intelligence(significance_score, story_type, watch_for_next), article_signals(id, signal_type, signal_label, entity_name, confidence, detected_at)"
     )
     .gte("published_at", since.toISOString())
     .gt("ranking_score", 0)

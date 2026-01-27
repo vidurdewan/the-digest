@@ -71,6 +71,12 @@ CREATE TABLE IF NOT EXISTS newsletters (
   is_read BOOLEAN DEFAULT FALSE,
   is_vip BOOLEAN DEFAULT FALSE,
   source_tier INTEGER DEFAULT 3 CHECK (source_tier IN (1, 2, 3)),
+  summary_the_news TEXT,
+  summary_why_it_matters TEXT,
+  summary_the_context TEXT,
+  summary_so_what TEXT,
+  summary_watch_next TEXT,
+  summary_recruiter_relevance TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

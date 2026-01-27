@@ -99,6 +99,12 @@ create table if not exists newsletters (
   is_read boolean default false,
   is_vip boolean default false,
   source_tier integer default 3 check (source_tier in (1, 2, 3)),
+  summary_the_news text,
+  summary_why_it_matters text,
+  summary_the_context text,
+  summary_so_what text,
+  summary_watch_next text,
+  summary_recruiter_relevance text,
   created_at timestamptz default now()
 );
 
