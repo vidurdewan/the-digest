@@ -196,3 +196,48 @@ create table if not exists daily_briefs (
   brief text not null,
   generated_at timestamptz default now()
 );
+
+-- ============================================
+-- ENTITY HISTORY (signal detection)
+-- ============================================
+create table if not exists entity_history (
+  id uuid primary key default gen_random_uuid(),
+  entity_name text not null,
+  entity_type text not null default 'company'
+    check (entity_type in ('company', 'person', 'fund', 'keyword', 'organization')),
+  article_id uuid not null references articles(id) on delete cascade,
+  source_tier integer not null default 3 check (source_tier in (1, 2, 3)),
+  source_name text,
+  sentiment_label text default 'neutral'
+    check (sentiment_label in ('positive', 'negative', 'neutral')),
+  sentiment_score numeric(4, 2) default 0,
+  detected_at timestamptz not null default now(),
+  created_at timestamptz default now()
+);
+
+create index if not exists idx_entity_history_name_time on entity_history(entity_name, detected_at desc);
+create index if not exists idx_entity_history_article on entity_history(article_id);
+create index if not exists idx_entity_history_tier_time on entity_history(source_tier, detected_at desc);
+create unique index if not exists idx_entity_history_unique_mention on entity_history(article_id, entity_name);
+
+-- ============================================
+-- ARTICLE SIGNALS (early signal detection badges)
+-- ============================================
+create table if not exists article_signals (
+  id uuid primary key default gen_random_uuid(),
+  article_id uuid not null references articles(id) on delete cascade,
+  signal_type text not null
+    check (signal_type in ('first_mention', 'tier1_before_mainstream', 'convergence', 'unusual_activity', 'sentiment_shift')),
+  signal_label text not null,
+  entity_name text,
+  confidence numeric(3, 2) not null default 0.5
+    check (confidence between 0 and 1),
+  metadata jsonb default '{}',
+  detected_at timestamptz not null default now(),
+  created_at timestamptz default now(),
+  unique(article_id, signal_type, entity_name)
+);
+
+create index if not exists idx_article_signals_article on article_signals(article_id);
+create index if not exists idx_article_signals_type on article_signals(signal_type, detected_at desc);
+create index if not exists idx_article_signals_entity on article_signals(entity_name, detected_at desc) where entity_name is not null;

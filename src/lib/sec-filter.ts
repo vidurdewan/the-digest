@@ -14,7 +14,7 @@ import type { RawArticle } from "./rss-fetcher";
 
 // ─── Major Companies List (~80) ─────────────────────────────
 // FAANG, top banks, major startups, significant public companies
-const MAJOR_COMPANIES: string[] = [
+export const MAJOR_COMPANIES: string[] = [
   // Big Tech
   "Apple", "Microsoft", "Google", "Alphabet", "Amazon", "Meta",
   "Nvidia", "Tesla", "Netflix", "Salesforce", "Adobe", "Oracle",

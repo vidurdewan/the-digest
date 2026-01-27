@@ -9,6 +9,8 @@ import { rankRecentArticles } from "@/lib/story-ranker";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { getStoredTokens } from "@/lib/token-store";
 import { extractCompanyFromEdgarTitle } from "@/lib/sec-filter";
+import { detectSignals } from "@/lib/signal-detection";
+import type { ArticleForSignalDetection } from "@/lib/signal-detection";
 import type { DocumentType } from "@/types";
 
 /**
@@ -127,6 +129,45 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // 3b. Detect early signals (no Claude API calls)
+    let signalStats = null;
+    if (isSupabaseConfigured() && supabase && result.articles.length > 0) {
+      try {
+        // Look up stored articles by content_hash to get DB UUIDs
+        const hashes = result.articles.map((a) => a.contentHash);
+        const { data: storedForSignals } = await supabase
+          .from("articles")
+          .select("id, title, content, url, source_tier, document_type, published_at, content_hash")
+          .in("content_hash", hashes);
+
+        if (storedForSignals && storedForSignals.length > 0) {
+          // Map content_hash → RawArticle for sourceName lookup
+          const hashToRaw = new Map(
+            result.articles.map((a) => [a.contentHash, a])
+          );
+
+          const signalArticles: ArticleForSignalDetection[] = storedForSignals.map((stored) => {
+            const raw = hashToRaw.get(stored.content_hash);
+            return {
+              id: stored.id,
+              title: stored.title,
+              content: stored.content,
+              url: stored.url || "",
+              sourceTier: stored.source_tier || 3,
+              sourceName: raw?.sourceName || "unknown",
+              publishedAt: stored.published_at || new Date().toISOString(),
+              documentType: stored.document_type || null,
+            };
+          });
+
+          signalStats = await detectSignals(signalArticles);
+        }
+      } catch (err) {
+        console.error("[Cron] Signal detection error:", err);
+        signalStats = { error: err instanceof Error ? err.message : "Signal detection failed" };
+      }
+    }
+
     // 4. Compute ranking scores for recent articles
     let rankingStats = null;
     try {
@@ -187,6 +228,7 @@ export async function GET(request: NextRequest) {
       summaryStats,
       decipheringStats,
       intelligenceStats,
+      signalStats,
       rankingStats,
       newsletterStats,
       timestamp: new Date().toISOString(),

@@ -169,9 +169,40 @@ export interface WeeklySynthesis {
 
 export type FeedTier = 'start-here' | 'also-notable' | 'everything-else';
 
+// ─── Signal Detection Types ──────────────────────────────────
+
+export type SignalType =
+  | 'first_mention'
+  | 'tier1_before_mainstream'
+  | 'convergence'
+  | 'unusual_activity'
+  | 'sentiment_shift';
+
+export type SentimentLabel = 'positive' | 'negative' | 'neutral';
+
+export interface ArticleSignal {
+  id: string;
+  articleId: string;
+  signalType: SignalType;
+  signalLabel: string;
+  entityName?: string;
+  confidence: number;
+  metadata: Record<string, unknown>;
+  detectedAt: string;
+}
+
+export const SIGNAL_LABELS: Record<SignalType, string> = {
+  first_mention: 'New to your radar',
+  tier1_before_mainstream: 'Early signal',
+  convergence: 'Building momentum',
+  unusual_activity: 'Unusual activity',
+  sentiment_shift: 'Sentiment shift',
+};
+
 export type ArticleWithIntelligence = Article & {
   summary?: Summary;
   intelligence?: ArticleIntelligence;
   feedTier?: FeedTier;
   reactions?: ReactionType[];
+  signals?: ArticleSignal[];
 };

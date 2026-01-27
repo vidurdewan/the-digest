@@ -296,5 +296,56 @@ CREATE POLICY "Allow all access" ON reading_progress FOR ALL USING (true) WITH C
 CREATE POLICY "Allow all access" ON weekly_synthesis FOR ALL USING (true) WITH CHECK (true);
 
 -- ============================================================
--- Done! All 17 tables created.
+-- Signal Detection — New Tables
+-- ============================================================
+
+-- 18. entity_history — Tracks entity mentions across all articles
+CREATE TABLE IF NOT EXISTS entity_history (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  entity_name TEXT NOT NULL,
+  entity_type TEXT NOT NULL DEFAULT 'company'
+    CHECK (entity_type IN ('company', 'person', 'fund', 'keyword', 'organization')),
+  article_id UUID NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
+  source_tier INTEGER NOT NULL DEFAULT 3 CHECK (source_tier IN (1, 2, 3)),
+  source_name TEXT,
+  sentiment_label TEXT DEFAULT 'neutral'
+    CHECK (sentiment_label IN ('positive', 'negative', 'neutral')),
+  sentiment_score NUMERIC(4, 2) DEFAULT 0,
+  detected_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_entity_history_name_time ON entity_history (entity_name, detected_at DESC);
+CREATE INDEX IF NOT EXISTS idx_entity_history_article ON entity_history (article_id);
+CREATE INDEX IF NOT EXISTS idx_entity_history_tier_time ON entity_history (source_tier, detected_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_entity_history_unique_mention ON entity_history (article_id, entity_name);
+
+-- 19. article_signals — Detected early signals per article
+CREATE TABLE IF NOT EXISTS article_signals (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  article_id UUID NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
+  signal_type TEXT NOT NULL
+    CHECK (signal_type IN ('first_mention', 'tier1_before_mainstream', 'convergence', 'unusual_activity', 'sentiment_shift')),
+  signal_label TEXT NOT NULL,
+  entity_name TEXT,
+  confidence NUMERIC(3, 2) NOT NULL DEFAULT 0.5
+    CHECK (confidence BETWEEN 0 AND 1),
+  metadata JSONB DEFAULT '{}',
+  detected_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(article_id, signal_type, entity_name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_article_signals_article ON article_signals (article_id);
+CREATE INDEX IF NOT EXISTS idx_article_signals_type ON article_signals (signal_type, detected_at DESC);
+CREATE INDEX IF NOT EXISTS idx_article_signals_entity ON article_signals (entity_name, detected_at DESC) WHERE entity_name IS NOT NULL;
+
+ALTER TABLE entity_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE article_signals ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow all access" ON entity_history FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all access" ON article_signals FOR ALL USING (true) WITH CHECK (true);
+
+-- ============================================================
+-- Done! All 19 tables created.
 -- ============================================================
