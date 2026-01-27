@@ -77,7 +77,7 @@ function NewsByTopicSection({
   );
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-text-primary">
@@ -91,7 +91,7 @@ function NewsByTopicSection({
           <button
             onClick={onIngest}
             disabled={isIngesting}
-            className="flex items-center gap-1.5 rounded-xl bg-accent-primary px-4 py-2 text-sm font-medium text-text-inverse hover:bg-accent-primary-hover transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 rounded-xl border border-border-primary px-4 py-2 text-sm font-medium text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-colors disabled:opacity-50"
           >
             <RefreshCw
               size={14}
@@ -377,7 +377,7 @@ export default function Home() {
 
   return (
     <MainLayout>
-      <div className="mx-auto max-w-5xl pb-20 lg:pb-0">
+      <div key={activeSection} className="section-enter mx-auto max-w-5xl pb-20 lg:pb-0">
         {renderSection()}
       </div>
       {/* Reading pane — slides in as drawer from right */}

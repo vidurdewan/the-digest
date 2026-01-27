@@ -12,8 +12,8 @@ import {
   Eye,
   Loader2,
 } from "lucide-react";
-import type { Article, Summary, TopicCategory } from "@/types";
-import { topicLabels, topicColors, getRelativeTime } from "@/lib/mock-data";
+import type { Article, Summary } from "@/types";
+import { topicLabels, getRelativeTime } from "@/lib/mock-data";
 import { ExpandedArticleView } from "./ExpandedArticleView";
 
 function cleanAuthor(author: string): string {
@@ -34,6 +34,7 @@ interface ArticleCardProps {
     article: Article & { summary?: Summary }
   ) => Promise<Summary | null>;
   onExpand?: (articleId: string) => void;
+  hideTopic?: boolean;
 }
 
 export function ArticleCard({
@@ -42,6 +43,7 @@ export function ArticleCard({
   onOpenReader,
   onRequestSummary,
   onExpand,
+  hideTopic = false,
 }: ArticleCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isSaved, setIsSaved] = useState(article.isSaved);
@@ -74,9 +76,6 @@ export function ArticleCard({
     }
   };
 
-  // Theme-safe topic colors using CSS variables
-  const topicStyle = getTopicStyle(article.topic);
-
   return (
     <div
       className={`group rounded-2xl border bg-bg-card transition-all duration-200 ${
@@ -91,12 +90,14 @@ export function ArticleCard({
         onClick={handleExpand}
       >
         <div className="mb-2 flex flex-wrap items-center gap-2">
-          <span
-            className="rounded-full px-2.5 py-0.5 text-xs font-medium"
-            style={topicStyle}
-          >
-            {topicLabels[article.topic]}
-          </span>
+          {!hideTopic && (
+            <span
+              className="topic-tag rounded-full px-2.5 py-0.5"
+              data-topic={article.topic}
+            >
+              {topicLabels[article.topic]}
+            </span>
+          )}
           {article.watchlistMatches.length > 0 && (
             <span className="flex items-center gap-1 rounded-full bg-accent-warning/15 px-2 py-0.5 text-xs font-medium text-accent-warning">
               <Eye size={10} />
@@ -193,18 +194,3 @@ export function ArticleCard({
   );
 }
 
-function getTopicStyle(topic: TopicCategory): React.CSSProperties {
-  const colors: Record<TopicCategory, { bg: string; text: string }> = {
-    "vc-startups": { bg: "#dbeafe", text: "#1e40af" },
-    "fundraising-acquisitions": { bg: "#d1fae5", text: "#065f46" },
-    "executive-movements": { bg: "#ede9fe", text: "#5b21b6" },
-    "financial-markets": { bg: "#fef3c7", text: "#92400e" },
-    geopolitics: { bg: "#fee2e2", text: "#991b1b" },
-    automotive: { bg: "#cffafe", text: "#155e75" },
-    "science-tech": { bg: "#e0e7ff", text: "#3730a3" },
-    "local-news": { bg: "#ffedd5", text: "#9a3412" },
-    politics: { bg: "#fce7f3", text: "#9d174d" },
-  };
-  const c = colors[topic] || { bg: "#f3f4f6", text: "#374151" };
-  return { backgroundColor: c.bg, color: c.text };
-}

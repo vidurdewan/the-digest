@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useSidebarStore, navigationGroups, bottomNavSections } from "@/lib/store";
 import {
   Zap,
@@ -17,6 +18,8 @@ import {
   MessageSquare,
   FileText,
   BookOpen,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 
 const iconMap: Record<string, React.ReactNode> = {
@@ -38,6 +41,7 @@ const iconMap: Record<string, React.ReactNode> = {
 export function Sidebar() {
   const { isOpen, activeSection, toggle, setActiveSection, setOpen } =
     useSidebarStore();
+  const [toolsCollapsed, setToolsCollapsed] = useState(true);
 
   return (
     <>
@@ -137,41 +141,61 @@ export function Sidebar() {
 
         {/* Grouped Navigation */}
         <nav className="flex-1 overflow-y-auto px-2 py-3">
-          {navigationGroups.map((group, gi) => (
-            <div key={gi}>
-              {isOpen && group.label && (
-                <div className="sidebar-section-label">{group.label}</div>
-              )}
-              {!isOpen && gi > 0 && (
-                <div className="mx-3 my-2 border-t border-border-secondary" />
-              )}
-              <ul className="space-y-0.5">
-                {group.items.map((section) => {
-                  const isActive = activeSection === section.id;
-                  return (
-                    <li key={section.id}>
-                      <button
-                        onClick={() => setActiveSection(section.id)}
-                        className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-medium transition-all duration-150 ${
-                          isActive
-                            ? `bg-bg-active text-accent-primary${!isOpen ? " sidebar-icon-active" : ""}`
-                            : "text-text-secondary hover:bg-bg-hover hover:text-text-primary"
-                        } ${!isOpen ? "justify-center" : ""}`}
-                        title={section.label}
-                      >
-                        <span className="shrink-0">
-                          {iconMap[section.icon]}
-                        </span>
-                        {isOpen && (
-                          <span className="whitespace-nowrap">{section.label}</span>
-                        )}
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          ))}
+          {navigationGroups.map((group, gi) => {
+            const isToolsGroup = group.label === "Tools";
+            const isCollapsible = isToolsGroup && isOpen;
+            const isGroupOpen = isToolsGroup ? !toolsCollapsed : true;
+            // Auto-expand Tools if a tools item is active
+            const hasActiveItem = group.items.some((s) => s.id === activeSection);
+
+            return (
+              <div key={gi}>
+                {isOpen && group.label && (
+                  <div
+                    className={`sidebar-section-label ${isCollapsible ? "cursor-pointer flex items-center gap-1 select-none hover:text-text-secondary" : ""}`}
+                    onClick={isCollapsible ? () => setToolsCollapsed(!toolsCollapsed) : undefined}
+                  >
+                    {group.label}
+                    {isCollapsible && (
+                      toolsCollapsed && !hasActiveItem
+                        ? <ChevronRight size={10} />
+                        : <ChevronDown size={10} />
+                    )}
+                  </div>
+                )}
+                {!isOpen && gi > 0 && (
+                  <div className="mx-3 my-2 border-t border-border-secondary" />
+                )}
+                {(isGroupOpen || hasActiveItem || !isOpen) && (
+                  <ul className="space-y-0.5">
+                    {group.items.map((section) => {
+                      const isActive = activeSection === section.id;
+                      return (
+                        <li key={section.id}>
+                          <button
+                            onClick={() => setActiveSection(section.id)}
+                            className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-medium transition-all duration-150 ${
+                              isActive
+                                ? `bg-bg-active text-accent-primary${!isOpen ? " sidebar-icon-active" : ""}`
+                                : "text-text-secondary hover:bg-bg-hover hover:text-text-primary"
+                            } ${!isOpen ? "justify-center" : ""}`}
+                            title={section.label}
+                          >
+                            <span className="shrink-0">
+                              {iconMap[section.icon]}
+                            </span>
+                            {isOpen && (
+                              <span className="whitespace-nowrap">{section.label}</span>
+                            )}
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            );
+          })}
         </nav>
 
         {/* Bottom-pinned items: Sources + Settings */}

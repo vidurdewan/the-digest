@@ -103,6 +103,11 @@ export function PeopleMovesView({
               onOpenReader={onOpenReader}
             />
           ))}
+          {moves.length <= 3 && (
+            <p className="pt-4 text-center text-xs text-text-tertiary">
+              Movements are extracted from article titles and summaries. More will appear as articles are ingested.
+            </p>
+          )}
         </div>
       ) : (
         <div className="rounded-2xl border border-border-secondary bg-bg-card p-12 text-center">
@@ -154,24 +159,13 @@ function MoveCard({
             >
               {config.label}
             </span>
-            <span
-              className={`rounded-full px-1.5 py-0.5 text-xs ${
-                move.confidence === "high"
-                  ? "bg-accent-success/15 text-accent-success"
-                  : move.confidence === "medium"
-                    ? "bg-accent-warning/15 text-accent-warning"
-                    : "bg-bg-secondary text-text-tertiary"
-              }`}
-            >
-              {move.confidence}
-            </span>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 text-sm text-text-secondary">
             {move.fromCompany && (
               <span className="flex items-center gap-1">
                 <Building2 size={12} />
-                {move.fromRole ? `${move.fromRole} @ ` : ""}
+                {move.fromRole && move.fromRole.length > 1 && /^[A-Z]/.test(move.fromRole) ? `${move.fromRole} @ ` : ""}
                 {move.fromCompany}
               </span>
             )}
@@ -181,7 +175,7 @@ function MoveCard({
             {move.toCompany && (
               <span className="flex items-center gap-1">
                 <Landmark size={12} />
-                {move.toRole ? `${move.toRole} @ ` : ""}
+                {move.toRole && move.toRole.length > 1 && /^[A-Z]/.test(move.toRole) ? `${move.toRole} @ ` : ""}
                 {move.toCompany}
               </span>
             )}

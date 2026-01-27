@@ -155,7 +155,7 @@ export function ReadingPane({ article, onClose, onSave, onRequestSummary }: Read
     <>
       {/* Overlay backdrop */}
       <div
-        className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[2px]"
+        className="reading-pane-backdrop fixed inset-0 z-40 bg-black/40 backdrop-blur-[4px]"
         onClick={onClose}
       />
 

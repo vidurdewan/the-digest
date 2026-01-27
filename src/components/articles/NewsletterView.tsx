@@ -442,7 +442,7 @@ function DailyDigestSection({
             <button
               onClick={onGenerate}
               disabled={newsletterCount === 0}
-              className="shrink-0 rounded-xl bg-accent-primary px-5 py-2 text-sm font-medium text-text-inverse transition-colors hover:bg-accent-primary-hover disabled:opacity-50"
+              className="shrink-0 rounded-xl border border-border-primary px-5 py-2 text-sm font-medium text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary disabled:opacity-50"
             >
               Generate
             </button>
@@ -874,10 +874,10 @@ export function NewsletterView({
   const savedCount = newsletters.filter((nl) => nl.isSaved).length;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div className="flex items-end justify-between">
         <div>
-          <h2 className="text-3xl font-bold text-text-primary tracking-tight">
+          <h2 className="text-2xl font-bold text-text-primary tracking-tight">
             Newsletters
           </h2>
           <p className="mt-1 text-sm text-text-tertiary">

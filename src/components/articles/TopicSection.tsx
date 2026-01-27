@@ -60,6 +60,7 @@ export function TopicSection({
               onOpenReader={onOpenReader}
               onRequestSummary={onRequestSummary}
               onExpand={onExpand}
+              hideTopic
             />
           ))}
         </div>

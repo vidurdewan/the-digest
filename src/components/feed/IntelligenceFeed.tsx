@@ -1,10 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useReadingProgress } from "@/hooks/useReadingProgress";
 import {
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   RefreshCw,
   ArrowUp,
   Loader2,
@@ -27,6 +29,44 @@ function getRelativeTimeShort(date: Date): string {
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours}h ago`;
   return `${Math.floor(hours / 24)}d ago`;
+}
+
+function ScrollableRow({ children, gap = "gap-4" }: { children: React.ReactNode; gap?: string }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const scroll = (direction: "left" | "right") => {
+    if (!scrollRef.current) return;
+    const amount = scrollRef.current.clientWidth * 0.6;
+    scrollRef.current.scrollBy({
+      left: direction === "left" ? -amount : amount,
+      behavior: "smooth",
+    });
+  };
+
+  return (
+    <div className="carousel-container">
+      <button
+        onClick={() => scroll("left")}
+        className="carousel-arrow carousel-arrow-left"
+        aria-label="Scroll left"
+      >
+        <ChevronLeft size={16} />
+      </button>
+      <div
+        ref={scrollRef}
+        className={`flex ${gap} overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide`}
+      >
+        {children}
+      </div>
+      <button
+        onClick={() => scroll("right")}
+        className="carousel-arrow carousel-arrow-right"
+        aria-label="Scroll right"
+      >
+        <ChevronRight size={16} />
+      </button>
+    </div>
+  );
 }
 
 interface IntelligenceFeedProps {
@@ -92,7 +132,7 @@ export function IntelligenceFeed({
   });
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-8">
       {/* "New stories" pill */}
       {newCount > 0 && onShowNew && (
         <button
@@ -111,7 +151,7 @@ export function IntelligenceFeed({
       <div className="flex items-end justify-between">
         <div>
           <p className="mb-1 text-sm font-medium text-text-tertiary">{today}</p>
-          <h2 className="text-3xl font-bold text-text-primary tracking-tight">
+          <h2 className="text-2xl font-bold text-text-primary tracking-tight">
             Your Briefing
           </h2>
           {lastUpdated && (
@@ -154,34 +194,19 @@ export function IntelligenceFeed({
             </span>
           </div>
 
-          {/* Horizontal scroll — equal cards */}
-          <div className="relative">
-            <div className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide">
-              {topStories.map((article) => (
-                <TopStoryCard
-                  key={article.id}
-                  article={article as ArticleWithIntelligence}
-                  onSave={onSave}
-                  onOpenReader={onOpenReader}
-                  onRequestSummary={onRequestSummary}
-                  onExpand={onExpand}
-                />
-              ))}
-            </div>
-            {/* Fade gradient on right edge */}
-            {topStories.length > 3 && (
-              <div className="pointer-events-none absolute right-0 top-0 bottom-2 w-16 bg-gradient-to-l from-bg-primary to-transparent" />
-            )}
-          </div>
-
-          {/* Surprise Me */}
-          <SurpriseMe
-            articles={everythingElse as ArticleWithIntelligence[]}
-            onSave={onSave}
-            onOpenReader={onOpenReader}
-            onRequestSummary={onRequestSummary}
-            onExpand={onExpand}
-          />
+          {/* Horizontal scroll — equal cards with arrows */}
+          <ScrollableRow>
+            {topStories.map((article) => (
+              <TopStoryCard
+                key={article.id}
+                article={article as ArticleWithIntelligence}
+                onSave={onSave}
+                onOpenReader={onOpenReader}
+                onRequestSummary={onRequestSummary}
+                onExpand={onExpand}
+              />
+            ))}
+          </ScrollableRow>
         </section>
       )}
 
@@ -194,7 +219,7 @@ export function IntelligenceFeed({
             </h3>
           </div>
 
-          <div className="space-y-8">
+          <div className="space-y-6">
             {topicGroups.map(({ topic, articles: topicArticles }) => {
               const displayArticles = topicArticles.slice(0, SWIMLANE_MAX_PER_TOPIC);
               if (displayArticles.length === 0) return null;
@@ -211,26 +236,30 @@ export function IntelligenceFeed({
                     </span>
                   </div>
 
-                  {/* Horizontal scrollable row */}
-                  <div className="relative">
-                    <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide">
-                      {displayArticles.map((article) => (
-                        <SwimlaneCard
-                          key={article.id}
-                          article={article as ArticleWithIntelligence}
-                          onSave={onSave}
-                          onOpenReader={onOpenReader}
-                        />
-                      ))}
-                    </div>
-                    {displayArticles.length > 3 && (
-                      <div className="pointer-events-none absolute right-0 top-0 bottom-2 w-12 bg-gradient-to-l from-bg-primary to-transparent" />
-                    )}
-                  </div>
+                  {/* Horizontal scrollable row with arrows */}
+                  <ScrollableRow gap="gap-3">
+                    {displayArticles.map((article) => (
+                      <SwimlaneCard
+                        key={article.id}
+                        article={article as ArticleWithIntelligence}
+                        onSave={onSave}
+                        onOpenReader={onOpenReader}
+                      />
+                    ))}
+                  </ScrollableRow>
                 </div>
               );
             })}
           </div>
+
+          {/* Something Different — after topics */}
+          <SurpriseMe
+            articles={everythingElse as ArticleWithIntelligence[]}
+            onSave={onSave}
+            onOpenReader={onOpenReader}
+            onRequestSummary={onRequestSummary}
+            onExpand={onExpand}
+          />
         </section>
       )}
 
