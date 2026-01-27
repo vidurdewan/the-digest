@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { isClaudeConfigured } from "@/lib/claude";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+
+export const maxDuration = 60;
 import { getStoredArticles } from "@/lib/article-ingestion";
 import Anthropic from "@anthropic-ai/sdk";
 

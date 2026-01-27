@@ -14,9 +14,12 @@ import { detectSignals } from "@/lib/signal-detection";
 import type { ArticleForSignalDetection } from "@/lib/signal-detection";
 import type { DocumentType } from "@/types";
 
+// Allow up to 5 minutes for the full pipeline
+export const maxDuration = 300;
+
 /**
  * GET /api/cron/ingest
- * Vercel Cron endpoint — runs every 15 minutes.
+ * Vercel Cron endpoint — runs daily at 6 AM UTC.
  * Fetches news, generates summaries, and processes intelligence automatically.
  * Protected by CRON_SECRET in production.
  */

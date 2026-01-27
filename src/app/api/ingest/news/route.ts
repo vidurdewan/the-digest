@@ -3,6 +3,8 @@ import { ingestAllNews, getStoredArticles } from "@/lib/article-ingestion";
 import { summarizeBatchBrief } from "@/lib/summarization";
 import { processIntelligenceBatch } from "@/lib/intelligence";
 import { isClaudeConfigured } from "@/lib/claude";
+
+export const maxDuration = 300;
 import { rankRecentArticles } from "@/lib/story-ranker";
 
 /**

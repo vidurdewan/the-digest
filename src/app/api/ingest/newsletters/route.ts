@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { ingestNewsletters } from "@/lib/newsletter-ingestion";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
+export const maxDuration = 300;
+
 /**
  * GET /api/ingest/newsletters
  * Fetches and parses newsletters from connected Gmail account.
