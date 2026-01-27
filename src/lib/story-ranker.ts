@@ -14,6 +14,7 @@
  */
 
 import { supabase, isSupabaseConfigured } from "./supabase";
+import { retierAllContent } from "./source-tiers";
 
 // ─── Step 1: Base Score by Source Tier ──────────────────────
 
@@ -373,6 +374,7 @@ export async function rankRecentArticles(): Promise<{
 
 /**
  * Re-score ALL articles in the database (not just last 24h).
+ * Also re-tiers all content first to ensure source_tier is correct.
  * Used for one-time re-ranking after algorithm changes.
  */
 export async function rankAllArticles(): Promise<{
@@ -381,11 +383,26 @@ export async function rankAllArticles(): Promise<{
   errors: number;
   topScore: number;
   bottomScore: number;
+  retierStats?: Awaited<ReturnType<typeof retierAllContent>>;
 }> {
-  const stats = { ranked: 0, stored: 0, errors: 0, topScore: 0, bottomScore: 0 };
+  const stats: {
+    ranked: number;
+    stored: number;
+    errors: number;
+    topScore: number;
+    bottomScore: number;
+    retierStats?: Awaited<ReturnType<typeof retierAllContent>>;
+  } = { ranked: 0, stored: 0, errors: 0, topScore: 0, bottomScore: 0 };
 
   if (!isSupabaseConfigured() || !supabase) {
     return stats;
+  }
+
+  // Step 0: Re-tier all content first (ensures source_tier is correct before ranking)
+  try {
+    stats.retierStats = await retierAllContent();
+  } catch (err) {
+    console.error("[Ranker] Retier error:", err);
   }
 
   // Fetch ALL articles in batches of 500
