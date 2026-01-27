@@ -204,15 +204,49 @@ export function useNewsletters(): UseNewslettersReturn {
       received_at: string;
       content: string;
       is_read: boolean;
-    }): Newsletter => ({
-      id: nl.id,
-      publication: nl.publication,
-      subject: nl.subject,
-      receivedAt: nl.received_at,
-      content: nl.content,
-      isRead: nl.is_read,
-      readingTimeMinutes: estimateReadingTime(nl.content),
-    }),
+      source_tier?: number;
+      is_vip?: boolean;
+      summary_the_news?: string | null;
+      summary_why_it_matters?: string | null;
+      summary_the_context?: string | null;
+      summary_so_what?: string | null;
+      summary_watch_next?: string | null;
+      summary_recruiter_relevance?: string | null;
+    }): Newsletter => {
+      const hasSummary = !!nl.summary_the_news;
+      return {
+        id: nl.id,
+        publication: nl.publication,
+        subject: nl.subject,
+        receivedAt: nl.received_at,
+        content: nl.content,
+        isRead: nl.is_read,
+        readingTimeMinutes: estimateReadingTime(nl.content),
+        sourceTier: (nl.source_tier || 3) as Newsletter["sourceTier"],
+        newsletterSummary: hasSummary
+          ? {
+              theNews: nl.summary_the_news || "",
+              whyItMatters: nl.summary_why_it_matters || "",
+              theContext: nl.summary_the_context || "",
+              soWhat: nl.summary_so_what || "",
+              watchNext: nl.summary_watch_next || "",
+              recruiterRelevance: nl.summary_recruiter_relevance || "",
+            }
+          : undefined,
+        summary: hasSummary
+          ? {
+              id: `summary-${nl.id}`,
+              articleId: nl.id,
+              brief: "",
+              theNews: nl.summary_the_news || "",
+              whyItMatters: nl.summary_why_it_matters || "",
+              theContext: nl.summary_the_context || "",
+              keyEntities: [],
+              generatedAt: "",
+            }
+          : undefined,
+      };
+    },
     []
   );
 
