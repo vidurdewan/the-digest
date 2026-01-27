@@ -4,6 +4,7 @@ import { summarizeBatchBrief } from "@/lib/summarization";
 import { processIntelligenceBatch } from "@/lib/intelligence";
 import { isClaudeConfigured } from "@/lib/claude";
 import { ingestNewsletters } from "@/lib/newsletter-ingestion";
+import { rankRecentArticles } from "@/lib/story-ranker";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { getStoredTokens } from "@/lib/token-store";
 
@@ -71,7 +72,18 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 4. Ingest newsletters from Gmail (if connected)
+    // 4. Compute ranking scores for recent articles
+    let rankingStats = null;
+    try {
+      rankingStats = await rankRecentArticles();
+    } catch (err) {
+      console.error("[Cron] Ranking error:", err);
+      rankingStats = {
+        error: err instanceof Error ? err.message : "Ranking failed",
+      };
+    }
+
+    // 5. Ingest newsletters from Gmail (if connected)
     let newsletterStats = null;
     const gmailTokens = await getStoredTokens();
     if (gmailTokens?.refresh_token) {
@@ -119,6 +131,7 @@ export async function GET(request: NextRequest) {
       totalErrors: result.totalErrors,
       summaryStats,
       intelligenceStats,
+      rankingStats,
       newsletterStats,
       timestamp: new Date().toISOString(),
     });

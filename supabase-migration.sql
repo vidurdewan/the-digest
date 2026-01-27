@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS articles (
   reading_time_minutes INTEGER,
   content_hash TEXT UNIQUE,
   source_tier INTEGER DEFAULT 3 CHECK (source_tier IN (1, 2, 3)),
+  ranking_score NUMERIC(6, 2) DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -36,6 +37,8 @@ CREATE INDEX IF NOT EXISTS idx_articles_published_at ON articles (published_at D
 CREATE INDEX IF NOT EXISTS idx_articles_topic ON articles (topic);
 CREATE INDEX IF NOT EXISTS idx_articles_content_hash ON articles (content_hash);
 CREATE INDEX IF NOT EXISTS idx_articles_source_tier ON articles (source_tier);
+CREATE INDEX IF NOT EXISTS idx_articles_ranking_score ON articles (ranking_score DESC);
+CREATE INDEX IF NOT EXISTS idx_articles_published_ranking ON articles (published_at DESC, ranking_score DESC);
 
 -- 3. summaries
 CREATE TABLE IF NOT EXISTS summaries (

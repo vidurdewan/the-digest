@@ -3,6 +3,7 @@ import { ingestAllNews, getStoredArticles } from "@/lib/article-ingestion";
 import { summarizeBatchBrief } from "@/lib/summarization";
 import { processIntelligenceBatch } from "@/lib/intelligence";
 import { isClaudeConfigured } from "@/lib/claude";
+import { rankRecentArticles } from "@/lib/story-ranker";
 
 /**
  * GET /api/ingest/news
@@ -58,6 +59,14 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Compute ranking scores for recent articles
+    let rankingStats = null;
+    try {
+      rankingStats = await rankRecentArticles();
+    } catch (err) {
+      console.error("[Ingest] Ranking error:", err);
+    }
+
     return NextResponse.json({
       success: true,
       totalFetched: result.totalFetched,
@@ -68,6 +77,7 @@ export async function GET(request: NextRequest) {
       articleCount: result.articles.length,
       summaryStats,
       intelligenceStats,
+      rankingStats,
       // Return lightweight article previews
       articles: result.articles.slice(0, 50).map((a) => ({
         title: a.title,

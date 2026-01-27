@@ -30,6 +30,7 @@ export interface Article {
   isSaved: boolean;
   watchlistMatches: string[];
   sourceTier?: SourceTier;
+  rankingScore?: number;
 }
 
 export interface Summary {
