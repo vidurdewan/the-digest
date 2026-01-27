@@ -8,8 +8,8 @@ import {
   BookmarkCheck,
   Loader2,
 } from "lucide-react";
-import type { Article, Summary, ArticleWithIntelligence, TopicCategory } from "@/types";
-import { topicLabels, getRelativeTime } from "@/lib/mock-data";
+import type { Article, Summary, ArticleWithIntelligence } from "@/types";
+import { getRelativeTime } from "@/lib/mock-data";
 import { ExpandedArticleView } from "@/components/articles/ExpandedArticleView";
 
 interface CompactListItemProps {
@@ -59,14 +59,12 @@ export function CompactListItem({
     }
   };
 
-  const topicStyle = getTopicStyle(article.topic);
-
   return (
     <div
-      className={`group rounded-lg border transition-all duration-150 ${
+      className={`group rounded-2xl border transition-all duration-150 ${
         isExpanded
-          ? "border-accent-primary/30 bg-bg-card shadow-sm"
-          : "border-border-primary bg-bg-card hover:border-accent-primary/15"
+          ? "border-border-primary bg-bg-card shadow-sm"
+          : "border-border-secondary bg-bg-card hover:border-border-primary"
       } ${article.isRead ? "opacity-70" : ""}`}
       data-feed-index
     >
@@ -75,11 +73,12 @@ export function CompactListItem({
         className="flex cursor-pointer items-center gap-3 px-3 py-2.5"
         onClick={handleExpand}
       >
-        {/* Topic dot */}
-        <span
-          className="h-2 w-2 shrink-0 rounded-full"
-          style={{ backgroundColor: topicStyle.color }}
-        />
+        {/* Unread dot */}
+        {!article.isRead ? (
+          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent-primary" />
+        ) : (
+          <span className="h-1.5 w-1.5 shrink-0" />
+        )}
 
         {/* Title */}
         <h4 className="flex-1 truncate text-sm font-medium text-text-primary group-hover:text-accent-primary transition-colors">
@@ -146,20 +145,4 @@ export function CompactListItem({
       )}
     </div>
   );
-}
-
-function getTopicStyle(topic: TopicCategory): React.CSSProperties {
-  const colors: Record<TopicCategory, { bg: string; text: string }> = {
-    "vc-startups": { bg: "#dbeafe", text: "#1e40af" },
-    "fundraising-acquisitions": { bg: "#d1fae5", text: "#065f46" },
-    "executive-movements": { bg: "#ede9fe", text: "#5b21b6" },
-    "financial-markets": { bg: "#fef3c7", text: "#92400e" },
-    geopolitics: { bg: "#fee2e2", text: "#991b1b" },
-    automotive: { bg: "#cffafe", text: "#155e75" },
-    "science-tech": { bg: "#e0e7ff", text: "#3730a3" },
-    "local-news": { bg: "#ffedd5", text: "#9a3412" },
-    politics: { bg: "#fce7f3", text: "#9d174d" },
-  };
-  const c = colors[topic] || { bg: "#f3f4f6", text: "#374151" };
-  return { backgroundColor: c.bg, color: c.text };
 }

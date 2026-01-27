@@ -30,7 +30,7 @@ export function ExpandedArticleView({
   articleContent,
 }: ExpandedArticleViewProps) {
   return (
-    <div className="space-y-4 px-4 py-4 sm:px-5">
+    <div className="space-y-4 px-5 py-5 sm:px-6">
       {/* Signal badges */}
       {signals && signals.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
@@ -50,7 +50,7 @@ export function ExpandedArticleView({
       </div>
 
       {/* Why It Matters */}
-      <div className="rounded-lg bg-bg-secondary p-3">
+      <div className="rounded-xl bg-bg-secondary p-4">
         <h4 className="mb-1.5 flex items-center gap-2 text-sm font-semibold text-text-primary">
           <span className="inline-block h-1 w-1 rounded-full bg-accent-warning" />
           Why It Matters
@@ -185,16 +185,16 @@ export function ExpandedArticleView({
 
       {/* Annotations */}
       {articleId && (
-        <div className="border-t border-border-secondary pt-3">
+        <div className="border-t border-border-secondary pt-4">
           <AnnotationsPanel articleId={articleId} />
         </div>
       )}
 
       {/* Action buttons */}
-      <div className="flex flex-wrap items-center gap-2 border-t border-border-secondary pt-3">
+      <div className="flex flex-wrap items-center gap-2 border-t border-border-secondary pt-4">
         <button
           onClick={onOpenFull}
-          className="flex items-center gap-1.5 rounded-lg bg-accent-primary px-3 py-1.5 text-xs font-medium text-text-inverse hover:bg-accent-primary-hover transition-colors"
+          className="flex items-center gap-1.5 rounded-xl bg-accent-primary px-4 py-2 text-xs font-medium text-text-inverse hover:bg-accent-primary-hover transition-colors"
         >
           <FileText size={14} />
           Read Full Article
@@ -203,12 +203,12 @@ export function ExpandedArticleView({
           href={sourceUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-1.5 rounded-lg border border-border-primary px-3 py-1.5 text-xs font-medium text-text-secondary hover:bg-bg-hover transition-colors"
+          className="flex items-center gap-1.5 rounded-xl border border-border-secondary px-4 py-2 text-xs font-medium text-text-secondary hover:bg-bg-hover transition-colors"
         >
           <ExternalLink size={14} />
           Open Source
         </a>
-        <button className="flex items-center gap-1.5 rounded-lg border border-border-primary px-3 py-1.5 text-xs font-medium text-text-secondary hover:bg-bg-hover transition-colors">
+        <button className="flex items-center gap-1.5 rounded-xl border border-border-secondary px-4 py-2 text-xs font-medium text-text-secondary hover:bg-bg-hover transition-colors">
           <Share2 size={14} />
           Share
         </button>

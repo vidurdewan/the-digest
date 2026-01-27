@@ -22,7 +22,7 @@ import { rankArticles } from "@/lib/ranking";
 import { IntelligenceFeed } from "@/components/feed/IntelligenceFeed";
 import { ArticleCard } from "@/components/articles/ArticleCard";
 import { TopicSection } from "@/components/articles/TopicSection";
-import { FullReaderView } from "@/components/articles/FullReaderView";
+import { ReadingPane } from "@/components/articles/ReadingPane";
 import { NewsletterView } from "@/components/articles/NewsletterView";
 import { SavedView } from "@/components/articles/SavedView";
 import { SearchView } from "@/components/search/SearchBar";
@@ -44,93 +44,8 @@ import { KeyboardShortcutHandler } from "@/components/ui/KeyboardShortcutHandler
 import { useFeedNavigationStore } from "@/lib/store";
 
 import {
-  Zap,
-  Mail,
-  TrendingUp,
-  Eye,
-  Bookmark,
   RefreshCw,
 } from "lucide-react";
-
-// ─── Priority Feed ──────────────────────────────────────────
-function PriorityFeedSection({
-  articles,
-  onSave,
-  onOpenReader,
-  onRequestSummary,
-  onExpand,
-}: {
-  articles: (Article & { summary?: Summary })[];
-  onSave: (id: string) => void;
-  onOpenReader: (article: Article & { summary?: Summary }) => void;
-  onRequestSummary?: (
-    article: Article & { summary?: Summary }
-  ) => Promise<Summary | null>;
-  onExpand?: (articleId: string) => void;
-}) {
-  const unread = articles.filter((a) => !a.isRead).length;
-  const watchlistCount = articles.filter(
-    (a) => a.watchlistMatches.length > 0
-  ).length;
-  const savedCount = articles.filter((a) => a.isSaved).length;
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Zap size={24} className="text-accent-primary" />
-        <div>
-          <h2 className="text-2xl font-bold text-text-primary">
-            Priority Feed
-          </h2>
-          <p className="text-sm text-text-tertiary">
-            AI-curated top stories across all your sources
-          </p>
-        </div>
-      </div>
-
-      {/* Stats bar */}
-      <div className="flex gap-3 overflow-x-auto pb-1">
-        {[
-          { label: "Unread", value: unread.toString(), icon: Mail },
-          {
-            label: "Trending",
-            value: articles.length.toString(),
-            icon: TrendingUp,
-          },
-          { label: "Watchlist", value: watchlistCount.toString(), icon: Eye },
-          { label: "Saved", value: savedCount.toString(), icon: Bookmark },
-        ].map((stat) => (
-          <div
-            key={stat.label}
-            className="flex min-w-[130px] items-center gap-3 rounded-lg border border-border-primary bg-bg-card p-3 transition-theme"
-          >
-            <stat.icon size={18} className="shrink-0 text-accent-primary" />
-            <div>
-              <p className="text-lg font-bold text-text-primary">
-                {stat.value}
-              </p>
-              <p className="text-xs text-text-tertiary">{stat.label}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Articles */}
-      <div className="space-y-3">
-        {articles.map((article) => (
-          <ArticleCard
-            key={article.id}
-            article={article}
-            onSave={onSave}
-            onOpenReader={onOpenReader}
-            onRequestSummary={onRequestSummary}
-            onExpand={onExpand}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
 
 // ─── News by Topic ──────────────────────────────────────────
 function NewsByTopicSection({
@@ -152,7 +67,6 @@ function NewsByTopicSection({
   onIngest?: () => void;
   isIngesting?: boolean;
 }) {
-  // Group by topic
   const topics = Object.keys(topicLabels) as TopicCategory[];
   const grouped = topics.reduce(
     (acc, topic) => {
@@ -163,24 +77,21 @@ function NewsByTopicSection({
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <TrendingUp size={24} className="text-accent-primary" />
-          <div>
-            <h2 className="text-2xl font-bold text-text-primary">
-              News by Topic
-            </h2>
-            <p className="text-sm text-text-tertiary">
-              Browse by category — click to expand
-            </p>
-          </div>
+        <div>
+          <h2 className="text-2xl font-bold text-text-primary">
+            News by Topic
+          </h2>
+          <p className="mt-1 text-sm text-text-tertiary">
+            Browse by category
+          </p>
         </div>
         {onIngest && (
           <button
             onClick={onIngest}
             disabled={isIngesting}
-            className="flex items-center gap-1.5 rounded-lg bg-accent-primary px-3 py-2 text-sm font-medium text-text-inverse hover:bg-accent-primary-hover transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 rounded-xl bg-accent-primary px-4 py-2 text-sm font-medium text-text-inverse hover:bg-accent-primary-hover transition-colors disabled:opacity-50"
           >
             <RefreshCw
               size={14}
@@ -220,7 +131,6 @@ export default function Home() {
   >(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
-  // Service worker registration (push notifications + offline)
   useServiceWorker();
 
   // Data hooks
@@ -232,12 +142,10 @@ export default function Home() {
   const engagement = useEngagement();
   const preferences = usePreferences();
 
-  // Wire auto-refresh to article data refresh
   useEffect(() => {
     autoRefresh.setRefreshFn(articleData.refresh);
   }, [autoRefresh.setRefreshFn, articleData.refresh]);
 
-  // Show onboarding on first visit
   useEffect(() => {
     if (typeof window !== "undefined") {
       const hasOnboarded = localStorage.getItem("the-digest-onboarded");
@@ -248,7 +156,6 @@ export default function Home() {
   }, []);
 
   const handleOnboardingComplete = async (data: OnboardingData) => {
-    // Save topic preferences
     for (const [topic, level] of Object.entries(data.topicPreferences)) {
       preferences.setTopicLevel(
         topic as import("@/types").TopicCategory,
@@ -256,12 +163,9 @@ export default function Home() {
       );
     }
     await preferences.save();
-
-    // Add watchlist items
     for (const item of data.watchlistItems) {
       await watchlist.addItem(item, "company");
     }
-
     localStorage.setItem("the-digest-onboarded", "true");
     setShowOnboarding(false);
     addToast("Welcome to The Digest! Your feed is ready.", "success");
@@ -272,13 +176,11 @@ export default function Home() {
     setShowOnboarding(false);
   };
 
-  // Apply watchlist matching to articles
   const articlesWithMatches = useMemo(
     () => watchlist.matchArticles(articleData.articles),
     [watchlist, articleData.articles]
   );
 
-  // Ranked articles for Priority Feed
   const rankedArticles = useMemo(
     () =>
       rankArticles(articlesWithMatches, {
@@ -288,7 +190,6 @@ export default function Home() {
     [articlesWithMatches, preferences.preferences, engagement.topicScores]
   );
 
-  // Show skeleton only while initial article fetch is in progress
   const isLoading = articleData.isLoading && articleData.articles.length === 0;
 
   const handleSave = (id: string) => {
@@ -335,7 +236,6 @@ export default function Home() {
   const handleExpandFocused = useCallback(() => {
     const idx = useFeedNavigationStore.getState().focusedIndex;
     if (idx < 0) return;
-    // Simulate a click on the focused card to expand it
     const elements = document.querySelectorAll("[data-feed-index]");
     const el = elements[idx] as HTMLElement | undefined;
     if (el) el.click();
@@ -480,11 +380,16 @@ export default function Home() {
       <div className="mx-auto max-w-5xl pb-20 lg:pb-0">
         {renderSection()}
       </div>
+      {/* Reading pane — slides in as drawer from right */}
+      {readerArticle && (
+        <ReadingPane
+          article={readerArticle}
+          onClose={handleCloseReader}
+          onSave={handleSave}
+          onRequestSummary={articleData.requestFullSummary}
+        />
+      )}
       <MobileNav />
-      <FullReaderView
-        article={readerArticle}
-        onClose={() => setReaderArticle(null)}
-      />
       <KeyboardShortcutHandler
         onSaveFocused={handleSaveFocused}
         onExpandFocused={handleExpandFocused}

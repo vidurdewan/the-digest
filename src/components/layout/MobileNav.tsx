@@ -15,7 +15,7 @@ export function MobileNav() {
   const { activeSection, setActiveSection } = useSidebarStore();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-20 border-t border-border-primary bg-bg-primary transition-theme lg:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 z-20 border-t border-border-secondary bg-bg-primary/95 backdrop-blur-sm transition-theme lg:hidden">
       <ul className="flex items-center justify-around">
         {mobileNavItems.map((item) => {
           const Icon = item.icon;

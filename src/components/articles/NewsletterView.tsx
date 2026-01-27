@@ -415,14 +415,14 @@ function DailyDigestSection({
   if (!digest && !isGenerating) {
     return (
       <div className="space-y-3">
-        <div className="rounded-xl border border-accent-primary/30 bg-gradient-to-br from-accent-primary/5 to-accent-primary/10 p-5">
+        <div className="rounded-2xl border border-border-secondary bg-bg-card p-6">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-primary/15">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent-secondary">
                 <Sparkles size={20} className="text-accent-primary" />
               </div>
               <div>
-                <h3 className="font-semibold text-text-primary">
+                <h3 className="font-bold text-text-primary">
                   Intelligence Briefing
                 </h3>
                 <p className="mt-0.5 text-sm text-text-secondary">
@@ -434,7 +434,7 @@ function DailyDigestSection({
             <button
               onClick={onGenerate}
               disabled={newsletterCount === 0}
-              className="shrink-0 rounded-lg bg-accent-primary px-4 py-2 text-sm font-medium text-text-inverse transition-colors hover:bg-accent-primary-hover disabled:opacity-50"
+              className="shrink-0 rounded-xl bg-accent-primary px-5 py-2 text-sm font-medium text-text-inverse transition-colors hover:bg-accent-primary-hover disabled:opacity-50"
             >
               Generate
             </button>
@@ -453,11 +453,11 @@ function DailyDigestSection({
 
   if (isGenerating) {
     return (
-      <div className="rounded-xl border border-accent-primary/30 bg-gradient-to-br from-accent-primary/5 to-accent-primary/10 p-6">
+      <div className="rounded-2xl border border-border-secondary bg-bg-card p-6">
         <div className="flex items-center gap-3">
           <Loader2 size={20} className="animate-spin text-accent-primary" />
           <div>
-            <h3 className="font-semibold text-text-primary">
+            <h3 className="font-bold text-text-primary">
               Generating Intelligence Briefing...
             </h3>
             <p className="text-sm text-text-tertiary">
@@ -485,7 +485,7 @@ function DailyDigestSection({
       )}
 
       {/* Digest card */}
-      <div className="rounded-xl border border-accent-primary/30 bg-bg-card shadow-sm">
+      <div className="rounded-2xl border border-border-secondary bg-bg-card shadow-sm">
         {/* Header with date */}
         <div className="border-b border-border-primary px-5 py-4">
           <div className="flex items-center justify-between">
@@ -571,12 +571,12 @@ function NewsletterCard({
 
   return (
     <div
-      className={`rounded-xl border bg-bg-card transition-all duration-200 ${
+      className={`rounded-2xl border bg-bg-card transition-all duration-200 ${
         isExpanded
-          ? "border-accent-primary/30 shadow-md"
+          ? "border-border-primary shadow-md"
           : newsletter.isRead
-            ? "border-border-primary opacity-75 hover:opacity-100 hover:shadow-sm"
-            : "border-border-primary hover:shadow-sm"
+            ? "border-border-secondary opacity-75 hover:opacity-100 hover:shadow-sm"
+            : "border-border-secondary hover:border-border-primary hover:shadow-sm"
       }`}
     >
       <div
@@ -866,37 +866,33 @@ export function NewsletterView({
   const savedCount = newsletters.filter((nl) => nl.isSaved).length;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Mail size={24} className="text-accent-primary" />
-          <div>
-            <h2 className="text-2xl font-bold text-text-primary">
-              Newsletters
-            </h2>
-            <p className="text-sm text-text-tertiary">
-              {newsletters.length} newsletter
-              {newsletters.length !== 1 ? "s" : ""} ·{" "}
-              {unreadCount > 0 && (
-                <span className="text-accent-primary">
-                  {unreadCount} unread
-                </span>
-              )}
-              {unreadCount === 0 && "all read"}
-              {savedCount > 0 && (
-                <span className="text-text-tertiary">
-                  {" "}· {savedCount} saved
-                </span>
-              )}
-            </p>
-          </div>
+    <div className="space-y-8">
+      <div className="flex items-end justify-between">
+        <div>
+          <h2 className="text-3xl font-bold text-text-primary tracking-tight">
+            Newsletters
+          </h2>
+          <p className="mt-1 text-sm text-text-tertiary">
+            {newsletters.length} newsletter
+            {newsletters.length !== 1 ? "s" : ""}
+            {unreadCount > 0 && (
+              <span className="text-accent-primary">
+                {" "}&middot; {unreadCount} unread
+              </span>
+            )}
+            {savedCount > 0 && (
+              <span>
+                {" "}&middot; {savedCount} saved
+              </span>
+            )}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           {isGmailConnected && (
             <button
               onClick={handleIngest}
               disabled={isIngesting}
-              className="flex items-center gap-1.5 rounded-lg border border-border-primary px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-bg-hover disabled:opacity-50"
+              className="flex items-center gap-1.5 rounded-xl border border-border-primary px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-bg-hover disabled:opacity-50"
             >
               <Download
                 size={14}
@@ -908,36 +904,34 @@ export function NewsletterView({
           <button
             onClick={onRefresh}
             disabled={isLoading}
-            className="flex items-center gap-1.5 rounded-lg border border-border-primary px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-bg-hover disabled:opacity-50"
+            className="rounded-lg p-2 text-text-tertiary hover:text-text-secondary hover:bg-bg-secondary transition-colors disabled:opacity-50"
           >
             <RefreshCw
               size={14}
               className={isLoading ? "animate-spin" : ""}
             />
-            Refresh
           </button>
         </div>
       </div>
 
       {/* Gmail connection prompt */}
       {!isGmailConnected && (
-        <div className="rounded-xl border border-accent-primary/30 bg-accent-secondary/30 p-4">
-          <div className="flex items-start gap-3">
-            <Mail
-              size={20}
-              className="mt-0.5 shrink-0 text-accent-primary"
-            />
+        <div className="rounded-2xl border border-border-secondary bg-bg-card p-6">
+          <div className="flex items-start gap-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent-secondary">
+              <Mail size={20} className="text-accent-primary" />
+            </div>
             <div className="flex-1">
-              <h3 className="text-sm font-semibold text-text-primary">
+              <h3 className="text-sm font-bold text-text-primary">
                 Connect Gmail to see your newsletters
               </h3>
-              <p className="mt-1 text-xs text-text-secondary">
+              <p className="mt-1 text-xs text-text-secondary leading-relaxed">
                 Connect a Gmail account dedicated to newsletters. The app will
                 automatically fetch and parse your subscriptions.
               </p>
               <button
                 onClick={onConnectGmail}
-                className="mt-3 rounded-lg bg-accent-primary px-4 py-2 text-sm font-medium text-text-inverse transition-colors hover:bg-accent-primary-hover"
+                className="mt-4 rounded-xl bg-accent-primary px-5 py-2 text-sm font-medium text-text-inverse transition-colors hover:bg-accent-primary-hover"
               >
                 Connect Gmail
               </button>
@@ -980,7 +974,7 @@ export function NewsletterView({
 
       {/* Filter tabs */}
       {newsletters.length > 0 && (
-        <div className="flex items-center gap-1 border-b border-border-primary pb-0">
+        <div className="flex items-center gap-1">
           {(
             [
               { key: "all", label: "All", count: newsletters.length },
@@ -991,15 +985,15 @@ export function NewsletterView({
             <button
               key={tab.key}
               onClick={() => setFilterMode(tab.key)}
-              className={`border-b-2 px-3 py-2 text-xs font-medium transition-colors ${
+              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
                 filterMode === tab.key
-                  ? "border-accent-primary text-accent-primary"
-                  : "border-transparent text-text-tertiary hover:text-text-secondary"
+                  ? "bg-accent-secondary text-accent-primary"
+                  : "text-text-tertiary hover:text-text-secondary hover:bg-bg-secondary"
               }`}
             >
               {tab.label}
               {tab.count > 0 && (
-                <span className="ml-1 rounded-full bg-bg-secondary px-1.5 py-0.5 text-[10px]">
+                <span className="ml-1 text-[10px] opacity-70">
                   {tab.count}
                 </span>
               )}

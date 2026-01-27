@@ -7,7 +7,7 @@ export function Header() {
   const { isOpen, toggle } = useSidebarStore();
 
   return (
-    <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-border-primary bg-bg-primary/80 px-4 backdrop-blur-sm transition-theme md:px-6">
+    <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-border-secondary bg-bg-primary/80 px-4 backdrop-blur-sm transition-theme md:px-6">
       <div className="flex items-center gap-3">
         {/* Mobile/collapsed sidebar toggle */}
         {!isOpen && (
@@ -20,7 +20,7 @@ export function Header() {
           </button>
         )}
         <div>
-          <h2 className="text-lg font-semibold text-text-primary lg:hidden">
+          <h2 className="font-heading text-lg font-bold tracking-tight text-text-primary lg:hidden">
             The Digest
           </h2>
         </div>
@@ -28,16 +28,16 @@ export function Header() {
 
       <div className="flex items-center gap-2">
         <button
-          className="rounded-md p-2 text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-theme"
+          className="rounded-lg p-2 text-text-tertiary hover:bg-bg-hover hover:text-text-primary transition-colors"
           aria-label="Refresh content"
         >
-          <RefreshCw size={18} />
+          <RefreshCw size={16} />
         </button>
         <button
-          className="relative rounded-md p-2 text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-theme"
+          className="relative rounded-lg p-2 text-text-tertiary hover:bg-bg-hover hover:text-text-primary transition-colors"
           aria-label="Notifications"
         >
-          <Bell size={18} />
+          <Bell size={16} />
           <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-accent-danger" />
         </button>
       </div>

@@ -52,14 +52,14 @@ export function Sidebar() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 z-30 flex h-full flex-col border-r border-border-primary bg-bg-sidebar transition-all duration-300 lg:relative lg:z-auto ${
+        className={`fixed top-0 left-0 z-30 flex h-full flex-col border-r border-border-secondary bg-bg-sidebar transition-all duration-300 lg:relative lg:z-auto ${
           isOpen ? "w-64" : "w-0 lg:w-16"
         } overflow-hidden`}
       >
         {/* Header */}
-        <div className="flex h-16 items-center justify-between border-b border-border-primary px-4">
+        <div className="flex h-16 items-center justify-between border-b border-border-secondary px-4">
           {isOpen && (
-            <h1 className="text-lg font-bold text-text-primary whitespace-nowrap">
+            <h1 className="font-heading text-lg font-bold text-text-primary whitespace-nowrap tracking-tight">
               The Digest
             </h1>
           )}
@@ -81,7 +81,7 @@ export function Sidebar() {
                 <li key={section.id}>
                   <button
                     onClick={() => setActiveSection(section.id)}
-                    className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-theme ${
+                    className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
                       isActive
                         ? "bg-bg-active text-accent-primary"
                         : "text-text-secondary hover:bg-bg-hover hover:text-text-primary"
@@ -103,7 +103,7 @@ export function Sidebar() {
 
         {/* Footer with theme toggle */}
         {isOpen && (
-          <div className="border-t border-border-primary p-4">
+          <div className="border-t border-border-secondary p-4">
             <ThemeToggle />
           </div>
         )}

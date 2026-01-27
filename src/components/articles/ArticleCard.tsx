@@ -69,11 +69,11 @@ export function ArticleCard({
 
   return (
     <div
-      className={`group rounded-xl border bg-bg-card transition-all duration-200 ${
+      className={`group rounded-2xl border bg-bg-card transition-all duration-200 ${
         isExpanded
-          ? "border-accent-primary/30 shadow-md"
-          : "border-border-primary hover:border-accent-primary/20 hover:shadow-sm"
-      } ${article.isRead ? "opacity-75" : ""}`}
+          ? "border-border-primary shadow-md"
+          : "border-border-secondary hover:border-border-primary hover:shadow-sm"
+      } ${article.isRead ? "opacity-70" : ""}`}
     >
       {/* Level 1: Headline */}
       <div
