@@ -2,6 +2,7 @@ import type { TopicCategory } from "@/types";
 import type { NewsSource } from "./sources";
 import { generateContentHash } from "./article-utils";
 import type { RawArticle } from "./rss-fetcher";
+import { getArticleSourceTier } from "./source-tiers";
 
 const NEWS_API_BASE = "https://newsapi.org/v2";
 
@@ -57,20 +58,24 @@ export async function fetchNewsApi(source: NewsSource): Promise<RawArticle[]> {
 
     return data.articles
       .filter((a) => a.title && a.url && a.title !== "[Removed]")
-      .map((a) => ({
-        title: a.title,
-        url: a.url,
-        author: a.author,
-        publishedAt: a.publishedAt
-          ? new Date(a.publishedAt).toISOString()
-          : new Date().toISOString(),
-        topic: source.topic,
-        sourceName: a.source.name || source.name,
-        sourceId: source.id,
-        content: a.content || a.description || null,
-        imageUrl: a.urlToImage,
-        contentHash: generateContentHash(a.title, a.url),
-      }));
+      .map((a) => {
+        const sourceName = a.source.name || source.name;
+        return {
+          title: a.title,
+          url: a.url,
+          author: a.author,
+          publishedAt: a.publishedAt
+            ? new Date(a.publishedAt).toISOString()
+            : new Date().toISOString(),
+          topic: source.topic,
+          sourceName,
+          sourceId: source.id,
+          content: a.content || a.description || null,
+          imageUrl: a.urlToImage,
+          contentHash: generateContentHash(a.title, a.url),
+          sourceTier: getArticleSourceTier(sourceName, a.url),
+        };
+      });
   } catch (error) {
     console.error(`Failed to fetch NewsAPI for ${source.name}:`, error);
     return [];
@@ -101,20 +106,24 @@ export async function fetchTopHeadlines(
 
     return data.articles
       .filter((a) => a.title && a.url && a.title !== "[Removed]")
-      .map((a) => ({
-        title: a.title,
-        url: a.url,
-        author: a.author,
-        publishedAt: a.publishedAt
-          ? new Date(a.publishedAt).toISOString()
-          : new Date().toISOString(),
-        topic,
-        sourceName: a.source.name || "NewsAPI",
-        sourceId: `newsapi-${category}`,
-        content: a.content || a.description || null,
-        imageUrl: a.urlToImage,
-        contentHash: generateContentHash(a.title, a.url),
-      }));
+      .map((a) => {
+        const sourceName = a.source.name || "NewsAPI";
+        return {
+          title: a.title,
+          url: a.url,
+          author: a.author,
+          publishedAt: a.publishedAt
+            ? new Date(a.publishedAt).toISOString()
+            : new Date().toISOString(),
+          topic,
+          sourceName,
+          sourceId: `newsapi-${category}`,
+          content: a.content || a.description || null,
+          imageUrl: a.urlToImage,
+          contentHash: generateContentHash(a.title, a.url),
+          sourceTier: getArticleSourceTier(sourceName, a.url),
+        };
+      });
   } catch (error) {
     console.error(`Failed to fetch top headlines (${category}):`, error);
     return [];

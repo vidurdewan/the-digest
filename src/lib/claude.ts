@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { getNewsletterSourceTier, tierToWeight } from "@/lib/source-tiers";
 
 // Claude API client — lazy-initialized
 let client: Anthropic | null = null;
@@ -174,31 +175,12 @@ Include 3-8 key entities. Entity types: company, person, fund, keyword.`,
 }
 
 // ─── Source Quality Weighting ─────────────────────────────────
-// Higher-weight sources get more detailed analysis and priority in digest
-export const SOURCE_QUALITY_TIERS: Record<string, number> = {
-  // Tier 1: Premium (weight 3) — deep reporting, unique insights
-  "The Information": 3,
-  Stratechery: 3,
-  Bloomberg: 3,
-  "Financial Times": 3,
-  "The Economist": 3,
-  Reuters: 3,
-  "Wall Street Journal": 3,
-  // Tier 2: Strong (weight 2) — good analysis, well-sourced
-  StrictlyVC: 2,
-  "CB Insights": 2,
-  Axios: 2,
-  Semafor: 2,
-  Politico: 2,
-  TechCrunch: 2,
-  // Tier 3: Standard (weight 1) — aggregation, lighter analysis
-  "Morning Brew": 1,
-  "The Hustle": 1,
-  Finimize: 1,
-};
+// Delegates to source-tiers.ts for the canonical tier config.
+// Weight: tier 1 (Edge) → 3, tier 2 (Quality) → 2, tier 3 (Mainstream) → 1
 
 export function getSourceWeight(publication: string): number {
-  return SOURCE_QUALITY_TIERS[publication] || 1;
+  const tier = getNewsletterSourceTier(publication);
+  return tierToWeight(tier);
 }
 
 // ─── Newsletter Summary ──────────────────────────────────────

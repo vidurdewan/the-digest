@@ -6,6 +6,7 @@ import {
   generateNewsletterSummary,
   generateVIPNewsletterSummary,
 } from "@/lib/claude";
+import { getNewsletterSourceTier, type SourceTier } from "@/lib/source-tiers";
 
 export interface NewsletterIngestionResult {
   fetched: number;
@@ -20,6 +21,7 @@ export interface NewsletterIngestionResult {
     receivedAt: string;
     content: string;
     isVip: boolean;
+    sourceTier: SourceTier;
     summary: {
       theNews: string;
       whyItMatters: string;
@@ -137,6 +139,7 @@ export async function ingestNewsletters(
     );
     for (let j = 0; j < batch.length; j++) {
       const isVip = vipSet.has(batch[j].publication.toLowerCase());
+      const sourceTier = getNewsletterSourceTier(batch[j].publication, batch[j].senderEmail);
       newslettersWithSummaries.push({
         id: batch[j].gmailMessageId,
         publication: batch[j].publication,
@@ -145,6 +148,7 @@ export async function ingestNewsletters(
         receivedAt: batch[j].receivedAt,
         content: batch[j].contentText,
         isVip,
+        sourceTier,
         summary: summaries[j]
           ? {
               theNews: summaries[j]!.theNews,
@@ -171,6 +175,7 @@ export async function ingestNewsletters(
       received_at: nl.receivedAt,
       is_read: false,
       is_vip: nl.isVip,
+      source_tier: nl.sourceTier,
     }));
 
     const BATCH_SIZE = 20;

@@ -13,6 +13,8 @@ export type TopicCategory =
 
 export type InterestLevel = "high" | "medium" | "low" | "hidden";
 
+export type SourceTier = 1 | 2 | 3;
+
 export interface Article {
   id: string;
   title: string;
@@ -27,6 +29,7 @@ export interface Article {
   isRead: boolean;
   isSaved: boolean;
   watchlistMatches: string[];
+  sourceTier?: SourceTier;
 }
 
 export interface Summary {
@@ -65,6 +68,7 @@ export interface Newsletter {
   isRead: boolean;
   isSaved?: boolean;
   readingTimeMinutes?: number;
+  sourceTier?: SourceTier;
 }
 
 export interface WatchlistItem {

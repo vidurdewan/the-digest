@@ -105,6 +105,7 @@ export async function ingestAllNews(options?: {
       topic: article.topic,
       reading_time_minutes: estimateReadingTime(article.content || ""),
       content_hash: article.contentHash,
+      source_tier: article.sourceTier,
     }));
 
     // Batch in groups of 50 to stay within Supabase payload limits

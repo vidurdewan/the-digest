@@ -1,7 +1,8 @@
 import Parser from "rss-parser";
-import type { TopicCategory } from "@/types";
+import type { TopicCategory, SourceTier } from "@/types";
 import type { NewsSource } from "./sources";
 import { generateContentHash } from "./article-utils";
+import { getArticleSourceTier } from "./source-tiers";
 
 const parser = new Parser({
   timeout: 10000,
@@ -22,6 +23,7 @@ export interface RawArticle {
   content: string | null;
   imageUrl: string | null;
   contentHash: string;
+  sourceTier: SourceTier;
 }
 
 /**
@@ -62,6 +64,7 @@ export async function fetchRssFeed(source: NewsSource): Promise<RawArticle[]> {
         content,
         imageUrl,
         contentHash: generateContentHash(title, url),
+        sourceTier: getArticleSourceTier(source.name, url),
       });
     }
 
