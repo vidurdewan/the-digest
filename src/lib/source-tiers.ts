@@ -194,6 +194,9 @@ function escapeRegex(str: string): string {
 export function getTierByName(name: string): SourceTier | undefined {
   const lower = name.toLowerCase().trim();
 
+  // Empty string matches everything in fuzzy mode — bail out
+  if (!lower) return undefined;
+
   // 1. Exact match
   const exact = nameToTier.get(lower);
   if (exact !== undefined) return exact;
