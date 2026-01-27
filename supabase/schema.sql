@@ -247,3 +247,88 @@ create table if not exists article_signals (
 create index if not exists idx_article_signals_article on article_signals(article_id);
 create index if not exists idx_article_signals_type on article_signals(signal_type, detected_at desc);
 create index if not exists idx_article_signals_entity on article_signals(entity_name, detected_at desc) where entity_name is not null;
+
+-- ============================================
+-- STORY THREADS (groups developing stories)
+-- ============================================
+create table if not exists story_threads (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  summary text,
+  first_seen_at timestamptz not null default now(),
+  last_updated_at timestamptz not null default now(),
+  article_count integer default 1,
+  status text default 'active' check (status in ('active', 'resolved', 'stale')),
+  created_at timestamptz default now()
+);
+
+-- ============================================
+-- ARTICLE INTELLIGENCE (AI-computed per article)
+-- ============================================
+create table if not exists article_intelligence (
+  id uuid primary key default gen_random_uuid(),
+  article_id uuid references articles(id) on delete cascade unique,
+  significance_score integer check (significance_score between 1 and 10),
+  story_type text check (story_type in ('breaking', 'developing', 'analysis', 'opinion', 'feature', 'update')),
+  connects_to jsonb default '[]',
+  story_thread_id uuid references story_threads(id) on delete set null,
+  watch_for_next text,
+  is_surprise_candidate boolean default false,
+  generated_at timestamptz default now(),
+  created_at timestamptz default now()
+);
+
+create index if not exists idx_article_intel_article on article_intelligence(article_id);
+create index if not exists idx_article_intel_thread on article_intelligence(story_thread_id);
+create index if not exists idx_article_intel_significance on article_intelligence(significance_score desc);
+
+-- ============================================
+-- ARTICLE REACTIONS (user feedback)
+-- ============================================
+create table if not exists article_reactions (
+  id uuid primary key default gen_random_uuid(),
+  article_id uuid references articles(id) on delete cascade,
+  reaction text not null check (reaction in ('already_knew', 'useful', 'surprising', 'bad_connection', 'not_important')),
+  created_at timestamptz default now(),
+  unique(article_id, reaction)
+);
+
+create index if not exists idx_reactions_article on article_reactions(article_id);
+
+-- ============================================
+-- REMINDERS (follow-up alerts)
+-- ============================================
+create table if not exists reminders (
+  id uuid primary key default gen_random_uuid(),
+  article_id uuid references articles(id) on delete cascade,
+  remind_at timestamptz not null,
+  note text,
+  is_dismissed boolean default false,
+  created_at timestamptz default now()
+);
+
+create index if not exists idx_reminders_date on reminders(remind_at) where not is_dismissed;
+
+-- ============================================
+-- READING PROGRESS (daily tracking)
+-- ============================================
+create table if not exists reading_progress (
+  id uuid primary key default gen_random_uuid(),
+  date date not null unique default current_date,
+  total_priority_items integer default 0,
+  items_read integer default 0,
+  updated_at timestamptz default now()
+);
+
+-- ============================================
+-- WEEKLY SYNTHESIS (auto-generated weekly summary)
+-- ============================================
+create table if not exists weekly_synthesis (
+  id uuid primary key default gen_random_uuid(),
+  week_start date not null unique,
+  week_end date not null,
+  synthesis text not null,
+  threads jsonb default '[]',
+  patterns jsonb default '[]',
+  generated_at timestamptz default now()
+);

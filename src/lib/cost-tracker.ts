@@ -3,8 +3,8 @@ import { estimateCost } from "./claude";
 import * as fs from "fs";
 import * as path from "path";
 
-// Default daily budget: $1.00 (100 cents)
-const DEFAULT_DAILY_BUDGET_CENTS = 100;
+// Default daily budget: $5.00 (500 cents) — raised from $1.00 for initial data population
+const DEFAULT_DAILY_BUDGET_CENTS = 500;
 
 interface UsageRecord {
   date: string; // YYYY-MM-DD
