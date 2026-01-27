@@ -1,18 +1,24 @@
-import { NextResponse } from "next/server";
-import { rankRecentArticles } from "@/lib/story-ranker";
+import { NextRequest, NextResponse } from "next/server";
+import { rankRecentArticles, rankAllArticles } from "@/lib/story-ranker";
+
+// Allow up to 5 minutes for full re-rank
+export const maxDuration = 300;
 
 /**
  * POST /api/rank
  * Compute ranking scores for recent articles and store in the database.
+ * Use ?all=true to re-score ALL articles (not just last 24h).
  */
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
+    const all = request.nextUrl.searchParams.get("all") === "true";
     const startTime = Date.now();
-    const stats = await rankRecentArticles();
+    const stats = all ? await rankAllArticles() : await rankRecentArticles();
     const duration = Date.now() - startTime;
 
     return NextResponse.json({
       success: true,
+      mode: all ? "all" : "recent",
       duration: `${duration}ms`,
       ...stats,
     });
@@ -27,6 +33,6 @@ export async function POST() {
  * GET /api/rank
  * Same as POST — allows triggering via browser for convenience.
  */
-export async function GET() {
-  return POST();
+export async function GET(request: NextRequest) {
+  return POST(request);
 }

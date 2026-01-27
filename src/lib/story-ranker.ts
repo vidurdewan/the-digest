@@ -1,251 +1,106 @@
 /**
  * Story Ranking Algorithm
  *
- * Computes a composite ranking_score (0–100) for each article based on:
- *   1. Source Authority (0–30)  — tier system weight
- *   2. Story Magnitude  (0–25)  — blast radius, financial scale, keyword signals
- *   3. Authority of Voice (0–20) — quotes/mentions of high-authority figures
- *   4. Staying Power (0–15)     — original reporting vs derivative coverage
- *   5. First-to-Report (0–10)   — bonus for earliest coverage of a topic
+ * Computes a ranking_score for each article:
+ *   Step 1: Base score by source tier (50 / 25 / 0)
+ *   Step 2: Add bonuses (exclusive +15, authority voice +10, financial magnitude +10,
+ *           broad impact +5, recency +5, VIP +20, first-to-report +10)
+ *   Step 3: Apply penalties (derivative headline -15, summarizing others -10)
+ *   Step 4: ranking_score = base + bonuses - penalties
  *
  * Also provides getTopStories() with diversity enforcement:
  *   - Max 2 articles from the same publication
  *   - Max 2 articles from the same topic category
  */
 
-import type { SourceTier } from "@/types";
 import { supabase, isSupabaseConfigured } from "./supabase";
 
-// ─── Scoring Weights ────────────────────────────────────────
+// ─── Step 1: Base Score by Source Tier ──────────────────────
 
-const WEIGHTS = {
-  SOURCE_AUTHORITY: 30,
-  STORY_MAGNITUDE: 25,
-  AUTHORITY_OF_VOICE: 20,
-  STAYING_POWER: 15,
-  FIRST_TO_REPORT: 10,
-} as const;
-
-// ─── 1. Source Authority ────────────────────────────────────
-
-function scoreSourceAuthority(sourceTier: SourceTier | number | null): number {
+function getBaseScore(sourceTier: number | null): number {
   switch (sourceTier) {
     case 1:
-      return WEIGHTS.SOURCE_AUTHORITY; // 30 — Edge
+      return 50;
     case 2:
-      return WEIGHTS.SOURCE_AUTHORITY * 0.65; // 19.5 — Quality
+      return 25;
     case 3:
-      return WEIGHTS.SOURCE_AUTHORITY * 0.33; // ~10 — Mainstream
+      return 0;
     default:
-      return WEIGHTS.SOURCE_AUTHORITY * 0.33;
+      return 0;
   }
 }
 
-// ─── 2. Story Magnitude / Blast Radius ──────────────────────
+// ─── Step 2: Bonuses ────────────────────────────────────────
 
-const MAGNITUDE_KEYWORDS: { pattern: RegExp; points: number }[] = [
-  // Financial scale (higher = bigger story)
-  { pattern: /\btrillion/i, points: 25 },
-  { pattern: /\bbillion/i, points: 20 },
-  { pattern: /\bhundred[s]?\s*million/i, points: 15 },
-  { pattern: /\bmillion/i, points: 8 },
-
-  // Scope / blast radius
-  { pattern: /\bnationwide\b/i, points: 15 },
-  { pattern: /\bindustry[- ]wide\b/i, points: 15 },
-  { pattern: /\bglobal\b/i, points: 12 },
-  { pattern: /\bworldwide\b/i, points: 12 },
-  { pattern: /\bwar\b/i, points: 18 },
-  { pattern: /\bcrisis\b/i, points: 15 },
-  { pattern: /\bpandemic\b/i, points: 20 },
-  { pattern: /\brecession\b/i, points: 18 },
-  { pattern: /\bcollapse[ds]?\b/i, points: 18 },
-  { pattern: /\bshutdown\b/i, points: 12 },
-  { pattern: /\bbankrupt/i, points: 18 },
-  { pattern: /\bdefault[eds]?\b/i, points: 15 },
-
-  // Regulatory / policy
-  { pattern: /\bban[ns]?(ed|ning)?\b/i, points: 14 },
-  { pattern: /\bsanction[eds]?\b/i, points: 14 },
-  { pattern: /\btariff/i, points: 12 },
-  { pattern: /\bregulat/i, points: 10 },
-  { pattern: /\bantitrust\b/i, points: 12 },
-  { pattern: /\bexecutive\s+order\b/i, points: 14 },
-
-  // M&A / deals
-  { pattern: /\bacquisition\b/i, points: 12 },
-  { pattern: /\bacquire[ds]?\b/i, points: 12 },
-  { pattern: /\bmerger\b/i, points: 14 },
-  { pattern: /\bIPO\b/, points: 14 },
-
-  // Major events
-  { pattern: /\belection\b/i, points: 12 },
-  { pattern: /\bimpeach/i, points: 16 },
-  { pattern: /\bindictment\b/i, points: 14 },
-  { pattern: /\barrest[eds]?\b/i, points: 10 },
-
-  // Primary documents / regulatory filings
-  { pattern: /\b8-K\b/, points: 14 },
-  { pattern: /\bS-1\b/, points: 16 },
-  { pattern: /\b10-K\b/, points: 12 },
-  { pattern: /\bFOMC\b/, points: 18 },
-  { pattern: /\bmaterial event\b/i, points: 14 },
-  { pattern: /\brisk factor/i, points: 10 },
-  { pattern: /\bIPO filing\b/i, points: 16 },
+// Exclusive / breaking / original reporting keywords → +15 (flat, once)
+const EXCLUSIVE_PATTERNS = [
+  /\bexclusive\b/i,
+  /\bbreaking\b/i,
+  /\bscoop\b/i,
+  /\binvestigation\b/i,
+  /\bfirst reported\b/i,
 ];
 
-function scoreStoryMagnitude(title: string, content: string): number {
+function hasExclusiveContent(title: string, content: string): boolean {
   const text = `${title} ${content}`.slice(0, 3000);
-  let score = 0;
-
-  for (const kw of MAGNITUDE_KEYWORDS) {
-    if (kw.pattern.test(text)) {
-      score += kw.points;
-    }
-  }
-
-  // Normalize to 0–25 (cap and scale)
-  return Math.min(WEIGHTS.STORY_MAGNITUDE, score * (WEIGHTS.STORY_MAGNITUDE / 40));
+  return EXCLUSIVE_PATTERNS.some((p) => p.test(text));
 }
 
-// ─── 3. Authority of Voice ──────────────────────────────────
-
-const HIGH_AUTHORITY_VOICES: { pattern: RegExp; points: number }[] = [
-  // AI leaders
-  { pattern: /\bDario Amodei\b/i, points: 18 },
-  { pattern: /\bSam Altman\b/i, points: 18 },
-  { pattern: /\bJensen Huang\b/i, points: 16 },
-  { pattern: /\bSatya Nadella\b/i, points: 16 },
-  { pattern: /\bSundar Pichai\b/i, points: 14 },
-  { pattern: /\bMark Zuckerberg\b/i, points: 14 },
-  { pattern: /\bTim Cook\b/i, points: 14 },
-
-  // Finance / markets
-  { pattern: /\bJerome Powell\b/i, points: 20 },
-  { pattern: /\bJanet Yellen\b/i, points: 16 },
-  { pattern: /\bJamie Dimon\b/i, points: 16 },
-  { pattern: /\bRay Dalio\b/i, points: 14 },
-  { pattern: /\bWarren Buffett\b/i, points: 16 },
-  { pattern: /\bLarry Fink\b/i, points: 14 },
-
-  // VC / tech investors
-  { pattern: /\bMarc Andreessen\b/i, points: 14 },
-  { pattern: /\bVinod Khosla\b/i, points: 12 },
-  { pattern: /\bBen Horowitz\b/i, points: 10 },
-  { pattern: /\bKeith Rabois\b/i, points: 10 },
-  { pattern: /\bPeter Thiel\b/i, points: 12 },
-  { pattern: /\bMasayoshi Son\b/i, points: 12 },
-
-  // World leaders
-  { pattern: /\bPresident\s+(Trump|Biden)\b/i, points: 16 },
-  { pattern: /\bXi Jinping\b/i, points: 16 },
-  { pattern: /\bPutin\b/i, points: 14 },
-  { pattern: /\bElon Musk\b/i, points: 14 },
-
-  // Generic authority markers
-  { pattern: /\bFederal Reserve\b/i, points: 14 },
-  { pattern: /\bSEC\b/, points: 10 },
-  { pattern: /\bDOJ\b/, points: 10 },
-  { pattern: /\bSupreme Court\b/i, points: 14 },
+// Authority voice mentions → +10 (flat, once)
+const AUTHORITY_VOICES = [
+  /\bRay Dalio\b/i,
+  /\bDario Amodei\b/i,
+  /\bJerome Powell\b/i,
+  /\bJamie Dimon\b/i,
+  /\bSatya Nadella\b/i,
+  /\bJensen Huang\b/i,
+  /\bMarc Andreessen\b/i,
+  /\bSam Altman\b/i,
+  /\bElon Musk\b/i,
+  /\bTim Cook\b/i,
+  /\bSundar Pichai\b/i,
 ];
 
-function scoreAuthorityOfVoice(title: string, content: string): number {
+function hasAuthorityVoice(title: string, content: string): boolean {
   const text = `${title} ${content}`.slice(0, 3000);
-  let score = 0;
-
-  for (const voice of HIGH_AUTHORITY_VOICES) {
-    if (voice.pattern.test(text)) {
-      score += voice.points;
-    }
-  }
-
-  // Normalize to 0–20 (cap and scale)
-  return Math.min(WEIGHTS.AUTHORITY_OF_VOICE, score * (WEIGHTS.AUTHORITY_OF_VOICE / 30));
+  return AUTHORITY_VOICES.some((p) => p.test(text));
 }
 
-// ─── 4. Staying Power ───────────────────────────────────────
-
-const ORIGINAL_REPORTING_SIGNALS: { pattern: RegExp; points: number }[] = [
-  { pattern: /\bexclusive\b/i, points: 15 },
-  { pattern: /\bbreaking\b/i, points: 12 },
-  { pattern: /\bfirst reported\b/i, points: 15 },
-  { pattern: /\binvestigation\b/i, points: 14 },
-  { pattern: /\banalysis\b/i, points: 8 },
-  { pattern: /\bin-depth\b/i, points: 8 },
-  { pattern: /\bexposé\b/i, points: 15 },
-  { pattern: /\bscoop\b/i, points: 14 },
-  { pattern: /\bunveils?\b/i, points: 8 },
-  { pattern: /\bannounce[ds]?\b/i, points: 6 },
-  { pattern: /\blaunch(es|ed)?\b/i, points: 6 },
+// Financial magnitude mentions → +10 (flat, once)
+const FINANCIAL_MAGNITUDE_PATTERNS = [
+  /\bbillion\b/i,
+  /\$1B\b/i,
+  /\$10B\b/i,
+  /\bIPO\b/,
+  /\bacquisition\b/i,
 ];
 
-const DERIVATIVE_COVERAGE_SIGNALS: { pattern: RegExp; penalty: number }[] = [
-  { pattern: /\breacts?\s+to\b/i, penalty: 10 },
-  { pattern: /\bresponds?\s+to\b/i, penalty: 10 },
-  { pattern: /\bfollowing\s+(news|reports?)\b/i, penalty: 8 },
-  { pattern: /\bweighs?\s+in\b/i, penalty: 8 },
-  { pattern: /\bsays?\s+about\b/i, penalty: 6 },
-  { pattern: /\baccording\s+to\s+reports?\b/i, penalty: 6 },
-  { pattern: /\breport(ed|s)?\s+(by|from)\b/i, penalty: 4 },
-  { pattern: /\bopinion\b/i, penalty: 4 },
-];
-
-function scoreStayingPower(
-  title: string,
-  content: string,
-  storyType?: string | null
-): number {
-  const text = `${title} ${content}`.slice(0, 2000);
-  let score = 0;
-
-  // Boost for original reporting signals
-  for (const signal of ORIGINAL_REPORTING_SIGNALS) {
-    if (signal.pattern.test(text)) {
-      score += signal.points;
-    }
-  }
-
-  // Penalty for derivative coverage
-  for (const signal of DERIVATIVE_COVERAGE_SIGNALS) {
-    if (signal.pattern.test(text)) {
-      score -= signal.penalty;
-    }
-  }
-
-  // Boost based on story_type from intelligence (if available)
-  if (storyType) {
-    switch (storyType) {
-      case "breaking":
-        score += 12;
-        break;
-      case "developing":
-        score += 8;
-        break;
-      case "analysis":
-        score += 6;
-        break;
-      case "feature":
-        score += 4;
-        break;
-      case "opinion":
-        score -= 2;
-        break;
-      case "update":
-        score += 0;
-        break;
-    }
-  }
-
-  // Normalize to 0–15
-  return Math.max(0, Math.min(WEIGHTS.STAYING_POWER, score * (WEIGHTS.STAYING_POWER / 25)));
+function hasFinancialMagnitude(title: string, content: string): boolean {
+  const text = `${title} ${content}`.slice(0, 3000);
+  return FINANCIAL_MAGNITUDE_PATTERNS.some((p) => p.test(text));
 }
 
-// ─── 5. First-to-Report Bonus ───────────────────────────────
+// Broad impact mentions → +5 (flat, once)
+const BROAD_IMPACT_PATTERNS = [
+  /\bglobal\b/i,
+  /\bnationwide\b/i,
+  /\bindustry[- ]wide\b/i,
+  /\bmarket[- ]wide\b/i,
+];
 
-/**
- * Detect title similarity using word overlap (Jaccard-like).
- * Returns a score between 0 and 1.
- */
+function hasBroadImpact(title: string, content: string): boolean {
+  const text = `${title} ${content}`.slice(0, 3000);
+  return BROAD_IMPACT_PATTERNS.some((p) => p.test(text));
+}
+
+// Published within last 2 hours → +5
+function isRecentlyPublished(publishedAt: string): boolean {
+  const twoHoursAgo = Date.now() - 2 * 60 * 60 * 1000;
+  return new Date(publishedAt).getTime() > twoHoursAgo;
+}
+
+// First to report → +10
+// Compare against other articles in the batch; if no earlier article covers the same topic, it's first.
 function titleSimilarity(a: string, b: string): number {
   const normalize = (s: string) =>
     s
@@ -268,18 +123,12 @@ function titleSimilarity(a: string, b: string): number {
   return intersection / union;
 }
 
-/**
- * Score first-to-report: compare this article against others in the batch.
- * If this article is the first to cover a similar story, give it a bonus.
- * If it's a Tier 1 source covering something first, even bigger bonus.
- */
-function scoreFirstToReport(
+function isFirstToReport(
   article: RankableArticle,
   allArticles: RankableArticle[]
-): number {
+): boolean {
   const SIMILARITY_THRESHOLD = 0.4;
 
-  // Find articles covering similar stories
   const similarArticles = allArticles.filter(
     (other) =>
       other.id !== article.id &&
@@ -287,24 +136,55 @@ function scoreFirstToReport(
   );
 
   if (similarArticles.length === 0) {
-    // Unique story — no duplicates found, modest bonus
-    return WEIGHTS.FIRST_TO_REPORT * 0.5; // 5 points
+    // Unique story — no duplicates, counts as first
+    return true;
   }
 
-  // Check if this article was published first among similar stories
   const articleTime = new Date(article.publishedAt).getTime();
-  const isFirst = similarArticles.every(
+  return similarArticles.every(
     (other) => new Date(other.publishedAt).getTime() >= articleTime
   );
+}
 
-  if (isFirst) {
-    // First to report — full bonus, extra if Tier 1
-    const tierBonus = article.sourceTier === 1 ? 1.0 : 0.7;
-    return WEIGHTS.FIRST_TO_REPORT * tierBonus;
-  }
+// ─── Step 3: Penalties ──────────────────────────────────────
 
-  // Not first — penalize slightly (derivative)
-  return 0;
+// Derivative headline → -15
+const DERIVATIVE_HEADLINE_PATTERNS = [
+  /\breacts?\s+to\b/i,
+  /\bresponds?\s+to\b/i,
+  /\bfollowing\s+news\b/i,
+  /\bafter\s+reports?\b/i,
+];
+
+function hasDerivativeHeadline(title: string): boolean {
+  return DERIVATIVE_HEADLINE_PATTERNS.some((p) => p.test(title));
+}
+
+// Content is mostly summarizing other sources → -10
+// Detected by presence of attribution phrases without original quotes
+const SUMMARIZING_PATTERNS = [
+  /\baccording\s+to\s+reports?\b/i,
+  /\breported\s+(by|from)\b/i,
+  /\bsources?\s+say\b/i,
+  /\bas\s+reported\s+by\b/i,
+  /\bciting\s+(sources?|reports?)\b/i,
+];
+
+const ORIGINAL_REPORTING_PATTERNS = [
+  /\bexclusive\b/i,
+  /\bfirst reported\b/i,
+  /\bscoop\b/i,
+  /\binvestigation\b/i,
+  /\btold\s+(me|us|this)\b/i,
+  /\bin\s+an?\s+interview\b/i,
+];
+
+function isSummarizingOthers(title: string, content: string): boolean {
+  const text = `${title} ${content}`.slice(0, 3000);
+  const hasSummarizing = SUMMARIZING_PATTERNS.some((p) => p.test(text));
+  const hasOriginal = ORIGINAL_REPORTING_PATTERNS.some((p) => p.test(text));
+  // Only penalize if it has summarizing signals but no original reporting signals
+  return hasSummarizing && !hasOriginal;
 }
 
 // ─── Core Ranking Types ─────────────────────────────────────
@@ -317,20 +197,23 @@ export interface RankableArticle {
   topic: string;
   sourceTier: number;
   publishedAt: string;
-  // From article_intelligence (optional)
-  significanceScore?: number | null;
-  storyType?: string | null;
+  isVip?: boolean;
 }
 
 export interface RankingResult {
   articleId: string;
   rankingScore: number;
   breakdown: {
-    sourceAuthority: number;
-    storyMagnitude: number;
-    authorityOfVoice: number;
-    stayingPower: number;
-    firstToReport: number;
+    baseScore: number;
+    exclusiveBonus: number;
+    authorityVoiceBonus: number;
+    financialMagnitudeBonus: number;
+    broadImpactBonus: number;
+    recencyBonus: number;
+    vipBonus: number;
+    firstToReportBonus: number;
+    derivativePenalty: number;
+    summarizingPenalty: number;
   };
 }
 
@@ -338,43 +221,47 @@ export interface RankingResult {
 
 /**
  * Compute ranking scores for a batch of articles.
- * Each article gets a score from 0–100 based on the five factors.
+ * ranking_score = base_score + bonuses - penalties
  */
 export function rankArticles(articles: RankableArticle[]): RankingResult[] {
   return articles.map((article) => {
-    const sourceAuthority = scoreSourceAuthority(article.sourceTier as SourceTier);
-    const storyMagnitude = scoreStoryMagnitude(article.title, article.content || "");
-    const authorityOfVoice = scoreAuthorityOfVoice(article.title, article.content || "");
-    const stayingPower = scoreStayingPower(
-      article.title,
-      article.content || "",
-      article.storyType
-    );
-    const firstToReport = scoreFirstToReport(article, articles);
+    // Step 1: Base score by source tier
+    const baseScore = getBaseScore(article.sourceTier);
 
-    // Apply significance_score multiplier if available (from AI intelligence)
-    // significance_score is 1-10, use it as a 0.7x–1.3x multiplier
-    let significanceMultiplier = 1.0;
-    if (article.significanceScore && article.significanceScore >= 1) {
-      // Map 1-10 → 0.7-1.3
-      significanceMultiplier = 0.7 + (article.significanceScore / 10) * 0.6;
-    }
+    // Step 2: Bonuses
+    const exclusiveBonus = hasExclusiveContent(article.title, article.content || "") ? 15 : 0;
+    const authorityVoiceBonus = hasAuthorityVoice(article.title, article.content || "") ? 10 : 0;
+    const financialMagnitudeBonus = hasFinancialMagnitude(article.title, article.content || "") ? 10 : 0;
+    const broadImpactBonus = hasBroadImpact(article.title, article.content || "") ? 5 : 0;
+    const recencyBonus = isRecentlyPublished(article.publishedAt) ? 5 : 0;
+    const vipBonus = article.isVip ? 20 : 0;
+    const firstToReportBonus = isFirstToReport(article, articles) ? 10 : 0;
 
-    const rawScore =
-      sourceAuthority + storyMagnitude + authorityOfVoice + stayingPower + firstToReport;
+    // Step 3: Penalties
+    const derivativePenalty = hasDerivativeHeadline(article.title) ? 15 : 0;
+    const summarizingPenalty = isSummarizingOthers(article.title, article.content || "") ? 10 : 0;
 
-    // Apply significance multiplier, then cap at 100
-    const finalScore = Math.min(100, Math.round(rawScore * significanceMultiplier * 100) / 100);
+    // Step 4: Final score
+    const totalBonuses = exclusiveBonus + authorityVoiceBonus + financialMagnitudeBonus +
+      broadImpactBonus + recencyBonus + vipBonus + firstToReportBonus;
+    const totalPenalties = derivativePenalty + summarizingPenalty;
+
+    const rankingScore = baseScore + totalBonuses - totalPenalties;
 
     return {
       articleId: article.id,
-      rankingScore: finalScore,
+      rankingScore,
       breakdown: {
-        sourceAuthority: Math.round(sourceAuthority * 100) / 100,
-        storyMagnitude: Math.round(storyMagnitude * 100) / 100,
-        authorityOfVoice: Math.round(authorityOfVoice * 100) / 100,
-        stayingPower: Math.round(stayingPower * 100) / 100,
-        firstToReport: Math.round(firstToReport * 100) / 100,
+        baseScore,
+        exclusiveBonus,
+        authorityVoiceBonus,
+        financialMagnitudeBonus,
+        broadImpactBonus,
+        recencyBonus,
+        vipBonus,
+        firstToReportBonus,
+        derivativePenalty,
+        summarizingPenalty,
       },
     };
   });
@@ -425,7 +312,7 @@ export async function storeRankingScores(
 
 /**
  * Full ranking pipeline: fetch recent articles, compute scores, store.
- * Fetches articles from the last 24 hours with their intelligence data.
+ * Fetches articles from the last 24 hours.
  */
 export async function rankRecentArticles(): Promise<{
   ranked: number;
@@ -440,66 +327,103 @@ export async function rankRecentArticles(): Promise<{
     return stats;
   }
 
-  // Fetch articles from the last 24 hours, joined with intelligence
+  // Fetch articles from the last 24 hours
   const since = new Date();
   since.setHours(since.getHours() - 24);
 
-  let data: Record<string, unknown>[] | null = null;
-
-  // Try with intelligence join first
-  const { data: fullData, error: fullError } = await supabase
+  const { data } = await supabase
     .from("articles")
-    .select(
-      "id, title, content, url, topic, source_tier, published_at, article_intelligence(significance_score, story_type)"
-    )
+    .select("id, title, content, url, topic, source_tier, published_at")
     .gte("published_at", since.toISOString())
     .order("published_at", { ascending: false })
     .limit(500);
-
-  if (!fullError) {
-    data = fullData as Record<string, unknown>[];
-  } else {
-    // Fallback without intelligence
-    console.warn("[Ranker] Falling back without intelligence join:", fullError.message);
-    const { data: fallbackData } = await supabase
-      .from("articles")
-      .select("id, title, content, url, topic, source_tier, published_at")
-      .gte("published_at", since.toISOString())
-      .order("published_at", { ascending: false })
-      .limit(500);
-
-    data = (fallbackData as Record<string, unknown>[]) || [];
-  }
 
   if (!data || data.length === 0) {
     return stats;
   }
 
   // Map to RankableArticle
-  const articles: RankableArticle[] = data.map((row) => {
-    const intel = row.article_intelligence as
-      | { significance_score?: number; story_type?: string }
-      | { significance_score?: number; story_type?: string }[]
-      | null;
-
-    // intelligence may be an object or array (Supabase returns array for joins)
-    const intelData = Array.isArray(intel) ? intel[0] : intel;
-
-    return {
-      id: row.id as string,
-      title: row.title as string,
-      content: (row.content as string) || "",
-      url: (row.url as string) || "",
-      topic: (row.topic as string) || "",
-      sourceTier: (row.source_tier as number) || 3,
-      publishedAt: (row.published_at as string) || new Date().toISOString(),
-      significanceScore: intelData?.significance_score ?? null,
-      storyType: intelData?.story_type ?? null,
-    };
-  });
+  const articles: RankableArticle[] = data.map((row) => ({
+    id: row.id as string,
+    title: row.title as string,
+    content: (row.content as string) || "",
+    url: (row.url as string) || "",
+    topic: (row.topic as string) || "",
+    sourceTier: (row.source_tier as number) || 3,
+    publishedAt: (row.published_at as string) || new Date().toISOString(),
+  }));
 
   // Compute rankings
   const results = rankArticles(articles);
+  stats.ranked = results.length;
+
+  if (results.length > 0) {
+    const sorted = [...results].sort((a, b) => b.rankingScore - a.rankingScore);
+    stats.topScore = sorted[0].rankingScore;
+    stats.bottomScore = sorted[sorted.length - 1].rankingScore;
+  }
+
+  // Store rankings
+  const storeStats = await storeRankingScores(results);
+  stats.stored = storeStats.updated;
+  stats.errors = storeStats.errors;
+
+  return stats;
+}
+
+/**
+ * Re-score ALL articles in the database (not just last 24h).
+ * Used for one-time re-ranking after algorithm changes.
+ */
+export async function rankAllArticles(): Promise<{
+  ranked: number;
+  stored: number;
+  errors: number;
+  topScore: number;
+  bottomScore: number;
+}> {
+  const stats = { ranked: 0, stored: 0, errors: 0, topScore: 0, bottomScore: 0 };
+
+  if (!isSupabaseConfigured() || !supabase) {
+    return stats;
+  }
+
+  // Fetch ALL articles in batches of 500
+  const allArticles: RankableArticle[] = [];
+  let offset = 0;
+  const BATCH = 500;
+
+  while (true) {
+    const { data } = await supabase
+      .from("articles")
+      .select("id, title, content, url, topic, source_tier, published_at")
+      .order("published_at", { ascending: false })
+      .range(offset, offset + BATCH - 1);
+
+    if (!data || data.length === 0) break;
+
+    for (const row of data) {
+      allArticles.push({
+        id: row.id as string,
+        title: row.title as string,
+        content: (row.content as string) || "",
+        url: (row.url as string) || "",
+        topic: (row.topic as string) || "",
+        sourceTier: (row.source_tier as number) || 3,
+        publishedAt: (row.published_at as string) || new Date().toISOString(),
+      });
+    }
+
+    if (data.length < BATCH) break;
+    offset += BATCH;
+  }
+
+  if (allArticles.length === 0) {
+    return stats;
+  }
+
+  // Compute rankings for all articles
+  const results = rankArticles(allArticles);
   stats.ranked = results.length;
 
   if (results.length > 0) {
