@@ -28,12 +28,14 @@ CREATE TABLE IF NOT EXISTS articles (
   topic TEXT,
   reading_time_minutes INTEGER,
   content_hash TEXT UNIQUE,
+  source_tier INTEGER DEFAULT 3 CHECK (source_tier IN (1, 2, 3)),
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_articles_published_at ON articles (published_at DESC);
 CREATE INDEX IF NOT EXISTS idx_articles_topic ON articles (topic);
 CREATE INDEX IF NOT EXISTS idx_articles_content_hash ON articles (content_hash);
+CREATE INDEX IF NOT EXISTS idx_articles_source_tier ON articles (source_tier);
 
 -- 3. summaries
 CREATE TABLE IF NOT EXISTS summaries (
@@ -61,11 +63,15 @@ CREATE TABLE IF NOT EXISTS newsletters (
   content TEXT,
   received_at TIMESTAMPTZ,
   is_read BOOLEAN DEFAULT FALSE,
+  is_vip BOOLEAN DEFAULT FALSE,
+  source_tier INTEGER DEFAULT 3 CHECK (source_tier IN (1, 2, 3)),
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_newsletters_received_at ON newsletters (received_at DESC);
 CREATE INDEX IF NOT EXISTS idx_newsletters_gmail_id ON newsletters (gmail_message_id);
+CREATE INDEX IF NOT EXISTS idx_newsletters_source_tier ON newsletters (source_tier);
+CREATE INDEX IF NOT EXISTS idx_newsletters_is_vip ON newsletters (is_vip) WHERE is_vip = TRUE;
 
 -- 5. watchlist
 CREATE TABLE IF NOT EXISTS watchlist (
@@ -81,6 +87,8 @@ CREATE INDEX IF NOT EXISTS idx_watchlist_created_at ON watchlist (created_at DES
 CREATE TABLE IF NOT EXISTS settings (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   topic_preferences JSONB DEFAULT '{}',
+  vip_newsletters JSONB DEFAULT '["Stratechery"]',
+  last_newsletter_fetch TIMESTAMPTZ,
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -178,6 +186,16 @@ CREATE POLICY "Allow all access" ON gmail_tokens FOR ALL USING (true) WITH CHECK
 CREATE POLICY "Allow all access" ON api_usage FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all access" ON sources FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all access" ON annotations FOR ALL USING (true) WITH CHECK (true);
+ALTER TABLE daily_briefs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all access" ON daily_briefs FOR ALL USING (true) WITH CHECK (true);
+
+-- 11b. daily_briefs — Cached daily narrative briefs
+CREATE TABLE IF NOT EXISTS daily_briefs (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  date_key TEXT UNIQUE NOT NULL,
+  brief TEXT NOT NULL,
+  generated_at TIMESTAMPTZ DEFAULT NOW()
+);
 
 -- ============================================================
 -- Intelligence Redesign — New Tables

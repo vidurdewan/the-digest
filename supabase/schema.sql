@@ -53,12 +53,14 @@ create table if not exists articles (
   topic text not null,
   reading_time_minutes integer default 3,
   content_hash text unique,
+  source_tier integer default 3 check (source_tier in (1, 2, 3)),
   created_at timestamptz default now()
 );
 
 create index if not exists idx_articles_topic on articles(topic);
 create index if not exists idx_articles_published on articles(published_at desc);
 create index if not exists idx_articles_content_hash on articles(content_hash);
+create index if not exists idx_articles_source_tier on articles(source_tier);
 
 -- ============================================
 -- SUMMARIES (AI-generated, linked to articles)
@@ -89,10 +91,14 @@ create table if not exists newsletters (
   content text,
   received_at timestamptz,
   is_read boolean default false,
+  is_vip boolean default false,
+  source_tier integer default 3 check (source_tier in (1, 2, 3)),
   created_at timestamptz default now()
 );
 
 create index if not exists idx_newsletters_received on newsletters(received_at desc);
+create index if not exists idx_newsletters_source_tier on newsletters(source_tier);
+create index if not exists idx_newsletters_is_vip on newsletters(is_vip) where is_vip = true;
 
 -- ============================================
 -- WATCHLIST
@@ -151,6 +157,8 @@ create table if not exists settings (
   user_id uuid unique references users(id) on delete cascade,
   theme text default 'light' check (theme in ('light', 'dark', 'newspaper')),
   topic_preferences jsonb default '{}',
+  vip_newsletters jsonb default '["Stratechery"]',
+  last_newsletter_fetch timestamptz,
   notifications_enabled boolean default true,
   quiet_hours_start time,
   quiet_hours_end time,
@@ -172,3 +180,13 @@ create table if not exists api_usage (
 );
 
 create index if not exists idx_api_usage_date on api_usage(date desc);
+
+-- ============================================
+-- DAILY BRIEFS (cached narrative briefs)
+-- ============================================
+create table if not exists daily_briefs (
+  id uuid primary key default gen_random_uuid(),
+  date_key text unique not null,
+  brief text not null,
+  generated_at timestamptz default now()
+);
