@@ -4,6 +4,7 @@ import { fetchNewsApi } from "./news-api";
 import { scrapeArticle } from "./article-scraper";
 import { estimateReadingTime } from "./article-utils";
 import { supabase, isSupabaseConfigured } from "./supabase";
+import { filterSECFilings } from "./sec-filter";
 
 export interface IngestionResult {
   totalFetched: number;
@@ -47,8 +48,11 @@ export async function ingestAllNews(options?: {
   }
   result.totalFetched += apiArticles.length;
 
+  // Filter SEC filings to only relevant companies
+  const filteredRssArticles = await filterSECFilings(rssArticles);
+
   // Combine all articles
-  const allArticles = [...rssArticles, ...apiArticles];
+  const allArticles = [...filteredRssArticles, ...apiArticles];
 
   // Deduplicate by content hash
   const seen = new Set<string>();
@@ -106,6 +110,7 @@ export async function ingestAllNews(options?: {
       reading_time_minutes: estimateReadingTime(article.content || ""),
       content_hash: article.contentHash,
       source_tier: article.sourceTier,
+      document_type: article.documentType || null,
     }));
 
     // Batch in groups of 50 to stay within Supabase payload limits

@@ -1,5 +1,5 @@
 import Parser from "rss-parser";
-import type { TopicCategory, SourceTier } from "@/types";
+import type { TopicCategory, SourceTier, DocumentType } from "@/types";
 import type { NewsSource } from "./sources";
 import { generateContentHash } from "./article-utils";
 import { getArticleSourceTier } from "./source-tiers";
@@ -9,6 +9,15 @@ const parser = new Parser({
   headers: {
     "User-Agent": "TheDigest/1.0 (news aggregator)",
     Accept: "application/rss+xml, application/xml, text/xml",
+  },
+});
+
+// SEC EDGAR requires a specific User-Agent for fair access policy
+const secParser = new Parser({
+  timeout: 15000,
+  headers: {
+    "User-Agent": "TheDigest support@thedigest.app",
+    Accept: "application/atom+xml, application/xml, text/xml",
   },
 });
 
@@ -24,6 +33,18 @@ export interface RawArticle {
   imageUrl: string | null;
   contentHash: string;
   sourceTier: SourceTier;
+  documentType?: DocumentType;
+}
+
+/**
+ * Detect the document type for a primary document source.
+ */
+function detectDocumentType(sourceId: string): DocumentType | undefined {
+  if (sourceId === "sec-edgar-8k") return "8-K";
+  if (sourceId === "sec-edgar-s1") return "S-1";
+  if (sourceId === "sec-edgar-10k") return "10-K";
+  if (sourceId.startsWith("fed-")) return "fed-release";
+  return undefined;
 }
 
 /**
@@ -31,8 +52,13 @@ export interface RawArticle {
  */
 export async function fetchRssFeed(source: NewsSource): Promise<RawArticle[]> {
   try {
-    const feed = await parser.parseURL(source.url);
+    // Use SEC-compliant parser for EDGAR feeds
+    const isSecSource = source.id.startsWith("sec-edgar-");
+    const feedParser = isSecSource ? secParser : parser;
+    const feed = await feedParser.parseURL(source.url);
     const articles: RawArticle[] = [];
+
+    const documentType = detectDocumentType(source.id);
 
     for (const item of feed.items || []) {
       if (!item.title || !item.link) continue;
@@ -65,6 +91,7 @@ export async function fetchRssFeed(source: NewsSource): Promise<RawArticle[]> {
         imageUrl,
         contentHash: generateContentHash(title, url),
         sourceTier: getArticleSourceTier(source.name, url),
+        documentType,
       });
     }
 

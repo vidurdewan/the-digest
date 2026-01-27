@@ -35,6 +35,11 @@ const TIER_1_NAMES: string[] = [
   "Ben Hunt",
   "Epsilon Theory",
   "Odd Lots",
+  "SEC EDGAR 8-K",
+  "SEC EDGAR S-1",
+  "SEC EDGAR 10-K",
+  "Federal Reserve Monetary Policy",
+  "Federal Reserve Press Releases",
 ];
 
 const TIER_1_DOMAINS: string[] = [
@@ -49,6 +54,8 @@ const TIER_1_DOMAINS: string[] = [
   "epsilontheory.com",
   "thediff.co",
   "notboring.co",
+  "sec.gov",
+  "federalreserve.gov",
 ];
 
 // ─── Tier 2: Quality Sources ───────────────────────────────────

@@ -7,7 +7,7 @@ import {
   type BatchArticle,
 } from "./claude";
 import { recordUsage, checkBudget } from "./cost-tracker";
-import type { Summary, Entity } from "@/types";
+import type { Summary, Entity, DecipheringSummary } from "@/types";
 
 // ─── Cache: Check for existing summary ───────────────────────
 /**
@@ -90,25 +90,33 @@ async function storeSummary(
     whyItMatters?: string;
     theContext?: string;
     keyEntities?: Entity[];
+    deciphering?: DecipheringSummary;
     tokensUsed?: number;
   }
 ): Promise<boolean> {
   if (!isSupabaseConfigured() || !supabase) return false;
 
   try {
+    // Build the upsert payload, only including deciphering if provided
+    const payload: Record<string, unknown> = {
+      article_id: articleId,
+      brief: summary.brief,
+      the_news: summary.theNews,
+      why_it_matters: summary.whyItMatters,
+      the_context: summary.theContext,
+      key_entities: summary.keyEntities || [],
+      tokens_used: summary.tokensUsed || 0,
+      model_used: "claude-sonnet-4-20250514",
+      generated_at: new Date().toISOString(),
+    };
+
+    if (summary.deciphering) {
+      payload.deciphering = summary.deciphering;
+    }
+
     // Upsert to handle partial updates (brief first, then full)
     const { error } = await supabase.from("summaries").upsert(
-      {
-        article_id: articleId,
-        brief: summary.brief,
-        the_news: summary.theNews,
-        why_it_matters: summary.whyItMatters,
-        the_context: summary.theContext,
-        key_entities: summary.keyEntities || [],
-        tokens_used: summary.tokensUsed || 0,
-        model_used: "claude-sonnet-4-20250514",
-        generated_at: new Date().toISOString(),
-      },
+      payload,
       { onConflict: "article_id" }
     );
 

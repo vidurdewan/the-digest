@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS articles (
   content_hash TEXT UNIQUE,
   source_tier INTEGER DEFAULT 3 CHECK (source_tier IN (1, 2, 3)),
   ranking_score NUMERIC(6, 2) DEFAULT 0,
+  document_type TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -39,6 +40,7 @@ CREATE INDEX IF NOT EXISTS idx_articles_content_hash ON articles (content_hash);
 CREATE INDEX IF NOT EXISTS idx_articles_source_tier ON articles (source_tier);
 CREATE INDEX IF NOT EXISTS idx_articles_ranking_score ON articles (ranking_score DESC);
 CREATE INDEX IF NOT EXISTS idx_articles_published_ranking ON articles (published_at DESC, ranking_score DESC);
+CREATE INDEX IF NOT EXISTS idx_articles_document_type ON articles (document_type) WHERE document_type IS NOT NULL;
 
 -- 3. summaries
 CREATE TABLE IF NOT EXISTS summaries (
@@ -49,6 +51,7 @@ CREATE TABLE IF NOT EXISTS summaries (
   why_it_matters TEXT,
   the_context TEXT,
   key_entities JSONB DEFAULT '[]',
+  deciphering JSONB,
   tokens_used INTEGER DEFAULT 0,
   model_used TEXT,
   generated_at TIMESTAMPTZ DEFAULT NOW()

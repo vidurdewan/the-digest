@@ -93,6 +93,50 @@ export const defaultSources: NewsSource[] = [
     isActive: true,
   },
 
+  // ─── SEC EDGAR (Primary Documents) ───────────────────
+  {
+    id: "sec-edgar-8k",
+    name: "SEC EDGAR 8-K",
+    url: "https://efts.sec.gov/LATEST/search-index?q=%228-K%22&dateRange=custom&startdt=2026-01-20&enddt=2026-01-27&forms=8-K&from=0&size=40",
+    type: "rss",
+    topic: "financial-markets",
+    isActive: true,
+  },
+  {
+    id: "sec-edgar-s1",
+    name: "SEC EDGAR S-1",
+    url: "https://efts.sec.gov/LATEST/search-index?q=%22S-1%22&forms=S-1&from=0&size=40",
+    type: "rss",
+    topic: "financial-markets",
+    isActive: true,
+  },
+  {
+    id: "sec-edgar-10k",
+    name: "SEC EDGAR 10-K",
+    url: "https://efts.sec.gov/LATEST/search-index?q=%2210-K%22&forms=10-K&from=0&size=40",
+    type: "rss",
+    topic: "financial-markets",
+    isActive: true,
+  },
+
+  // ─── Federal Reserve (Primary Documents) ─────────────
+  {
+    id: "fed-press-monetary",
+    name: "Federal Reserve Monetary Policy",
+    url: "https://www.federalreserve.gov/feeds/press_monetary.xml",
+    type: "rss",
+    topic: "financial-markets",
+    isActive: true,
+  },
+  {
+    id: "fed-press-all",
+    name: "Federal Reserve Press Releases",
+    url: "https://www.federalreserve.gov/feeds/press_all.xml",
+    type: "rss",
+    topic: "financial-markets",
+    isActive: true,
+  },
+
   // ─── Geopolitics ───────────────────────────────────────
   {
     id: "ap-world",

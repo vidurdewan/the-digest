@@ -83,6 +83,15 @@ const MAGNITUDE_KEYWORDS: { pattern: RegExp; points: number }[] = [
   { pattern: /\bimpeach/i, points: 16 },
   { pattern: /\bindictment\b/i, points: 14 },
   { pattern: /\barrest[eds]?\b/i, points: 10 },
+
+  // Primary documents / regulatory filings
+  { pattern: /\b8-K\b/, points: 14 },
+  { pattern: /\bS-1\b/, points: 16 },
+  { pattern: /\b10-K\b/, points: 12 },
+  { pattern: /\bFOMC\b/, points: 18 },
+  { pattern: /\bmaterial event\b/i, points: 14 },
+  { pattern: /\brisk factor/i, points: 10 },
+  { pattern: /\bIPO filing\b/i, points: 16 },
 ];
 
 function scoreStoryMagnitude(title: string, content: string): number {

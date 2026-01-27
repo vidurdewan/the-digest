@@ -55,6 +55,7 @@ create table if not exists articles (
   content_hash text unique,
   source_tier integer default 3 check (source_tier in (1, 2, 3)),
   ranking_score numeric(6, 2) default 0,
+  document_type text,
   created_at timestamptz default now()
 );
 
@@ -64,6 +65,7 @@ create index if not exists idx_articles_content_hash on articles(content_hash);
 create index if not exists idx_articles_source_tier on articles(source_tier);
 create index if not exists idx_articles_ranking_score on articles(ranking_score desc);
 create index if not exists idx_articles_published_ranking on articles(published_at desc, ranking_score desc);
+create index if not exists idx_articles_document_type on articles(document_type) where document_type is not null;
 
 -- ============================================
 -- SUMMARIES (AI-generated, linked to articles)
@@ -76,6 +78,7 @@ create table if not exists summaries (
   why_it_matters text,
   the_context text,
   key_entities jsonb default '[]',
+  deciphering jsonb,
   model_used text default 'claude-sonnet-4-20250514',
   tokens_used integer default 0,
   generated_at timestamptz default now()

@@ -15,6 +15,17 @@ export type InterestLevel = "high" | "medium" | "low" | "hidden";
 
 export type SourceTier = 1 | 2 | 3;
 
+export type DocumentType = '8-K' | 'S-1' | '10-K' | 'fed-release';
+
+export interface DecipheringSummary {
+  theFiling: string;
+  whatChanged: string;
+  whatsBuried: string;
+  whatTheJargonMeans: string;
+  theRealStory: string;
+  watchNext: string;
+}
+
 export interface Article {
   id: string;
   title: string;
@@ -31,6 +42,7 @@ export interface Article {
   watchlistMatches: string[];
   sourceTier?: SourceTier;
   rankingScore?: number;
+  documentType?: DocumentType;
 }
 
 export interface Summary {
@@ -41,6 +53,7 @@ export interface Summary {
   whyItMatters: string;
   theContext: string;
   keyEntities: Entity[];
+  deciphering?: DecipheringSummary;
   generatedAt: string;
 }
 

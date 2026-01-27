@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ingestAllNews, getStoredArticles } from "@/lib/article-ingestion";
 import { summarizeBatchBrief } from "@/lib/summarization";
+import { summarizeDecipheringBatch } from "@/lib/deciphering";
 import { processIntelligenceBatch } from "@/lib/intelligence";
 import { isClaudeConfigured } from "@/lib/claude";
 import { ingestNewsletters } from "@/lib/newsletter-ingestion";
 import { rankRecentArticles } from "@/lib/story-ranker";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { getStoredTokens } from "@/lib/token-store";
+import { extractCompanyFromEdgarTitle } from "@/lib/sec-filter";
+import type { DocumentType } from "@/types";
 
 /**
  * GET /api/cron/ingest
@@ -44,6 +47,58 @@ export async function GET(request: NextRequest) {
 
       if (articlesToSummarize.length > 0) {
         summaryStats = await summarizeBatchBrief(articlesToSummarize);
+      }
+    }
+
+    // 2b. Generate Deciphering summaries for primary documents
+    let decipheringStats = null;
+    if (isClaudeConfigured() && result.articles.length > 0) {
+      const primaryDocs = result.articles.filter(
+        (a) => a.documentType && a.content && a.content.length > 50
+      );
+
+      if (primaryDocs.length > 0) {
+        // We need article IDs from the database for storage.
+        // Look up the stored articles by content_hash to get their UUIDs.
+        const primaryDocArticles: Array<{
+          id: string;
+          title: string;
+          content: string;
+          documentType: DocumentType;
+          companyName?: string;
+        }> = [];
+
+        if (isSupabaseConfigured() && supabase) {
+          const hashes = primaryDocs.map((a) => a.contentHash);
+          const { data: storedPrimary } = await supabase
+            .from("articles")
+            .select("id, title, content, content_hash, document_type")
+            .in("content_hash", hashes);
+
+          if (storedPrimary) {
+            for (const stored of storedPrimary) {
+              const original = primaryDocs.find(
+                (a) => a.contentHash === stored.content_hash
+              );
+              if (stored.document_type && stored.content) {
+                primaryDocArticles.push({
+                  id: stored.id,
+                  title: stored.title,
+                  content: stored.content,
+                  documentType: stored.document_type as DocumentType,
+                  companyName:
+                    original?.sourceId.startsWith("sec-edgar-")
+                      ? extractCompanyFromEdgarTitle(stored.title) ?? undefined
+                      : undefined,
+                });
+              }
+            }
+          }
+        }
+
+        if (primaryDocArticles.length > 0) {
+          decipheringStats = await summarizeDecipheringBatch(primaryDocArticles);
+        }
       }
     }
 
@@ -130,6 +185,7 @@ export async function GET(request: NextRequest) {
       totalDuplicates: result.totalDuplicates,
       totalErrors: result.totalErrors,
       summaryStats,
+      decipheringStats,
       intelligenceStats,
       rankingStats,
       newsletterStats,
