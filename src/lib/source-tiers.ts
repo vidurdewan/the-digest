@@ -31,6 +31,10 @@ const TIER_1_NAMES: string[] = [
   "Puck News",
   "Puck",
   "Semafor",
+  "Semafor Energy",
+  "Semafor Gulf",
+  "Semafor Business",
+  "Semafor Tech",
   "Bill Bishop",
   "Sinocism",
   "Marc Rubinstein",
@@ -43,6 +47,19 @@ const TIER_1_NAMES: string[] = [
   "SEC EDGAR 10-K",
   "Federal Reserve Monetary Policy",
   "Federal Reserve Press Releases",
+  // Bloomberg (moved from Tier 2)
+  "Bloomberg",
+  "Bloomberg News",
+  "Bloomberg Opinion",
+  "Bloomberg Markets",
+  "Bloomberg Technology",
+  "Bloomberg Businessweek",
+  "Bloomberg Evening Briefing",
+  "Bloomberg Morning Briefing",
+  "Bloomberg Green",
+  // Benedict Evans (moved from Tier 3 default)
+  "Benedict Evans",
+  "Benedict's Newsletter",
 ];
 
 const TIER_1_DOMAINS: string[] = [
@@ -59,20 +76,13 @@ const TIER_1_DOMAINS: string[] = [
   "notboring.co",
   "sec.gov",
   "federalreserve.gov",
+  "bloomberg.com",
+  "ben-evans.com",
 ];
 
 // ─── Tier 2: Quality Sources ───────────────────────────────────
 // Strong journalism, usually reporting on what Tier 1 broke
 const TIER_2_NAMES: string[] = [
-  "Bloomberg",
-  "Bloomberg News",
-  "Bloomberg Opinion",
-  "Bloomberg Markets",
-  "Bloomberg Technology",
-  "Bloomberg Businessweek",
-  "Bloomberg Evening Briefing",
-  "Bloomberg Morning Briefing",
-  "Bloomberg Green",
   "Financial Times",
   "FT",
   "FT One Must-Read",
@@ -94,10 +104,12 @@ const TIER_2_NAMES: string[] = [
   "MIT Technology Review",
   "StrictlyVC",
   "CB Insights",
+  // Lenny's Newsletter (moved from Tier 3 default)
+  "Lenny's Newsletter",
+  "Lenny Rachitsky",
 ];
 
 const TIER_2_DOMAINS: string[] = [
-  "bloomberg.com",
   "ft.com",
   "wsj.com",
   "reuters.com",
@@ -109,6 +121,7 @@ const TIER_2_DOMAINS: string[] = [
   "technologyreview.com",
   "strictlyvc.com",
   "cbinsights.com",
+  "lennysnewsletter.com",
 ];
 
 // ─── Tier 3: Mainstream Sources ────────────────────────────────
