@@ -16,7 +16,7 @@ export function SwimlaneCard({
 }: SwimlaneCardProps) {
   return (
     <div
-      className="group relative w-[240px] shrink-0 snap-start cursor-pointer rounded-2xl border border-border-secondary bg-bg-card p-4 transition-all duration-150 hover:shadow-sm hover:border-border-primary"
+      className="card-interactive group relative w-[240px] shrink-0 snap-start cursor-pointer rounded-2xl border border-border-secondary bg-bg-card p-4"
       onClick={() => onOpenReader?.(article)}
     >
       {/* Title */}

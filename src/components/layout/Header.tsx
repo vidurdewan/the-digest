@@ -1,10 +1,30 @@
 "use client";
 
-import { useSidebarStore } from "@/lib/store";
-import { PanelLeft, Bell, RefreshCw } from "lucide-react";
+import { useSidebarStore, useThemeStore } from "@/lib/store";
+import { PanelLeft, Bell, RefreshCw, Sun, Moon, Newspaper } from "lucide-react";
+import type { Theme } from "@/types";
+
+const themeOrder: Theme[] = ["light", "dark", "newspaper"];
+const themeIcons: Record<Theme, React.ReactNode> = {
+  light: <Sun size={15} />,
+  dark: <Moon size={15} />,
+  newspaper: <Newspaper size={15} />,
+};
+const themeLabels: Record<Theme, string> = {
+  light: "Light",
+  dark: "Dark",
+  newspaper: "Paper",
+};
 
 export function Header() {
   const { isOpen, toggle } = useSidebarStore();
+  const { theme, setTheme } = useThemeStore();
+
+  const cycleTheme = () => {
+    const currentIdx = themeOrder.indexOf(theme);
+    const next = themeOrder[(currentIdx + 1) % themeOrder.length];
+    setTheme(next);
+  };
 
   return (
     <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-border-secondary bg-bg-primary/80 px-4 backdrop-blur-sm transition-theme md:px-6">
@@ -26,7 +46,16 @@ export function Header() {
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
+        {/* Theme cycle button */}
+        <button
+          onClick={cycleTheme}
+          className="rounded-lg p-2 text-text-tertiary hover:bg-bg-hover hover:text-text-primary transition-colors"
+          aria-label={`Switch theme (current: ${themeLabels[theme]})`}
+          title={`Theme: ${themeLabels[theme]}`}
+        >
+          {themeIcons[theme]}
+        </button>
         <button
           className="rounded-lg p-2 text-text-tertiary hover:bg-bg-hover hover:text-text-primary transition-colors"
           aria-label="Refresh content"

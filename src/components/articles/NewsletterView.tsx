@@ -571,7 +571,7 @@ function NewsletterCard({
 
   return (
     <div
-      className={`rounded-2xl border bg-bg-card transition-all duration-200 ${
+      className={`newsletter-card rounded-2xl border bg-bg-card transition-all duration-200 ${
         isExpanded
           ? "border-border-primary shadow-md"
           : newsletter.isRead
@@ -627,8 +627,8 @@ function NewsletterCard({
             </p>
           )}
 
-          {/* Action buttons */}
-          <div className="mt-2 flex items-center gap-2">
+          {/* Action buttons — visible on hover */}
+          <div className="newsletter-actions mt-2 flex items-center gap-2">
             <button
               onClick={(e) => {
                 e.stopPropagation();

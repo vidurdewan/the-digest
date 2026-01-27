@@ -1,6 +1,7 @@
 "use client";
 
-import { RefreshCw, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { RefreshCw, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import { useTodaysBrief } from "@/hooks/useTodaysBrief";
 
 // Parse brief text into structured sections
@@ -131,6 +132,7 @@ function BriefContent({ content }: { content: string }) {
 
 export function TodaysBrief() {
   const { brief, isLoading, error, refresh } = useTodaysBrief();
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -140,44 +142,91 @@ export function TodaysBrief() {
 
   if (error && !brief && !isLoading) return null;
 
+  // Extract a preview line from the brief
+  const previewLine = brief
+    ? (() => {
+        const { tldr } = parseBrief(brief);
+        if (tldr) return tldr;
+        const firstLine = brief.split("\n").find((l) => l.trim() && !l.trim().startsWith("##") && !l.trim().startsWith("**"));
+        return firstLine?.trim() || "";
+      })()
+    : "";
+
   return (
     <section className="rounded-2xl border border-border-secondary bg-bg-card shadow-sm overflow-hidden">
-      {/* Header — clean, minimal */}
-      <div className="flex items-center justify-between border-b border-border-secondary px-6 py-4">
-        <div>
-          <h3 className="text-base font-bold text-text-primary">
-            Today&apos;s Brief
-          </h3>
-          <p className="text-xs text-text-tertiary mt-0.5">{today}</p>
-        </div>
-        <button
-          onClick={refresh}
-          disabled={isLoading}
-          className="rounded-lg p-1.5 text-text-tertiary hover:text-text-secondary hover:bg-bg-secondary transition-colors disabled:opacity-50"
-          title="Regenerate brief"
-        >
-          {isLoading ? (
-            <Loader2 size={14} className="animate-spin" />
-          ) : (
-            <RefreshCw size={14} />
-          )}
-        </button>
-      </div>
-
-      {/* Content */}
-      <div className="px-6 py-5">
-        {isLoading && !brief && (
-          <div className="space-y-3">
-            <div className="h-4 w-3/4 animate-pulse rounded bg-bg-secondary" />
-            <div className="h-4 w-full animate-pulse rounded bg-bg-secondary" />
-            <div className="h-4 w-11/12 animate-pulse rounded bg-bg-secondary" />
-            <div className="mt-4 h-4 w-full animate-pulse rounded bg-bg-secondary" />
-            <div className="h-4 w-9/12 animate-pulse rounded bg-bg-secondary" />
+      {/* Header — clickable to expand/collapse */}
+      <div
+        className="flex items-center justify-between px-6 py-4 cursor-pointer hover:bg-bg-hover/50 transition-colors"
+        onClick={() => brief && setIsExpanded(!isExpanded)}
+      >
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <h3 className="text-base font-bold text-text-primary">
+              Today&apos;s Brief
+            </h3>
+            <span className="text-xs text-text-tertiary">{today}</span>
           </div>
-        )}
-
-        {brief && <BriefContent content={brief} />}
+          {/* Preview line when collapsed */}
+          {!isExpanded && previewLine && (
+            <p className="mt-1 text-sm text-text-secondary truncate">
+              {previewLine.replace(/\*\*/g, "").slice(0, 120)}
+              {previewLine.length > 120 ? "..." : ""}
+            </p>
+          )}
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0 ml-3">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              refresh();
+            }}
+            disabled={isLoading}
+            className="rounded-lg p-1.5 text-text-tertiary hover:text-text-secondary hover:bg-bg-secondary transition-colors disabled:opacity-50"
+            title="Regenerate brief"
+          >
+            {isLoading ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <RefreshCw size={14} />
+            )}
+          </button>
+          {brief && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsExpanded(!isExpanded);
+              }}
+              className="rounded-lg p-1.5 text-text-tertiary hover:text-text-secondary transition-colors"
+            >
+              {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Content — only when expanded */}
+      {isExpanded && (
+        <div className="border-t border-border-secondary px-6 py-5">
+          {isLoading && !brief && (
+            <div className="space-y-3">
+              <div className="h-4 w-3/4 animate-pulse rounded bg-bg-secondary" />
+              <div className="h-4 w-full animate-pulse rounded bg-bg-secondary" />
+              <div className="h-4 w-11/12 animate-pulse rounded bg-bg-secondary" />
+              <div className="mt-4 h-4 w-full animate-pulse rounded bg-bg-secondary" />
+              <div className="h-4 w-9/12 animate-pulse rounded bg-bg-secondary" />
+            </div>
+          )}
+
+          {brief && <BriefContent content={brief} />}
+        </div>
+      )}
+
+      {/* Loading state when not expanded */}
+      {!isExpanded && isLoading && !brief && (
+        <div className="border-t border-border-secondary px-6 py-3">
+          <div className="h-3 w-2/3 animate-pulse rounded bg-bg-secondary" />
+        </div>
+      )}
     </section>
   );
 }

@@ -26,30 +26,57 @@ const moveTypeConfig: Record<
   hire: {
     icon: <UserCheck size={14} />,
     label: "New Hire",
-    color: "bg-green-100 text-green-700",
+    color: "bg-accent-success/15 text-accent-success",
   },
   departure: {
     icon: <UserMinus size={14} />,
     label: "Departure",
-    color: "bg-red-100 text-red-700",
+    color: "bg-accent-danger/15 text-accent-danger",
   },
   promotion: {
     icon: <TrendingUp size={14} />,
     label: "Promotion",
-    color: "bg-blue-100 text-blue-700",
+    color: "bg-accent-primary/15 text-accent-primary",
   },
   "board-appointment": {
     icon: <Award size={14} />,
     label: "Board",
-    color: "bg-purple-100 text-purple-700",
+    color: "bg-accent-warning/15 text-accent-warning",
   },
 };
+
+function isValidPersonName(name: string): boolean {
+  // Filter out garbage regex captures
+  const trimmed = name.trim();
+  if (trimmed.length < 3 || trimmed.length > 60) return false;
+  // Must contain at least two words (first + last name)
+  const words = trimmed.split(/\s+/);
+  if (words.length < 2 || words.length > 5) return false;
+  // Should start with uppercase
+  if (!/^[A-Z]/.test(trimmed)) return false;
+  // Should not contain numbers or special chars (except hyphens/apostrophes)
+  if (/[0-9@#$%^&*()=+[\]{}|\\/<>]/.test(trimmed)) return false;
+  // Each word should be reasonable length
+  if (words.some((w) => w.length > 20)) return false;
+  return true;
+}
 
 export function PeopleMovesView({
   articles,
   onOpenReader,
 }: PeopleMovesViewProps) {
-  const moves = useMemo(() => detectAllMovements(articles), [articles]);
+  const allMoves = useMemo(() => detectAllMovements(articles), [articles]);
+
+  // Filter to medium/high confidence with valid person names
+  const moves = useMemo(
+    () =>
+      allMoves.filter(
+        (m) =>
+          (m.confidence === "high" || m.confidence === "medium") &&
+          isValidPersonName(m.personName)
+      ),
+    [allMoves]
+  );
 
   return (
     <div className="space-y-6">
@@ -78,14 +105,18 @@ export function PeopleMovesView({
           ))}
         </div>
       ) : (
-        <div className="rounded-xl border border-border-primary bg-bg-card p-8 text-center">
-          <UserCheck size={32} className="mx-auto mb-3 text-text-tertiary" />
-          <p className="text-text-secondary">
-            No executive movements detected yet.
+        <div className="rounded-2xl border border-border-secondary bg-bg-card p-12 text-center">
+          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-bg-secondary">
+            <UserCheck size={28} className="text-text-tertiary opacity-50" />
+          </div>
+          <h3 className="text-lg font-semibold text-text-primary mb-1.5">
+            No executive movements detected
+          </h3>
+          <p className="text-sm text-text-secondary max-w-sm mx-auto mb-1">
+            As articles are ingested, hires, departures, promotions, and board appointments will surface here.
           </p>
-          <p className="mt-1 text-sm text-text-tertiary">
-            As articles are ingested, executive changes will appear here
-            automatically.
+          <p className="text-xs text-text-tertiary max-w-sm mx-auto">
+            Movements are extracted from article titles and summaries using NLP heuristics.
           </p>
         </div>
       )}
@@ -106,7 +137,7 @@ function MoveCard({
 
   return (
     <div
-      className="rounded-xl border border-border-primary bg-bg-card p-4 transition-colors hover:border-accent-primary/20 hover:shadow-sm cursor-pointer"
+      className="card-interactive rounded-xl border border-border-secondary bg-bg-card p-4 cursor-pointer"
       onClick={() => article && onOpenReader?.(article)}
     >
       <div className="flex items-start gap-3">
@@ -126,10 +157,10 @@ function MoveCard({
             <span
               className={`rounded-full px-1.5 py-0.5 text-xs ${
                 move.confidence === "high"
-                  ? "bg-green-100 text-green-600"
+                  ? "bg-accent-success/15 text-accent-success"
                   : move.confidence === "medium"
-                    ? "bg-yellow-100 text-yellow-600"
-                    : "bg-gray-100 text-gray-500"
+                    ? "bg-accent-warning/15 text-accent-warning"
+                    : "bg-bg-secondary text-text-tertiary"
               }`}
             >
               {move.confidence}

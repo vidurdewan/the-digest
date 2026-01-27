@@ -170,10 +170,14 @@ export function WatchlistView({
           </div>
         ))}
         {watchlist.length === 0 && (
-          <p className="text-sm text-text-tertiary">
-            No watchlist items yet. Add companies, funds, people, or keywords to
-            track.
-          </p>
+          <div className="rounded-xl border border-dashed border-border-primary bg-bg-secondary/50 px-5 py-4 text-center">
+            <p className="text-sm text-text-secondary">
+              No watchlist items yet
+            </p>
+            <p className="mt-0.5 text-xs text-text-tertiary">
+              Add companies, funds, people, or keywords to track across your feed.
+            </p>
+          </div>
         )}
       </div>
 
@@ -207,13 +211,18 @@ export function WatchlistView({
             </div>
           ))
         ) : (
-          <div className="rounded-xl border border-border-primary bg-bg-card p-8 text-center">
-            <Eye size={32} className="mx-auto mb-3 text-text-tertiary" />
-            <p className="text-text-secondary">
-              No articles currently match your watchlist.
+          <div className="rounded-2xl border border-border-secondary bg-bg-card p-12 text-center">
+            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-bg-secondary">
+              <Eye size={28} className="text-text-tertiary opacity-50" />
+            </div>
+            <h3 className="text-lg font-semibold text-text-primary mb-1.5">
+              No matches yet
+            </h3>
+            <p className="text-sm text-text-secondary max-w-xs mx-auto mb-1">
+              Articles mentioning your watched items will surface here automatically.
             </p>
-            <p className="mt-1 text-sm text-text-tertiary">
-              Articles mentioning your watched items will appear here.
+            <p className="text-xs text-text-tertiary max-w-xs mx-auto">
+              Try adding companies like &ldquo;OpenAI&rdquo; or people like &ldquo;Sam Altman&rdquo; to get started.
             </p>
           </div>
         )}

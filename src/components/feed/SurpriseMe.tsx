@@ -133,7 +133,7 @@ export function SurpriseMe({
   };
 
   return (
-    <div className="relative rounded-xl border border-dashed border-accent-primary/30 bg-gradient-to-r from-accent-primary/5 to-transparent p-4 sm:p-5">
+    <div className="relative rounded-2xl border border-border-secondary bg-gradient-to-br from-accent-primary/[0.04] via-transparent to-accent-primary/[0.02] p-4 sm:p-5">
       {/* Dismiss button */}
       <button
         onClick={handleDismiss}
@@ -143,13 +143,10 @@ export function SurpriseMe({
       </button>
 
       {/* Header */}
-      <div className="mb-3 flex items-center gap-2">
-        <Sparkles size={16} className="text-accent-primary" />
-        <span className="text-xs font-semibold uppercase tracking-wider text-accent-primary">
-          Outside your usual
-        </span>
-        <span className="rounded-full bg-accent-primary/10 px-2 py-0.5 text-[10px] font-medium text-accent-primary">
-          Surprise Me
+      <div className="mb-3 flex items-center gap-1.5">
+        <Sparkles size={14} className="text-accent-primary" />
+        <span className="text-xs font-semibold text-accent-primary">
+          Something Different
         </span>
       </div>
 

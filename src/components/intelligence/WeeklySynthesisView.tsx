@@ -156,29 +156,30 @@ export function WeeklySynthesisView() {
 
       {/* Error state */}
       {error && !isLoading && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-center">
-          <p className="text-sm text-red-600">{error}</p>
+        <div className="rounded-xl border border-accent-danger/30 bg-accent-danger/10 p-4 text-center">
+          <p className="text-sm text-accent-danger">{error}</p>
         </div>
       )}
 
       {/* Empty state */}
       {!isLoading && !error && !synthesis && (
-        <div className="rounded-xl border border-border-primary bg-bg-card p-12 text-center">
-          <BookOpen
-            size={48}
-            className="mx-auto mb-4 text-text-tertiary opacity-30"
-          />
-          <h3 className="text-lg font-semibold text-text-primary mb-1">
+        <div className="rounded-2xl border border-border-secondary bg-bg-card p-12 text-center">
+          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-bg-secondary">
+            <BookOpen size={28} className="text-text-tertiary opacity-50" />
+          </div>
+          <h3 className="text-lg font-semibold text-text-primary mb-1.5">
             No synthesis yet
           </h3>
-          <p className="text-sm text-text-tertiary mb-4">
-            Generate your first weekly intelligence synthesis to see threads and
-            patterns.
+          <p className="text-sm text-text-secondary max-w-sm mx-auto mb-1">
+            Generate your first weekly intelligence synthesis to surface recurring threads and emerging patterns.
+          </p>
+          <p className="text-xs text-text-tertiary max-w-sm mx-auto mb-5">
+            The synthesis analyzes all articles from the past week and identifies connections across stories.
           </p>
           <button
             onClick={handleGenerate}
             disabled={isGenerating}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-accent-primary px-4 py-2 text-sm font-medium text-text-inverse hover:bg-accent-primary-hover transition-colors disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-accent-primary px-5 py-2.5 text-sm font-medium text-text-inverse hover:bg-accent-primary-hover transition-colors disabled:opacity-50"
           >
             <RefreshCw
               size={14}

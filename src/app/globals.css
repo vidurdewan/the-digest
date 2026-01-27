@@ -10,6 +10,10 @@
   --bg-card: #FFFFFF;
   --bg-hover: #F5F3F0;
   --bg-active: #F5EEEA;
+  --bg-elevated: #FFFFFF;
+  --bg-surface-1: #FFFFFF;
+  --bg-surface-2: #FAFAF8;
+  --bg-surface-3: #F5F3F0;
 
   --text-primary: #1A1A1A;
   --text-secondary: #555555;
@@ -33,28 +37,52 @@
   --font-heading: var(--font-libre), Georgia, "Times New Roman", serif;
   --font-body: var(--font-inter), system-ui, -apple-system, sans-serif;
   --font-mono: var(--font-geist-mono), monospace;
+
+  /* Topic colors */
+  --topic-vc: #6366f1;
+  --topic-vc-bg: #eef2ff;
+  --topic-fundraising: #059669;
+  --topic-fundraising-bg: #ecfdf5;
+  --topic-executive: #7c3aed;
+  --topic-executive-bg: #f5f3ff;
+  --topic-financial: #0284c7;
+  --topic-financial-bg: #f0f9ff;
+  --topic-geopolitics: #dc2626;
+  --topic-geopolitics-bg: #fef2f2;
+  --topic-automotive: #475569;
+  --topic-automotive-bg: #f8fafc;
+  --topic-science: #0891b2;
+  --topic-science-bg: #ecfeff;
+  --topic-local: #ea580c;
+  --topic-local-bg: #fff7ed;
+  --topic-politics: #e11d48;
+  --topic-politics-bg: #fff1f2;
 }
 
 /* ===== DARK THEME ===== */
 [data-theme="dark"] {
   --bg-primary: #0d0d0d;
-  --bg-secondary: #171717;
-  --bg-tertiary: #262626;
-  --bg-sidebar: #141414;
-  --bg-card: #1a1a1a;
-  --bg-hover: #262626;
+  --bg-secondary: #141414;
+  --bg-tertiary: #1e1e1e;
+  --bg-sidebar: #111111;
+  --bg-card: #181818;
+  --bg-hover: #222222;
   --bg-active: #2a2220;
+  --bg-elevated: #1e1e1e;
+  --bg-surface-1: #141414;
+  --bg-surface-2: #181818;
+  --bg-surface-3: #1e1e1e;
 
   --text-primary: #f5f5f5;
   --text-secondary: #a3a3a3;
   --text-tertiary: #737373;
   --text-inverse: #0d0d0d;
 
-  --border-primary: #2e2e2e;
-  --border-secondary: #1f1f1f;
+  --border-primary: #2a2a2a;
+  --border-secondary: #1e1e1e;
 
-  --accent-primary: #D4897A;
-  --accent-primary-hover: #E09A8B;
+  --accent-primary: #E09A8B;
+  --accent-primary-hover: #EBB0A3;
   --accent-secondary: #2a1f1d;
   --accent-warning: #D4A020;
   --accent-danger: #C44040;
@@ -67,6 +95,26 @@
   --font-heading: var(--font-libre), Georgia, "Times New Roman", serif;
   --font-body: var(--font-inter), system-ui, -apple-system, sans-serif;
   --font-mono: var(--font-geist-mono), monospace;
+
+  /* Topic colors — brighter for dark mode */
+  --topic-vc: #818cf8;
+  --topic-vc-bg: #1e1b4b;
+  --topic-fundraising: #34d399;
+  --topic-fundraising-bg: #022c22;
+  --topic-executive: #a78bfa;
+  --topic-executive-bg: #1e1033;
+  --topic-financial: #38bdf8;
+  --topic-financial-bg: #0c1929;
+  --topic-geopolitics: #f87171;
+  --topic-geopolitics-bg: #2a0f0f;
+  --topic-automotive: #94a3b8;
+  --topic-automotive-bg: #1a1e25;
+  --topic-science: #22d3ee;
+  --topic-science-bg: #0c1f24;
+  --topic-local: #fb923c;
+  --topic-local-bg: #271608;
+  --topic-politics: #fb7185;
+  --topic-politics-bg: #2a0f15;
 }
 
 /* ===== NEWSPAPER THEME ===== */
@@ -78,6 +126,10 @@
   --bg-card: #FFFBF5;
   --bg-hover: #FEF3E2;
   --bg-active: #FDE8CD;
+  --bg-elevated: #FFFBF5;
+  --bg-surface-1: #FFF8F0;
+  --bg-surface-2: #FFFBF5;
+  --bg-surface-3: #FEF3E2;
 
   --text-primary: #1a1a1a;
   --text-secondary: #5c4a3a;
@@ -101,6 +153,26 @@
   --font-heading: var(--font-libre), Georgia, "Times New Roman", serif;
   --font-body: var(--font-inter), system-ui, -apple-system, sans-serif;
   --font-mono: var(--font-geist-mono), monospace;
+
+  /* Topic colors — warm toned for newspaper */
+  --topic-vc: #4f46e5;
+  --topic-vc-bg: #eef2ff;
+  --topic-fundraising: #059669;
+  --topic-fundraising-bg: #ecfdf5;
+  --topic-executive: #7c3aed;
+  --topic-executive-bg: #f5f3ff;
+  --topic-financial: #0284c7;
+  --topic-financial-bg: #f0f9ff;
+  --topic-geopolitics: #c0392b;
+  --topic-geopolitics-bg: #fef2f2;
+  --topic-automotive: #475569;
+  --topic-automotive-bg: #f8fafc;
+  --topic-science: #0891b2;
+  --topic-science-bg: #ecfeff;
+  --topic-local: #ea580c;
+  --topic-local-bg: #fff7ed;
+  --topic-politics: #e11d48;
+  --topic-politics-bg: #fff1f2;
 }
 
 /* ===== TAILWIND THEME INTEGRATION ===== */
@@ -112,6 +184,10 @@
   --color-bg-card: var(--bg-card);
   --color-bg-hover: var(--bg-hover);
   --color-bg-active: var(--bg-active);
+  --color-bg-elevated: var(--bg-elevated);
+  --color-bg-surface-1: var(--bg-surface-1);
+  --color-bg-surface-2: var(--bg-surface-2);
+  --color-bg-surface-3: var(--bg-surface-3);
 
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
@@ -199,12 +275,188 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
-/* Uniform topic tag style — muted, warm palette */
+/* ===== TOPIC TAG COLORS — distinct per category ===== */
 .topic-tag {
-  background-color: var(--bg-tertiary);
-  color: var(--text-secondary);
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 600;
   font-family: var(--font-body);
   letter-spacing: 0.02em;
+}
+
+.topic-tag[data-topic="vc-startups"] {
+  background-color: var(--topic-vc-bg);
+  color: var(--topic-vc);
+}
+.topic-tag[data-topic="fundraising-acquisitions"] {
+  background-color: var(--topic-fundraising-bg);
+  color: var(--topic-fundraising);
+}
+.topic-tag[data-topic="executive-movements"] {
+  background-color: var(--topic-executive-bg);
+  color: var(--topic-executive);
+}
+.topic-tag[data-topic="financial-markets"] {
+  background-color: var(--topic-financial-bg);
+  color: var(--topic-financial);
+}
+.topic-tag[data-topic="geopolitics"] {
+  background-color: var(--topic-geopolitics-bg);
+  color: var(--topic-geopolitics);
+}
+.topic-tag[data-topic="automotive"] {
+  background-color: var(--topic-automotive-bg);
+  color: var(--topic-automotive);
+}
+.topic-tag[data-topic="science-tech"] {
+  background-color: var(--topic-science-bg);
+  color: var(--topic-science);
+}
+.topic-tag[data-topic="local-news"] {
+  background-color: var(--topic-local-bg);
+  color: var(--topic-local);
+}
+.topic-tag[data-topic="politics"] {
+  background-color: var(--topic-politics-bg);
+  color: var(--topic-politics);
+}
+
+/* Fallback for topic tags without data-topic */
+.topic-tag:not([data-topic]) {
+  background-color: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+/* ===== STORY TYPE LEFT BORDERS ===== */
+.story-border-breaking { border-left: 3px solid #dc2626; }
+.story-border-developing { border-left: 3px solid #f59e0b; }
+.story-border-analysis { border-left: 3px solid #3b82f6; }
+.story-border-opinion { border-left: 3px solid #8b5cf6; }
+.story-border-feature { border-left: 3px solid #059669; }
+.story-border-update { border-left: 3px solid #6b7280; }
+
+/* ===== CARD INTERACTION STATES ===== */
+.card-interactive {
+  transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+}
+.card-interactive:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-primary);
+}
+.card-interactive:active {
+  transform: scale(0.995);
+}
+
+/* ===== PAGE TRANSITION ANIMATION ===== */
+.page-enter {
+  animation: pageFadeIn 0.15s ease-out;
+}
+
+@keyframes pageFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ===== NEWSLETTER ACTIONS — show on hover ===== */
+.newsletter-card .newsletter-actions {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+.newsletter-card:hover .newsletter-actions,
+.newsletter-card:focus-within .newsletter-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+/* Always show actions on touch devices */
+@media (hover: none) {
+  .newsletter-card .newsletter-actions {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+/* ===== COLLAPSED SIDEBAR ACTIVE INDICATOR ===== */
+.sidebar-icon-active {
+  position: relative;
+}
+.sidebar-icon-active::before {
+  content: "";
+  position: absolute;
+  left: -8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 20px;
+  border-radius: 0 2px 2px 0;
+  background-color: var(--accent-primary);
+}
+
+/* ===== SIDEBAR SECTION LABELS ===== */
+.sidebar-section-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  padding: 0 12px;
+  margin-top: 16px;
+  margin-bottom: 4px;
+}
+.sidebar-section-label:first-child {
+  margin-top: 0;
+}
+
+/* ===== MOBILE BOTTOM SHEET ===== */
+.mobile-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(2px);
+  animation: fadeIn 0.2s ease;
+}
+
+.mobile-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: var(--bg-card);
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  max-height: 85vh;
+  overflow-y: auto;
+  animation: sheetSlideUp 0.3s ease-out;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.15);
+}
+
+.mobile-sheet-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border-primary);
+  margin: 8px auto 4px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes sheetSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

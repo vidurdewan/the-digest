@@ -1,7 +1,6 @@
 "use client";
 
-import { useSidebarStore, navigationSections } from "@/lib/store";
-import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { useSidebarStore, navigationGroups, bottomNavSections } from "@/lib/store";
 import {
   Zap,
   Mail,
@@ -21,71 +20,174 @@ import {
 } from "lucide-react";
 
 const iconMap: Record<string, React.ReactNode> = {
-  Zap: <Zap size={20} />,
-  Mail: <Mail size={20} />,
-  Newspaper: <Newspaper size={20} />,
-  Eye: <Eye size={20} />,
-  Bookmark: <Bookmark size={20} />,
-  Search: <Search size={20} />,
-  Rss: <Rss size={20} />,
-  Settings: <Settings size={20} />,
-  UserCheck: <UserCheck size={20} />,
-  Building2: <Building2 size={20} />,
-  MessageSquare: <MessageSquare size={20} />,
-  FileText: <FileText size={20} />,
-  BookOpen: <BookOpen size={20} />,
+  Zap: <Zap size={18} />,
+  Mail: <Mail size={18} />,
+  Newspaper: <Newspaper size={18} />,
+  Eye: <Eye size={18} />,
+  Bookmark: <Bookmark size={18} />,
+  Search: <Search size={18} />,
+  Rss: <Rss size={18} />,
+  Settings: <Settings size={18} />,
+  UserCheck: <UserCheck size={18} />,
+  Building2: <Building2 size={18} />,
+  MessageSquare: <MessageSquare size={18} />,
+  FileText: <FileText size={18} />,
+  BookOpen: <BookOpen size={18} />,
 };
 
 export function Sidebar() {
-  const { isOpen, activeSection, toggle, setActiveSection } =
+  const { isOpen, activeSection, toggle, setActiveSection, setOpen } =
     useSidebarStore();
 
   return (
     <>
-      {/* Mobile overlay */}
+      {/* Mobile bottom sheet overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-20 bg-black/50 lg:hidden"
+          className="mobile-sheet-overlay lg:hidden"
           onClick={toggle}
         />
       )}
 
-      {/* Sidebar */}
+      {/* Mobile bottom sheet sidebar */}
+      {isOpen && (
+        <div className="mobile-sheet lg:hidden">
+          <div className="mobile-sheet-handle" />
+          <nav className="px-3 pt-2 pb-6">
+            {navigationGroups.map((group, gi) => (
+              <div key={gi}>
+                {group.label && (
+                  <div className="sidebar-section-label">{group.label}</div>
+                )}
+                <ul className="space-y-0.5">
+                  {group.items.map((section) => {
+                    const isActive = activeSection === section.id;
+                    return (
+                      <li key={section.id}>
+                        <button
+                          onClick={() => {
+                            setActiveSection(section.id);
+                            setOpen(false);
+                          }}
+                          className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
+                            isActive
+                              ? "bg-bg-active text-accent-primary"
+                              : "text-text-secondary hover:bg-bg-hover hover:text-text-primary"
+                          }`}
+                        >
+                          <span className="shrink-0">{iconMap[section.icon]}</span>
+                          <span>{section.label}</span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ))}
+            <div className="mt-2 border-t border-border-secondary pt-2">
+              <ul className="space-y-0.5">
+                {bottomNavSections.map((section) => {
+                  const isActive = activeSection === section.id;
+                  return (
+                    <li key={section.id}>
+                      <button
+                        onClick={() => {
+                          setActiveSection(section.id);
+                          setOpen(false);
+                        }}
+                        className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
+                          isActive
+                            ? "bg-bg-active text-accent-primary"
+                            : "text-text-secondary hover:bg-bg-hover hover:text-text-primary"
+                        }`}
+                      >
+                        <span className="shrink-0">{iconMap[section.icon]}</span>
+                        <span>{section.label}</span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </nav>
+        </div>
+      )}
+
+      {/* Desktop sidebar */}
       <aside
-        className={`fixed top-0 left-0 z-30 flex h-full flex-col border-r border-border-secondary bg-bg-sidebar transition-all duration-300 lg:relative lg:z-auto ${
-          isOpen ? "w-64" : "w-0 lg:w-16"
+        className={`fixed top-0 left-0 z-30 hidden h-full flex-col border-r border-border-secondary bg-bg-sidebar transition-all duration-300 lg:relative lg:z-auto lg:flex ${
+          isOpen ? "w-60" : "w-16"
         } overflow-hidden`}
       >
         {/* Header */}
-        <div className="flex h-16 items-center justify-between border-b border-border-secondary px-4">
+        <div className="flex h-14 items-center justify-between border-b border-border-secondary px-4">
           {isOpen && (
-            <h1 className="font-heading text-lg font-bold text-text-primary whitespace-nowrap tracking-tight">
+            <h1 className="font-heading text-base font-bold text-text-primary whitespace-nowrap tracking-tight">
               The Digest
             </h1>
           )}
           <button
             onClick={toggle}
-            className="rounded-md p-1.5 text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-theme"
+            className="rounded-md p-1.5 text-text-tertiary hover:bg-bg-hover hover:text-text-primary transition-all"
             aria-label={isOpen ? "Collapse sidebar" : "Expand sidebar"}
           >
-            {isOpen ? <PanelLeftClose size={20} /> : <PanelLeft size={20} />}
+            {isOpen ? <PanelLeftClose size={18} /> : <PanelLeft size={18} />}
           </button>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto px-2 py-4">
-          <ul className="space-y-1">
-            {navigationSections.map((section) => {
+        {/* Grouped Navigation */}
+        <nav className="flex-1 overflow-y-auto px-2 py-3">
+          {navigationGroups.map((group, gi) => (
+            <div key={gi}>
+              {isOpen && group.label && (
+                <div className="sidebar-section-label">{group.label}</div>
+              )}
+              {!isOpen && gi > 0 && (
+                <div className="mx-3 my-2 border-t border-border-secondary" />
+              )}
+              <ul className="space-y-0.5">
+                {group.items.map((section) => {
+                  const isActive = activeSection === section.id;
+                  return (
+                    <li key={section.id}>
+                      <button
+                        onClick={() => setActiveSection(section.id)}
+                        className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-medium transition-all duration-150 ${
+                          isActive
+                            ? `bg-bg-active text-accent-primary${!isOpen ? " sidebar-icon-active" : ""}`
+                            : "text-text-secondary hover:bg-bg-hover hover:text-text-primary"
+                        } ${!isOpen ? "justify-center" : ""}`}
+                        title={section.label}
+                      >
+                        <span className="shrink-0">
+                          {iconMap[section.icon]}
+                        </span>
+                        {isOpen && (
+                          <span className="whitespace-nowrap">{section.label}</span>
+                        )}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
+        </nav>
+
+        {/* Bottom-pinned items: Sources + Settings */}
+        <div className="border-t border-border-secondary px-2 py-2">
+          <ul className="space-y-0.5">
+            {bottomNavSections.map((section) => {
               const isActive = activeSection === section.id;
               return (
                 <li key={section.id}>
                   <button
                     onClick={() => setActiveSection(section.id)}
-                    className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
+                    className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-medium transition-all duration-150 ${
                       isActive
-                        ? "bg-bg-active text-accent-primary"
-                        : "text-text-secondary hover:bg-bg-hover hover:text-text-primary"
-                    }`}
+                        ? `bg-bg-active text-accent-primary${!isOpen ? " sidebar-icon-active" : ""}`
+                        : "text-text-tertiary hover:bg-bg-hover hover:text-text-primary"
+                    } ${!isOpen ? "justify-center" : ""}`}
                     title={section.label}
                   >
                     <span className="shrink-0">
@@ -99,14 +201,7 @@ export function Sidebar() {
               );
             })}
           </ul>
-        </nav>
-
-        {/* Footer with theme toggle */}
-        {isOpen && (
-          <div className="border-t border-border-secondary p-4">
-            <ThemeToggle />
-          </div>
-        )}
+        </div>
       </aside>
     </>
   );

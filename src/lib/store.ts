@@ -60,38 +60,53 @@ export const useFeedNavigationStore = create<FeedNavigationState>()((set, get) =
   reset: () => set({ focusedIndex: -1, totalItems: 0 }),
 }));
 
-export const navigationSections: NavigationSection[] = [
-  { id: "priority-feed", label: "Priority Feed", icon: "Zap", path: "/" },
+// Navigation with grouped sections
+export interface NavGroup {
+  label: string;
+  items: NavigationSection[];
+}
+
+export const navigationGroups: NavGroup[] = [
   {
-    id: "newsletters",
-    label: "Newsletters",
-    icon: "Mail",
-    path: "/newsletters",
-  },
-  { id: "news", label: "News by Topic", icon: "Newspaper", path: "/news" },
-  {
-    id: "watchlist",
-    label: "Watchlist Alerts",
-    icon: "Eye",
-    path: "/watchlist",
-  },
-  {
-    id: "people-moves",
-    label: "People Moves",
-    icon: "UserCheck",
-    path: "/people-moves",
+    label: "Feed",
+    items: [
+      { id: "priority-feed", label: "Priority Feed", icon: "Zap", path: "/" },
+      { id: "newsletters", label: "Newsletters", icon: "Mail", path: "/newsletters" },
+      { id: "news", label: "News by Topic", icon: "Newspaper", path: "/news" },
+    ],
   },
   {
-    id: "companies",
-    label: "Company Intel",
-    icon: "Building2",
-    path: "/companies",
+    label: "Intelligence",
+    items: [
+      { id: "watchlist", label: "Watchlist Alerts", icon: "Eye", path: "/watchlist" },
+      { id: "people-moves", label: "People Moves", icon: "UserCheck", path: "/people-moves" },
+      { id: "companies", label: "Company Intel", icon: "Building2", path: "/companies" },
+    ],
   },
-  { id: "saved", label: "Saved", icon: "Bookmark", path: "/saved" },
-  { id: "search", label: "Search", icon: "Search", path: "/search" },
-  { id: "chat", label: "AI Chat", icon: "MessageSquare", path: "/chat" },
-  { id: "brief", label: "Brief Me", icon: "FileText", path: "/brief" },
-  { id: "weekly-synthesis", label: "Weekly Synthesis", icon: "BookOpen", path: "/weekly-synthesis" },
+  {
+    label: "Tools",
+    items: [
+      { id: "search", label: "Search", icon: "Search", path: "/search" },
+      { id: "chat", label: "AI Chat", icon: "MessageSquare", path: "/chat" },
+      { id: "brief", label: "Brief Me", icon: "FileText", path: "/brief" },
+      { id: "weekly-synthesis", label: "Weekly Synthesis", icon: "BookOpen", path: "/weekly-synthesis" },
+    ],
+  },
+  {
+    label: "",
+    items: [
+      { id: "saved", label: "Saved", icon: "Bookmark", path: "/saved" },
+    ],
+  },
+];
+
+export const bottomNavSections: NavigationSection[] = [
   { id: "sources", label: "Sources", icon: "Rss", path: "/sources" },
   { id: "settings", label: "Settings", icon: "Settings", path: "/settings" },
+];
+
+// Flat list for backward compat
+export const navigationSections: NavigationSection[] = [
+  ...navigationGroups.flatMap((g) => g.items),
+  ...bottomNavSections,
 ];
