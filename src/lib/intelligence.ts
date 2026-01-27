@@ -101,6 +101,10 @@ Respond in EXACTLY this JSON format (no markdown, no code fences):
       response.content[0].type === "text" ? response.content[0].text : "";
 
     const parsed = JSON.parse(text.trim());
+
+    // Build a lookup from Claude-echoed IDs to original batch IDs
+    // Claude may truncate or modify UUIDs, so also fall back to index-based mapping
+    const batchIdSet = new Set(batch.map((a) => a.id));
     const results: IntelligenceResult[] = Array.isArray(parsed)
       ? parsed.map((r: {
           id: string;
@@ -109,8 +113,9 @@ Respond in EXACTLY this JSON format (no markdown, no code fences):
           connections: Array<{ id: string; title?: string; reason: string; strength: string }>;
           watch_for_next: string;
           is_surprise_candidate: boolean;
-        }) => ({
-          articleId: r.id,
+        }, idx: number) => ({
+          // Use Claude's echoed ID if it matches an original; otherwise fall back to index
+          articleId: batchIdSet.has(r.id) ? r.id : (batch[idx]?.id || r.id),
           significanceScore: Math.min(10, Math.max(1, Math.round(r.significance_score || 5))) as SignificanceLevel,
           storyType: validateStoryType(r.story_type),
           connectsTo: (r.connections || []).map((c) => ({

@@ -3,6 +3,7 @@ import { ingestAllNews, getStoredArticles } from "@/lib/article-ingestion";
 import { summarizeBatchBrief } from "@/lib/summarization";
 import { processIntelligenceBatch } from "@/lib/intelligence";
 import { isClaudeConfigured } from "@/lib/claude";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 export const maxDuration = 300;
 import { rankRecentArticles } from "@/lib/story-ranker";
@@ -23,19 +24,33 @@ export async function GET(request: NextRequest) {
     const result = await ingestAllNews({ scrapeContent });
 
     // Optionally generate brief summaries for newly ingested articles
+    // Look up actual database UUIDs via content_hash (contentHash is a SHA, not a UUID)
     let summaryStats = null;
     if (shouldSummarize && isClaudeConfigured() && result.articles.length > 0) {
-      const articlesToSummarize = result.articles
+      const candidateArticles = result.articles
         .filter((a) => a.content && a.content.length > 50)
-        .slice(0, 50)
-        .map((a) => ({
-          id: a.contentHash, // Will need article DB IDs for real use
-          title: a.title,
-          content: a.content || a.title,
-        }));
+        .slice(0, 50);
 
-      if (articlesToSummarize.length > 0) {
-        summaryStats = await summarizeBatchBrief(articlesToSummarize);
+      if (candidateArticles.length > 0 && isSupabaseConfigured() && supabase) {
+        const hashes = candidateArticles.map((a) => a.contentHash);
+        const { data: storedForSummary } = await supabase
+          .from("articles")
+          .select("id, title, content, content_hash")
+          .in("content_hash", hashes);
+
+        if (storedForSummary && storedForSummary.length > 0) {
+          const articlesToSummarize = storedForSummary
+            .filter((s: { content: string | null }) => s.content && s.content.length > 50)
+            .map((s: { id: string; title: string; content: string }) => ({
+              id: s.id,       // ← actual database UUID
+              title: s.title,
+              content: s.content || s.title,
+            }));
+
+          if (articlesToSummarize.length > 0) {
+            summaryStats = await summarizeBatchBrief(articlesToSummarize);
+          }
+        }
       }
     }
 

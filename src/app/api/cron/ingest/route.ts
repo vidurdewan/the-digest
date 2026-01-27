@@ -40,19 +40,33 @@ export async function GET(request: NextRequest) {
     const result = await ingestAllNews({ scrapeContent: true });
 
     // 2. Generate brief summaries for new articles
+    // Look up actual database UUIDs via content_hash (contentHash is a SHA, not a UUID)
     let summaryStats = null;
     if (isClaudeConfigured() && result.articles.length > 0) {
-      const articlesToSummarize = result.articles
+      const candidateArticles = result.articles
         .filter((a) => a.content && a.content.length > 50)
-        .slice(0, 50)
-        .map((a) => ({
-          id: a.contentHash,
-          title: a.title,
-          content: a.content || a.title,
-        }));
+        .slice(0, 50);
 
-      if (articlesToSummarize.length > 0) {
-        summaryStats = await summarizeBatchBrief(articlesToSummarize);
+      if (candidateArticles.length > 0 && isSupabaseConfigured() && supabase) {
+        const hashes = candidateArticles.map((a) => a.contentHash);
+        const { data: storedForSummary } = await supabase
+          .from("articles")
+          .select("id, title, content, content_hash")
+          .in("content_hash", hashes);
+
+        if (storedForSummary && storedForSummary.length > 0) {
+          const articlesToSummarize = storedForSummary
+            .filter((s: { content: string | null }) => s.content && s.content.length > 50)
+            .map((s: { id: string; title: string; content: string }) => ({
+              id: s.id,       // ← actual database UUID
+              title: s.title,
+              content: s.content || s.title,
+            }));
+
+          if (articlesToSummarize.length > 0) {
+            summaryStats = await summarizeBatchBrief(articlesToSummarize);
+          }
+        }
       }
     }
 
@@ -137,26 +151,39 @@ export async function GET(request: NextRequest) {
     let signalStats = null;
     if (isSupabaseConfigured() && supabase && result.articles.length > 0) {
       try {
-        // Look up stored articles by content_hash to get DB UUIDs
-        const hashes = result.articles.map((a) => a.contentHash);
-        const { data: storedForSignals } = await supabase
-          .from("articles")
-          .select("id, title, content, url, source_tier, document_type, published_at, content_hash")
-          .in("content_hash", hashes);
+        // Map content_hash → RawArticle for content/sourceName lookup
+        const hashToRaw = new Map(
+          result.articles.map((a) => [a.contentHash, a])
+        );
 
-        if (storedForSignals && storedForSignals.length > 0) {
-          // Map content_hash → RawArticle for sourceName lookup
-          const hashToRaw = new Map(
-            result.articles.map((a) => [a.contentHash, a])
-          );
+        // Look up DB UUIDs + metadata in batches (avoid oversized .in() queries)
+        const allHashes = result.articles.map((a) => a.contentHash);
+        const HASH_BATCH = 100;
+        const allStored: Array<{
+          id: string;
+          content_hash: string;
+          source_tier: number | null;
+          document_type: string | null;
+          published_at: string | null;
+        }> = [];
 
-          const signalArticles: ArticleForSignalDetection[] = storedForSignals.map((stored) => {
+        for (let i = 0; i < allHashes.length; i += HASH_BATCH) {
+          const hashChunk = allHashes.slice(i, i + HASH_BATCH);
+          const { data } = await supabase
+            .from("articles")
+            .select("id, content_hash, source_tier, document_type, published_at")
+            .in("content_hash", hashChunk);
+          if (data) allStored.push(...data);
+        }
+
+        if (allStored.length > 0) {
+          const signalArticles: ArticleForSignalDetection[] = allStored.map((stored) => {
             const raw = hashToRaw.get(stored.content_hash);
             return {
               id: stored.id,
-              title: stored.title,
-              content: stored.content,
-              url: stored.url || "",
+              title: raw?.title || "",
+              content: raw?.content || null,
+              url: raw?.url || "",
               sourceTier: stored.source_tier || 3,
               sourceName: raw?.sourceName || "unknown",
               publishedAt: stored.published_at || new Date().toISOString(),

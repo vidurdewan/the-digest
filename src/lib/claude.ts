@@ -509,9 +509,12 @@ Respond in EXACTLY this JSON format (no markdown, no code fences):
       response.content[0].type === "text" ? response.content[0].text : "";
 
     const parsed = JSON.parse(text.trim());
+
+    // Map Claude's response back to original IDs — fall back to index if Claude modified the ID
+    const batchIdSet = new Set(batch.map((a) => a.id));
     const results: BatchBriefResult[] = Array.isArray(parsed)
-      ? parsed.map((r: { id: string; brief: string }) => ({
-          articleId: r.id,
+      ? parsed.map((r: { id: string; brief: string }, idx: number) => ({
+          articleId: batchIdSet.has(r.id) ? r.id : (batch[idx]?.id || r.id),
           brief: r.brief || "",
         }))
       : [];
