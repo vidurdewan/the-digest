@@ -1,6 +1,7 @@
 "use client";
 
-import { Settings, Palette, Bell, Database, User, Loader2, Brain, DollarSign, SlidersHorizontal, Save } from "lucide-react";
+import { useState } from "react";
+import { Settings, Palette, Bell, Database, User, Loader2, Brain, DollarSign, SlidersHorizontal, Save, Star, X, Plus } from "lucide-react";
 import { useThemeStore } from "@/lib/store";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { isSupabaseConfigured } from "@/lib/supabase";
@@ -110,6 +111,9 @@ export function SettingsView() {
           )}
         </div>
       </section>
+
+      {/* VIP Newsletters */}
+      <VipNewslettersSection prefs={prefs} addToast={addToast} />
 
       {/* Notifications */}
       <section className="rounded-xl border border-border-primary bg-bg-card p-5">
@@ -380,6 +384,104 @@ export function SettingsView() {
         </div>
       </section>
     </div>
+  );
+}
+
+function VipNewslettersSection({
+  prefs,
+  addToast,
+}: {
+  prefs: ReturnType<typeof usePreferences>;
+  addToast: (message: string, type: "success" | "error" | "info") => void;
+}) {
+  const [newVip, setNewVip] = useState("");
+
+  const handleAdd = () => {
+    const trimmed = newVip.trim();
+    if (!trimmed) return;
+    if (prefs.vipNewsletters.includes(trimmed)) {
+      addToast("Already in VIP list", "info");
+      return;
+    }
+    prefs.addVipNewsletter(trimmed);
+    setNewVip("");
+  };
+
+  return (
+    <section className="rounded-xl border border-border-primary bg-bg-card p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Star size={18} className="text-accent-warning" />
+          <h3 className="font-semibold text-text-primary">VIP Newsletters</h3>
+        </div>
+        {prefs.isDirty && (
+          <button
+            onClick={async () => {
+              const ok = await prefs.save();
+              addToast(
+                ok ? "Preferences saved" : "Failed to save preferences",
+                ok ? "success" : "error"
+              );
+            }}
+            className="flex items-center gap-1.5 rounded-lg bg-accent-primary px-3 py-1.5 text-xs font-medium text-text-inverse hover:bg-accent-primary-hover transition-colors"
+          >
+            <Save size={14} />
+            Save
+          </button>
+        )}
+      </div>
+      <p className="mb-3 text-xs text-text-tertiary">
+        These newsletters always get full-depth summaries and are featured in
+        Today&apos;s Brief.
+      </p>
+
+      {/* Current VIP list */}
+      <div className="mb-3 flex flex-wrap gap-2">
+        {prefs.vipNewsletters.map((pub) => (
+          <span
+            key={pub}
+            className="flex items-center gap-1.5 rounded-lg bg-accent-warning/10 px-3 py-1.5 text-sm font-medium text-accent-warning"
+          >
+            <Star size={12} />
+            {pub}
+            <button
+              onClick={() => prefs.removeVipNewsletter(pub)}
+              className="ml-0.5 rounded-full p-0.5 hover:bg-accent-warning/20 transition-colors"
+              aria-label={`Remove ${pub}`}
+            >
+              <X size={12} />
+            </button>
+          </span>
+        ))}
+        {prefs.vipNewsletters.length === 0 && (
+          <span className="text-sm text-text-tertiary">
+            No VIP newsletters configured.
+          </span>
+        )}
+      </div>
+
+      {/* Add new VIP */}
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={newVip}
+          onChange={(e) => setNewVip(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") handleAdd();
+          }}
+          placeholder="Add publication name..."
+          className="flex-1 rounded-lg border border-border-secondary bg-bg-secondary px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent-primary focus:outline-none"
+        />
+        <button
+          onClick={handleAdd}
+          disabled={!newVip.trim()}
+          className="flex items-center gap-1.5 rounded-lg bg-accent-primary px-3 py-2 text-sm font-medium text-text-inverse hover:bg-accent-primary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Plus size={14} />
+          Add
+        </button>
+      </div>
+    </section>
   );
 }
 

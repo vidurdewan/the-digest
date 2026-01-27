@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import type { Newsletter } from "@/types";
 
 interface IngestResult {
@@ -33,6 +33,9 @@ interface UseNewslettersReturn {
   // Read/save
   toggleRead: (id: string) => void;
   toggleSave: (id: string) => void;
+  // Background refresh
+  isBackgroundRefreshing: boolean;
+  backgroundRefresh: () => Promise<void>;
 }
 
 function getDateKey(date?: Date): string {
@@ -108,20 +111,23 @@ function saveSavedState(ids: Set<string>) {
 
 /**
  * Hook for fetching newsletters.
- * Tries to fetch from API (Supabase), falls back to mock data.
- * Supports historical digests, reading time, read/save state.
+ * On mount: immediately loads cached newsletters from Supabase (fast).
+ * Background refresh: silently fetches new data without clearing existing UI.
+ * Manual ingest: available as a "force refresh" for the user.
  */
 export function useNewsletters(): UseNewslettersReturn {
   const [newsletters, setNewsletters] = useState<Newsletter[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isIngesting, setIsIngesting] = useState(false);
+  const [isBackgroundRefreshing, setIsBackgroundRefreshing] = useState(false);
   const [dailyDigest, setDailyDigest] = useState<string | null>(null);
   const [isGeneratingDigest, setIsGeneratingDigest] = useState(false);
   const [digestHistory, setDigestHistory] = useState<StoredDigest[]>([]);
   const [selectedDigestDate, setSelectedDigestDate] = useState<string | null>(null);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+  const hasFetched = useRef(false);
 
   // Load persisted state on mount
   useEffect(() => {
@@ -188,6 +194,29 @@ export function useNewsletters(): UseNewslettersReturn {
     }
   }, []);
 
+  // Map API newsletter response to Newsletter type
+  const mapApiNewsletter = useCallback(
+    (nl: {
+      id: string;
+      publication: string;
+      subject: string;
+      sender_email: string;
+      received_at: string;
+      content: string;
+      is_read: boolean;
+    }): Newsletter => ({
+      id: nl.id,
+      publication: nl.publication,
+      subject: nl.subject,
+      receivedAt: nl.received_at,
+      content: nl.content,
+      isRead: nl.is_read,
+      readingTimeMinutes: estimateReadingTime(nl.content),
+    }),
+    []
+  );
+
+  // Fetch cached newsletters from Supabase (fast, ~100ms)
   const fetchNewsletters = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -197,34 +226,38 @@ export function useNewsletters(): UseNewslettersReturn {
       const data = await res.json();
 
       if (data.newsletters && data.newsletters.length > 0) {
-        const mapped: Newsletter[] = data.newsletters.map(
-          (nl: {
-            id: string;
-            publication: string;
-            subject: string;
-            sender_email: string;
-            received_at: string;
-            content: string;
-            is_read: boolean;
-          }) => ({
-            id: nl.id,
-            publication: nl.publication,
-            subject: nl.subject,
-            receivedAt: nl.received_at,
-            content: nl.content,
-            isRead: nl.is_read,
-            readingTimeMinutes: estimateReadingTime(nl.content),
-          })
-        );
+        const mapped: Newsletter[] = data.newsletters.map(mapApiNewsletter);
         setNewsletters(enrichNewsletters(mapped));
       }
     } catch {
       // API unavailable — keep current state
     } finally {
       setIsLoading(false);
+      hasFetched.current = true;
     }
-  }, [enrichNewsletters]);
+  }, [enrichNewsletters, mapApiNewsletter]);
 
+  // Background refresh: silently re-fetches without clearing existing UI
+  const backgroundRefresh = useCallback(async () => {
+    if (isBackgroundRefreshing) return;
+    setIsBackgroundRefreshing(true);
+
+    try {
+      const res = await fetch("/api/newsletters");
+      const data = await res.json();
+
+      if (data.newsletters && data.newsletters.length > 0) {
+        const mapped: Newsletter[] = data.newsletters.map(mapApiNewsletter);
+        setNewsletters(enrichNewsletters(mapped));
+      }
+    } catch {
+      // Silent failure — don't disrupt existing UI
+    } finally {
+      setIsBackgroundRefreshing(false);
+    }
+  }, [isBackgroundRefreshing, enrichNewsletters, mapApiNewsletter]);
+
+  // Manual ingest (force refresh) — kept for user-initiated refresh
   const ingest = useCallback(async () => {
     setIsIngesting(true);
     setError(null);
@@ -238,30 +271,12 @@ export function useNewsletters(): UseNewslettersReturn {
         return null;
       }
 
-      // Try refreshing from the database first
+      // Refresh from DB after ingestion
       const listRes = await fetch("/api/newsletters");
       const listData = await listRes.json();
 
       if (listData.newsletters && listData.newsletters.length > 0) {
-        const mapped: Newsletter[] = listData.newsletters.map(
-          (nl: {
-            id: string;
-            publication: string;
-            subject: string;
-            sender_email: string;
-            received_at: string;
-            content: string;
-            is_read: boolean;
-          }) => ({
-            id: nl.id,
-            publication: nl.publication,
-            subject: nl.subject,
-            receivedAt: nl.received_at,
-            content: nl.content,
-            isRead: nl.is_read,
-            readingTimeMinutes: estimateReadingTime(nl.content),
-          })
-        );
+        const mapped: Newsletter[] = listData.newsletters.map(mapApiNewsletter);
         setNewsletters(enrichNewsletters(mapped));
       } else if (data.newsletters && data.newsletters.length > 0) {
         // Use newsletters directly from the ingest response (includes summaries)
@@ -273,6 +288,7 @@ export function useNewsletters(): UseNewslettersReturn {
             senderEmail: string;
             receivedAt: string;
             content: string;
+            isVip: boolean;
             summary: {
               theNews: string;
               whyItMatters: string;
@@ -329,7 +345,7 @@ export function useNewsletters(): UseNewslettersReturn {
     } finally {
       setIsIngesting(false);
     }
-  }, [enrichNewsletters]);
+  }, [enrichNewsletters, mapApiNewsletter]);
 
   const generateDigest = useCallback(async () => {
     setIsGeneratingDigest(true);
@@ -379,6 +395,7 @@ export function useNewsletters(): UseNewslettersReturn {
     }
   }, []);
 
+  // On mount: immediately fetch cached newsletters from Supabase (no blocking ingest)
   useEffect(() => {
     fetchNewsletters();
   }, [fetchNewsletters]);
@@ -398,5 +415,7 @@ export function useNewsletters(): UseNewslettersReturn {
     selectDigestDate,
     toggleRead,
     toggleSave,
+    isBackgroundRefreshing,
+    backgroundRefresh,
   };
 }

@@ -3,6 +3,9 @@ import { ingestAllNews, getStoredArticles } from "@/lib/article-ingestion";
 import { summarizeBatchBrief } from "@/lib/summarization";
 import { processIntelligenceBatch } from "@/lib/intelligence";
 import { isClaudeConfigured } from "@/lib/claude";
+import { ingestNewsletters } from "@/lib/newsletter-ingestion";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { getStoredTokens } from "@/lib/token-store";
 
 /**
  * GET /api/cron/ingest
@@ -68,6 +71,43 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // 4. Ingest newsletters from Gmail (if connected)
+    let newsletterStats = null;
+    const gmailTokens = await getStoredTokens();
+    if (gmailTokens?.refresh_token) {
+      try {
+        // Load VIP publications from settings
+        let vipPublications: string[] = [];
+        if (isSupabaseConfigured() && supabase) {
+          try {
+            const { data } = await supabase
+              .from("settings")
+              .select("vip_newsletters")
+              .limit(1)
+              .single();
+            if (data?.vip_newsletters && Array.isArray(data.vip_newsletters)) {
+              vipPublications = data.vip_newsletters;
+            }
+          } catch {
+            // Settings may not exist yet
+          }
+        }
+
+        newsletterStats = await ingestNewsletters({
+          maxResults: 30,
+          vipPublications,
+        });
+      } catch (err) {
+        console.error("[Cron] Newsletter ingestion error:", err);
+        newsletterStats = {
+          error:
+            err instanceof Error
+              ? err.message
+              : "Newsletter ingestion failed",
+        };
+      }
+    }
+
     const duration = Date.now() - startTime;
 
     return NextResponse.json({
@@ -79,6 +119,7 @@ export async function GET(request: NextRequest) {
       totalErrors: result.totalErrors,
       summaryStats,
       intelligenceStats,
+      newsletterStats,
       timestamp: new Date().toISOString(),
     });
   } catch (error) {

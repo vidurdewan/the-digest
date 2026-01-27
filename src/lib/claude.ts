@@ -280,6 +280,78 @@ Respond in EXACTLY this JSON format (no markdown, no code fences):
   }
 }
 
+// ─── VIP Newsletter Summary ─────────────────────────────────
+/**
+ * Generate a full-depth "distilled" summary for VIP newsletters.
+ * Uses more content (15,000 chars) and higher max_tokens (2000)
+ * to preserve full reasoning, key arguments, and all important details.
+ */
+export async function generateVIPNewsletterSummary(
+  publication: string,
+  subject: string,
+  content: string
+): Promise<NewsletterSummaryResult | null> {
+  const anthropic = getClient();
+  if (!anthropic) return null;
+
+  // VIP gets much more content — up to 15,000 chars
+  const truncated = content.slice(0, 15000);
+
+  try {
+    const response = await anthropic.messages.create({
+      model: SUMMARIZATION_MODEL,
+      max_tokens: 2000,
+      messages: [
+        {
+          role: "user",
+          content: `You are a senior intelligence briefing analyst. This newsletter is from a MUST-READ source. Distill it fully — preserve the complete reasoning, key arguments, and ALL important details. Same depth, fewer words, but nothing important lost.
+
+Your reader is a well-connected professional who wants deep, actionable analysis across VC/tech, markets, geopolitics, and the business world.
+
+FORMATTING RULES:
+- Bold all **company names** and **people names** so they pop when scanning.
+- Each item in "theNews" should be ONE story per bullet, not multiple crammed together.
+- Be thorough — this is a premium source the reader trusts deeply. Capture nuance.
+
+Source: ${publication} (VIP — must-read source)
+Subject: ${subject}
+
+Content:
+${truncated}
+
+Respond in EXACTLY this JSON format (no markdown, no code fences):
+{
+  "theNews": "What happened? Be specific with **names**, numbers, and details. Cover ALL important items from this newsletter. Each as a separate bullet point, 2-3 sentences each. Bold company and people names. Don't skip anything significant.",
+  "whyItMatters": "Go DEEP. What are the second-order and third-order implications? Who wins and who loses? How does this affect the broader ecosystem? 4-6 sentences. Preserve the author's key arguments and reasoning.",
+  "theContext": "Connect to broader market trends, recent deals, or industry shifts. What pattern is this part of? What historical parallels exist? 3-4 sentences.",
+  "soWhat": "The single most important takeaway — bold and opinionated. 1-2 sentences.",
+  "watchNext": "What should the reader watch for next? Be specific: name companies, people, dates, events. 2-3 sentences.",
+  "recruiterRelevance": "Leadership changes, company scaling signals (funding/IPO), or talent availability (layoffs/reorgs)? If nothing: 'No direct signals.' 1-2 sentences."
+}`,
+        },
+      ],
+    });
+
+    const text =
+      response.content[0].type === "text" ? response.content[0].text : "";
+    const parsed = JSON.parse(text.trim());
+
+    return {
+      theNews: parsed.theNews || "",
+      whyItMatters: parsed.whyItMatters || "",
+      theContext: parsed.theContext || "",
+      soWhat: parsed.soWhat || "",
+      watchNext: parsed.watchNext || "",
+      recruiterRelevance: parsed.recruiterRelevance || "",
+      inputTokens: response.usage.input_tokens,
+      outputTokens: response.usage.output_tokens,
+    };
+  } catch (error) {
+    console.error("[Claude] VIP newsletter summary error:", error);
+    return null;
+  }
+}
+
 // ─── Daily Digest ────────────────────────────────────────────
 export interface DailyDigestResult {
   digest: string;

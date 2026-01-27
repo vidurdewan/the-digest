@@ -17,12 +17,19 @@ const defaultPreferences: TopicPreferences = {
   politics: "medium",
 };
 
+const defaultVipNewsletters: string[] = ["Stratechery"];
+
 interface UsePreferencesReturn {
   preferences: TopicPreferences;
   isLoading: boolean;
   setTopicLevel: (topic: TopicCategory, level: InterestLevel) => void;
   save: () => Promise<boolean>;
   isDirty: boolean;
+  // VIP newsletters
+  vipNewsletters: string[];
+  setVipNewsletters: (publications: string[]) => void;
+  addVipNewsletter: (publication: string) => void;
+  removeVipNewsletter: (publication: string) => void;
 }
 
 export function usePreferences(): UsePreferencesReturn {
@@ -30,6 +37,10 @@ export function usePreferences(): UsePreferencesReturn {
     useState<TopicPreferences>(defaultPreferences);
   const [savedPreferences, setSavedPreferences] =
     useState<TopicPreferences>(defaultPreferences);
+  const [vipNewsletters, setVipNewslettersState] =
+    useState<string[]>(defaultVipNewsletters);
+  const [savedVipNewsletters, setSavedVipNewsletters] =
+    useState<string[]>(defaultVipNewsletters);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -40,6 +51,10 @@ export function usePreferences(): UsePreferencesReturn {
         if (data.preferences) {
           setPreferences(data.preferences);
           setSavedPreferences(data.preferences);
+        }
+        if (data.vipNewsletters && Array.isArray(data.vipNewsletters)) {
+          setVipNewslettersState(data.vipNewsletters);
+          setSavedVipNewsletters(data.vipNewsletters);
         }
       } catch {
         // Use defaults
@@ -57,24 +72,52 @@ export function usePreferences(): UsePreferencesReturn {
     []
   );
 
+  const setVipNewsletters = useCallback((publications: string[]) => {
+    setVipNewslettersState(publications);
+  }, []);
+
+  const addVipNewsletter = useCallback((publication: string) => {
+    setVipNewslettersState((prev) => {
+      if (prev.includes(publication)) return prev;
+      return [...prev, publication];
+    });
+  }, []);
+
+  const removeVipNewsletter = useCallback((publication: string) => {
+    setVipNewslettersState((prev) => prev.filter((p) => p !== publication));
+  }, []);
+
   const save = useCallback(async (): Promise<boolean> => {
     try {
       const res = await fetch("/api/preferences", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ preferences }),
+        body: JSON.stringify({ preferences, vipNewsletters }),
       });
       if (res.ok) {
         setSavedPreferences(preferences);
+        setSavedVipNewsletters(vipNewsletters);
         return true;
       }
       return false;
     } catch {
       return false;
     }
-  }, [preferences]);
+  }, [preferences, vipNewsletters]);
 
-  const isDirty = JSON.stringify(preferences) !== JSON.stringify(savedPreferences);
+  const isDirty =
+    JSON.stringify(preferences) !== JSON.stringify(savedPreferences) ||
+    JSON.stringify(vipNewsletters) !== JSON.stringify(savedVipNewsletters);
 
-  return { preferences, isLoading, setTopicLevel, save, isDirty };
+  return {
+    preferences,
+    isLoading,
+    setTopicLevel,
+    save,
+    isDirty,
+    vipNewsletters,
+    setVipNewsletters,
+    addVipNewsletter,
+    removeVipNewsletter,
+  };
 }

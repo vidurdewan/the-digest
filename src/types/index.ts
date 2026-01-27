@@ -80,6 +80,7 @@ export interface UserSettings {
   notificationsEnabled: boolean;
   quietHoursStart?: string;
   quietHoursEnd?: string;
+  vipNewsletters: string[];
 }
 
 export interface NavigationSection {
