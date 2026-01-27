@@ -6,6 +6,7 @@ import { processIntelligenceBatch } from "@/lib/intelligence";
 import { isClaudeConfigured } from "@/lib/claude";
 import { ingestNewsletters } from "@/lib/newsletter-ingestion";
 import { rankRecentArticles } from "@/lib/story-ranker";
+import { retierAllContent } from "@/lib/source-tiers";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { getStoredTokens } from "@/lib/token-store";
 import { extractCompanyFromEdgarTitle } from "@/lib/sec-filter";
@@ -216,6 +217,15 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // 6. Re-tier any content with stale tiers (fast — only updates mismatches)
+    let retierStats = null;
+    try {
+      retierStats = await retierAllContent();
+    } catch (err) {
+      console.error("[Cron] Retier error:", err);
+      retierStats = { error: err instanceof Error ? err.message : "Retier failed" };
+    }
+
     const duration = Date.now() - startTime;
 
     return NextResponse.json({
@@ -231,6 +241,7 @@ export async function GET(request: NextRequest) {
       signalStats,
       rankingStats,
       newsletterStats,
+      retierStats,
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
