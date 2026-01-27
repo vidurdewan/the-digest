@@ -14,10 +14,13 @@ import {
   ArrowUp,
   Loader2,
 } from "lucide-react";
-import type { Article, Summary, ArticleIntelligence, ArticleWithIntelligence } from "@/types";
-import { assignFeedTiers } from "@/lib/ranking";
-import { StartHereCard } from "./StartHereCard";
-import { AlsoNotableCard } from "./AlsoNotableCard";
+import type { Article, Summary, ArticleIntelligence, ArticleWithIntelligence, TopicCategory } from "@/types";
+import { topicLabels } from "@/lib/mock-data";
+import { selectDiverseTopStories, groupByTopic } from "@/lib/feed-layout";
+import { TodaysBrief } from "./TodaysBrief";
+import { HeroStoryCard } from "./HeroStoryCard";
+import { TopStoryCard } from "./TopStoryCard";
+import { SwimlaneCard } from "./SwimlaneCard";
 import { CompactListItem } from "./CompactListItem";
 import { ReadingProgress } from "./ReadingProgress";
 import { SurpriseMe } from "./SurpriseMe";
@@ -40,15 +43,10 @@ interface IntelligenceFeedProps {
     article: Article & { summary?: Summary }
   ) => Promise<Summary | null>;
   onExpand?: (articleId: string) => void;
-  /** Number of new articles available (from polling) */
   newCount?: number;
-  /** Callback to show new articles and refresh feed */
   onShowNew?: () => void;
-  /** When the feed was last refreshed */
   lastUpdated?: Date | null;
-  /** Manual force-refresh (triggers full ingest) */
   onForceRefresh?: () => void;
-  /** Whether a force refresh is in progress */
   isRefreshing?: boolean;
 }
 
@@ -66,34 +64,43 @@ export function IntelligenceFeed({
 }: IntelligenceFeedProps) {
   const [everythingElseOpen, setEverythingElseOpen] = useState(false);
 
-  // Assign tiers to ranked articles
-  const tieredArticles = useMemo(
-    () => assignFeedTiers(articles),
+  // Split articles into hero/top stories (diverse) and remaining
+  const { topStories, remaining } = useMemo(
+    () => selectDiverseTopStories(articles as ArticleWithIntelligence[], 5),
     [articles]
   );
 
-  const startHere = tieredArticles.filter((a) => a.feedTier === "start-here");
-  const alsoNotable = tieredArticles.filter((a) => a.feedTier === "also-notable");
-  const everythingElse = tieredArticles.filter((a) => a.feedTier === "everything-else");
+  const heroStory = topStories[0] as ArticleWithIntelligence | undefined;
+  const gridStories = topStories.slice(1) as ArticleWithIntelligence[];
 
-  // Reading progress: count articles in Start Here + Also Notable that have been "read" (expanded)
-  const priorityItems = startHere.length + alsoNotable.length;
-  const readPriorityItems = [...startHere, ...alsoNotable].filter(
-    (a) => a.isRead || a.summary?.theNews
+  // Group remaining articles by topic for swimlanes
+  const topicGroups = useMemo(() => groupByTopic(remaining), [remaining]);
+
+  // Split remaining into swimlane articles (first 15 per topic) and everything else
+  const swimlaneArticleIds = new Set<string>();
+  const SWIMLANE_MAX_PER_TOPIC = 15;
+  for (const group of topicGroups) {
+    for (const a of group.articles.slice(0, SWIMLANE_MAX_PER_TOPIC)) {
+      swimlaneArticleIds.add(a.id);
+    }
+  }
+  const everythingElse = remaining.filter((a) => !swimlaneArticleIds.has(a.id));
+
+  // Reading progress: count articles in top stories + swimlanes that have been "read"
+  const priorityItems = topStories.length + swimlaneArticleIds.size;
+  const readPriorityItems = [...topStories, ...remaining.filter((a) => swimlaneArticleIds.has(a.id))].filter(
+    (a) => a.isRead || (a as ArticleWithIntelligence).summary?.theNews
   ).length;
 
-  // Persist reading progress
   useReadingProgress({ totalPriorityItems: priorityItems, itemsRead: readPriorityItems });
 
   // Stats
   const unread = articles.filter((a) => !a.isRead).length;
-  const watchlistCount = articles.filter(
-    (a) => a.watchlistMatches.length > 0
-  ).length;
+  const watchlistCount = articles.filter((a) => a.watchlistMatches.length > 0).length;
   const savedCount = articles.filter((a) => a.isSaved).length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* "New stories" pill — Twitter-style */}
       {newCount > 0 && onShowNew && (
         <button
@@ -123,7 +130,6 @@ export function IntelligenceFeed({
             </p>
           </div>
         </div>
-        {/* Subtle refresh icon — tucked away */}
         {onForceRefresh && (
           <button
             onClick={onForceRefresh}
@@ -147,11 +153,7 @@ export function IntelligenceFeed({
       <div className="flex gap-3 overflow-x-auto pb-1">
         {[
           { label: "Unread", value: unread.toString(), icon: Mail },
-          {
-            label: "Total",
-            value: articles.length.toString(),
-            icon: TrendingUp,
-          },
+          { label: "Total", value: articles.length.toString(), icon: TrendingUp },
           { label: "Watchlist", value: watchlistCount.toString(), icon: Eye },
           { label: "Saved", value: savedCount.toString(), icon: Bookmark },
         ].map((stat) => (
@@ -161,46 +163,66 @@ export function IntelligenceFeed({
           >
             <stat.icon size={16} className="shrink-0 text-accent-primary" />
             <div>
-              <p className="text-base font-bold text-text-primary">
-                {stat.value}
-              </p>
+              <p className="text-base font-bold text-text-primary">{stat.value}</p>
               <p className="text-[11px] text-text-tertiary">{stat.label}</p>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Section 1: Start Here (Top 5) */}
-      {startHere.length > 0 && (
+      {/* ═══ SECTION 1: Today's Brief ═══ */}
+      <TodaysBrief />
+
+      {/* ═══ SECTION 2: Hero Story + Top Stories Grid ═══ */}
+      {topStories.length > 0 && (
         <section>
-          <div className="mb-3 flex items-center gap-2">
+          <div className="mb-4 flex items-center gap-2">
             <div className="h-px flex-1 bg-border-primary" />
             <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-accent-primary">
               <Zap size={14} />
-              Start Here
+              Top Stories
             </h3>
             <span className="rounded-full bg-accent-primary/10 px-2 py-0.5 text-xs font-medium text-accent-primary">
-              Top {startHere.length}
+              {topStories.length}
             </span>
             <div className="h-px flex-1 bg-border-primary" />
           </div>
-          <div className="space-y-4">
-            {startHere.map((article, index) => (
-              <StartHereCard
-                key={article.id}
-                article={article}
-                rank={index + 1}
-                onSave={onSave}
-                onOpenReader={onOpenReader}
-                onRequestSummary={onRequestSummary}
-                onExpand={onExpand}
-              />
-            ))}
+
+          {/* Hero + Grid layout */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            {/* Hero — left half on desktop */}
+            {heroStory && (
+              <div className="lg:row-span-2">
+                <HeroStoryCard
+                  article={heroStory}
+                  onSave={onSave}
+                  onOpenReader={onOpenReader}
+                  onRequestSummary={onRequestSummary}
+                  onExpand={onExpand}
+                />
+              </div>
+            )}
+
+            {/* Grid stories — 2x2 on desktop */}
+            {gridStories.length > 0 && (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-2">
+                {gridStories.map((article) => (
+                  <TopStoryCard
+                    key={article.id}
+                    article={article}
+                    onSave={onSave}
+                    onOpenReader={onOpenReader}
+                    onRequestSummary={onRequestSummary}
+                    onExpand={onExpand}
+                  />
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Surprise Me — one story from outside usual topics */}
           <SurpriseMe
-            articles={everythingElse}
+            articles={everythingElse as ArticleWithIntelligence[]}
             onSave={onSave}
             onOpenReader={onOpenReader}
             onRequestSummary={onRequestSummary}
@@ -209,35 +231,63 @@ export function IntelligenceFeed({
         </section>
       )}
 
-      {/* Section 2: Also Notable (Next 15) */}
-      {alsoNotable.length > 0 && (
+      {/* ═══ SECTION 3: Topic Swimlanes ═══ */}
+      {topicGroups.length > 0 && (
         <section>
-          <div className="mb-3 flex items-center gap-2">
+          <div className="mb-4 flex items-center gap-2">
             <div className="h-px flex-1 bg-border-primary" />
             <h3 className="text-sm font-bold uppercase tracking-wider text-text-secondary">
-              Also Notable
+              By Topic
             </h3>
-            <span className="rounded-full bg-bg-secondary px-2 py-0.5 text-xs font-medium text-text-tertiary">
-              {alsoNotable.length}
-            </span>
             <div className="h-px flex-1 bg-border-primary" />
           </div>
-          <div className="space-y-3">
-            {alsoNotable.map((article) => (
-              <AlsoNotableCard
-                key={article.id}
-                article={article}
-                onSave={onSave}
-                onOpenReader={onOpenReader}
-                onRequestSummary={onRequestSummary}
-                onExpand={onExpand}
-              />
-            ))}
+
+          <div className="space-y-6">
+            {topicGroups.map(({ topic, articles: topicArticles }) => {
+              const displayArticles = topicArticles.slice(0, SWIMLANE_MAX_PER_TOPIC);
+              if (displayArticles.length === 0) return null;
+
+              return (
+                <div key={topic}>
+                  {/* Swimlane header */}
+                  <div className="mb-3 flex items-center gap-2">
+                    <span
+                      className="h-2.5 w-2.5 rounded-full"
+                      style={{ backgroundColor: getTopicColor(topic) }}
+                    />
+                    <h4 className="text-sm font-semibold text-text-primary">
+                      {topicLabels[topic]}
+                    </h4>
+                    <span className="rounded-full bg-bg-secondary px-2 py-0.5 text-xs font-medium text-text-tertiary">
+                      {displayArticles.length}
+                    </span>
+                  </div>
+
+                  {/* Horizontal scrollable row */}
+                  <div className="relative">
+                    <div className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-thin">
+                      {displayArticles.map((article) => (
+                        <SwimlaneCard
+                          key={article.id}
+                          article={article as ArticleWithIntelligence}
+                          onSave={onSave}
+                          onOpenReader={onOpenReader}
+                        />
+                      ))}
+                    </div>
+                    {/* Fade gradient on right edge */}
+                    {displayArticles.length > 3 && (
+                      <div className="pointer-events-none absolute right-0 top-0 bottom-2 w-12 bg-gradient-to-l from-bg-primary to-transparent" />
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </section>
       )}
 
-      {/* Section 3: Everything Else */}
+      {/* ═══ SECTION 4: Everything Else ═══ */}
       {everythingElse.length > 0 && (
         <section>
           <div className="mb-3 flex items-center gap-2">
@@ -263,7 +313,7 @@ export function IntelligenceFeed({
               {everythingElse.map((article) => (
                 <CompactListItem
                   key={article.id}
-                  article={article}
+                  article={article as ArticleWithIntelligence}
                   onSave={onSave}
                   onOpenReader={onOpenReader}
                   onRequestSummary={onRequestSummary}
@@ -307,4 +357,19 @@ export function IntelligenceFeed({
       )}
     </div>
   );
+}
+
+function getTopicColor(topic: TopicCategory): string {
+  const colors: Record<TopicCategory, string> = {
+    "vc-startups": "#1e40af",
+    "fundraising-acquisitions": "#065f46",
+    "executive-movements": "#5b21b6",
+    "financial-markets": "#92400e",
+    geopolitics: "#991b1b",
+    automotive: "#155e75",
+    "science-tech": "#3730a3",
+    "local-news": "#9a3412",
+    politics: "#9d174d",
+  };
+  return colors[topic] || "#6b7280";
 }
