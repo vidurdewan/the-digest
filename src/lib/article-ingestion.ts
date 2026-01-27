@@ -158,7 +158,7 @@ export async function getStoredArticles(options?: {
   let query = supabase
     .from("articles")
     .select(
-      "*, summaries(id, brief, the_news, why_it_matters, the_context, key_entities, generated_at), article_intelligence(significance_score, story_type, connects_to, story_thread_id, watch_for_next, is_surprise_candidate)",
+      "*, summaries(id, brief, the_news, why_it_matters, the_context, key_entities, deciphering, generated_at), article_intelligence(significance_score, story_type, connects_to, story_thread_id, watch_for_next, is_surprise_candidate), article_signals(id, signal_type, signal_label, entity_name, confidence, detected_at)",
       { count: "exact" }
     )
     .order("published_at", { ascending: false })
@@ -181,7 +181,7 @@ export async function getStoredArticles(options?: {
     let fallbackQuery = supabase
       .from("articles")
       .select(
-        "*, summaries(id, brief, the_news, why_it_matters, the_context, key_entities, generated_at)",
+        "*, summaries(id, brief, the_news, why_it_matters, the_context, key_entities, deciphering, generated_at)",
         { count: "exact" }
       )
       .order("published_at", { ascending: false })

@@ -93,7 +93,7 @@ CREATE INDEX IF NOT EXISTS idx_watchlist_created_at ON watchlist (created_at DES
 CREATE TABLE IF NOT EXISTS settings (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   topic_preferences JSONB DEFAULT '{}',
-  vip_newsletters JSONB DEFAULT '["Stratechery"]',
+  vip_newsletters JSONB DEFAULT '["Stratechery","Matt Levine","Money Stuff","The Diff","Eric Newcomer","Newcomer"]',
   last_newsletter_fetch TIMESTAMPTZ,
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

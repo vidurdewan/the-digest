@@ -7,7 +7,6 @@ import {
   BookmarkCheck,
   Eye,
   Loader2,
-  TrendingUp,
   ArrowRight,
 } from "lucide-react";
 import type { Article, Summary, ArticleIntelligence, ArticleWithIntelligence, TopicCategory, StoryType } from "@/types";
@@ -15,6 +14,7 @@ import { topicLabels, getRelativeTime } from "@/lib/mock-data";
 import { QuickReactions } from "@/components/intelligence/QuickReactions";
 import { GoDeeper } from "@/components/intelligence/GoDeeper";
 import { RemindMeButton } from "@/components/intelligence/RemindMeButton";
+import { SignalBadges } from "@/components/intelligence/SignalBadge";
 
 interface HeroStoryCardProps {
   article: ArticleWithIntelligence;
@@ -66,24 +66,28 @@ export function HeroStoryCard({
     onSave?.(article.id);
   };
 
+  const [imgError, setImgError] = useState(false);
+
   const intelligence = article.intelligence;
   const storyType = intelligence?.storyType;
   const significance = intelligence?.significanceScore || 5;
   const topicStyle = getTopicStyle(article.topic);
+  const showImage = article.imageUrl && !imgError;
 
   return (
     <div
-      className="group relative rounded-xl border-2 border-accent-primary/30 bg-bg-card shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition-all duration-200"
+      className="group relative rounded-xl border border-border-primary bg-bg-card shadow-sm overflow-hidden cursor-pointer hover:shadow-md transition-all duration-200"
       onClick={() => onOpenReader?.(article)}
       data-feed-index={0}
     >
       {/* Image background if available */}
-      {article.imageUrl && (
+      {showImage && (
         <div className="relative h-48 w-full overflow-hidden bg-bg-secondary">
           <img
             src={article.imageUrl}
             alt=""
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            onError={() => setImgError(true)}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
         </div>
@@ -91,10 +95,9 @@ export function HeroStoryCard({
 
       {/* Significance bar */}
       <div
-        className="absolute left-0 top-0 bottom-0 w-1.5 rounded-l-xl z-10"
+        className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl z-10"
         style={{
           backgroundColor: getSignificanceColor(significance),
-          opacity: 0.8 + (significance / 10) * 0.2,
         }}
       />
 
@@ -105,6 +108,16 @@ export function HeroStoryCard({
           <span className="rounded-full bg-accent-primary px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-text-inverse">
             Top Story
           </span>
+          {article.sourceTier === 1 && (
+            <span className="rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-700">
+              Primary Source
+            </span>
+          )}
+          {article.documentType && (
+            <span className="rounded-full bg-slate-100 border border-slate-200 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-slate-600">
+              {article.documentType}
+            </span>
+          )}
           <span
             className="rounded-full px-2.5 py-0.5 text-xs font-medium"
             style={topicStyle}
@@ -124,22 +137,18 @@ export function HeroStoryCard({
               Watchlist
             </span>
           )}
-          <div className="ml-auto flex items-center gap-1">
-            <TrendingUp size={12} className="text-text-tertiary" />
-            <div className="flex gap-0.5">
-              {Array.from({ length: 10 }, (_, i) => (
-                <div
-                  key={i}
-                  className="h-1.5 w-1.5 rounded-full"
-                  style={{
-                    backgroundColor: i < significance
-                      ? getSignificanceColor(significance)
-                      : "var(--border-primary)",
-                  }}
-                />
-              ))}
-            </div>
-          </div>
+          <SignalBadges signals={article.signals} max={2} />
+          {significance >= 7 && (
+            <span
+              className="ml-auto rounded-full px-2 py-0.5 text-[10px] font-bold"
+              style={{
+                backgroundColor: getSignificanceColor(significance) + "18",
+                color: getSignificanceColor(significance),
+              }}
+            >
+              {significance}/10
+            </span>
+          )}
         </div>
 
         {/* Title */}
@@ -203,18 +212,20 @@ export function HeroStoryCard({
               </div>
             )}
 
-            {/* Quick Reactions + Remind Me */}
-            <div className="flex items-center justify-between">
+            {/* Quick Reactions + Remind Me — visible on hover */}
+            <div className="flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity duration-200">
               <QuickReactions articleId={article.id} />
               <RemindMeButton articleId={article.id} />
             </div>
 
-            {/* Go Deeper / Explain This */}
-            <GoDeeper
-              articleId={article.id}
-              articleTitle={article.title}
-              articleContent={article.content}
-            />
+            {/* Go Deeper / Explain This — visible on hover */}
+            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              <GoDeeper
+                articleId={article.id}
+                articleTitle={article.title}
+                articleContent={article.content}
+              />
+            </div>
           </div>
         )}
 

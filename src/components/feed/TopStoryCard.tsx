@@ -13,6 +13,7 @@ import {
 import type { Article, Summary, ArticleWithIntelligence, TopicCategory, StoryType } from "@/types";
 import { topicLabels, getRelativeTime } from "@/lib/mock-data";
 import { ExpandedArticleView } from "@/components/articles/ExpandedArticleView";
+import { SignalBadges } from "@/components/intelligence/SignalBadge";
 
 interface TopStoryCardProps {
   article: ArticleWithIntelligence;
@@ -98,6 +99,7 @@ export function TopStoryCard({
           {article.watchlistMatches.length > 0 && (
             <Eye size={10} className="text-accent-warning" />
           )}
+          <SignalBadges signals={article.signals} compact max={1} />
           {!article.isRead && (
             <span className="h-1.5 w-1.5 rounded-full bg-accent-primary" />
           )}
@@ -170,6 +172,7 @@ export function TopStoryCard({
             sourceUrl={article.sourceUrl}
             articleId={article.id}
             intelligence={article.intelligence}
+            signals={article.signals}
             articleTitle={article.title}
             articleContent={article.content}
           />

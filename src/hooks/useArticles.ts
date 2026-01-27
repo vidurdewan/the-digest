@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import type { Article, Summary, TopicCategory, Entity, ArticleIntelligence, ArticleConnection, SignificanceLevel, StoryType } from "@/types";
+import type { Article, Summary, TopicCategory, Entity, ArticleIntelligence, ArticleConnection, SignificanceLevel, StoryType, ArticleSignal, DecipheringSummary } from "@/types";
 
 interface UseArticlesReturn {
-  articles: (Article & { summary?: Summary; intelligence?: ArticleIntelligence })[];
+  articles: (Article & { summary?: Summary; intelligence?: ArticleIntelligence; signals?: ArticleSignal[] })[];
   isLoading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
@@ -26,7 +26,18 @@ interface DbSummaryRow {
   why_it_matters: string | null;
   the_context: string | null;
   key_entities: Entity[] | null;
+  deciphering: DecipheringSummary | null;
   generated_at: string | null;
+}
+
+// Map Supabase signal row
+interface DbSignalRow {
+  id: string;
+  signal_type: string;
+  signal_label: string;
+  entity_name: string | null;
+  confidence: number;
+  detected_at: string;
 }
 
 // Map Supabase intelligence row to ArticleIntelligence type
@@ -71,8 +82,28 @@ function mapSummary(
     whyItMatters: data.why_it_matters || "",
     theContext: data.the_context || "",
     keyEntities: (data.key_entities as Entity[]) || [],
+    deciphering: data.deciphering || undefined,
     generatedAt: data.generated_at || "",
   };
+}
+
+function mapSignals(
+  rows: DbSignalRow | DbSignalRow[] | null
+): ArticleSignal[] | undefined {
+  if (!rows) return undefined;
+  const arr = Array.isArray(rows) ? rows : [rows];
+  if (arr.length === 0) return undefined;
+
+  return arr.map((s) => ({
+    id: s.id,
+    articleId: "",
+    signalType: s.signal_type as ArticleSignal["signalType"],
+    signalLabel: s.signal_label,
+    entityName: s.entity_name || undefined,
+    confidence: s.confidence,
+    metadata: {},
+    detectedAt: s.detected_at,
+  }));
 }
 
 /**
@@ -81,7 +112,7 @@ function mapSummary(
  */
 export function useArticles(): UseArticlesReturn {
   const [articles, setArticles] =
-    useState<(Article & { summary?: Summary; intelligence?: ArticleIntelligence })[]>([]);
+    useState<(Article & { summary?: Summary; intelligence?: ArticleIntelligence; signals?: ArticleSignal[] })[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isIngesting, setIsIngesting] = useState(false);
@@ -96,7 +127,7 @@ export function useArticles(): UseArticlesReturn {
       const data = await res.json();
 
       if (data.articles && data.articles.length > 0) {
-        const mapped: (Article & { summary?: Summary; intelligence?: ArticleIntelligence })[] =
+        const mapped: (Article & { summary?: Summary; intelligence?: ArticleIntelligence; signals?: ArticleSignal[] })[] =
           data.articles.map(
             (a: {
               id: string;
@@ -108,8 +139,11 @@ export function useArticles(): UseArticlesReturn {
               content: string | null;
               image_url: string | null;
               reading_time_minutes: number;
+              source_tier: number | null;
+              document_type: string | null;
               summaries: DbSummaryRow | DbSummaryRow[] | null;
               article_intelligence: DbIntelligenceRow | DbIntelligenceRow[] | null;
+              article_signals: DbSignalRow | DbSignalRow[] | null;
             }) => ({
               id: a.id,
               title: a.title,
@@ -124,8 +158,11 @@ export function useArticles(): UseArticlesReturn {
               isRead: false,
               isSaved: false,
               watchlistMatches: [],
+              sourceTier: (a.source_tier || 3) as Article["sourceTier"],
+              documentType: a.document_type as Article["documentType"],
               summary: mapSummary(a.summaries, a.id),
               intelligence: mapIntelligence(a.article_intelligence),
+              signals: mapSignals(a.article_signals),
             })
           );
         setArticles(mapped);

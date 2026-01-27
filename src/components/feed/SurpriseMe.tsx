@@ -223,6 +223,7 @@ export function SurpriseMe({
             sourceUrl={surpriseArticle.sourceUrl}
             articleId={surpriseArticle.id}
             intelligence={surpriseArticle.intelligence}
+            signals={surpriseArticle.signals}
             articleTitle={surpriseArticle.title}
             articleContent={surpriseArticle.content}
           />

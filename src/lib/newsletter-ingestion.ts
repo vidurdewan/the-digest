@@ -112,8 +112,16 @@ export async function ingestNewsletters(
   // Parse into newsletters
   const parsed = newsletterMessages.map(parseNewsletter);
 
-  // Normalize VIP publication names for case-insensitive matching
-  const vipSet = new Set(vipPublications.map((p) => p.toLowerCase()));
+  // VIP matching helper — fuzzy substring matching
+  const vipLowerList = vipPublications.map((p) => p.toLowerCase().trim());
+  function isVipPublication(publication: string): boolean {
+    const pubLower = publication.toLowerCase().trim();
+    for (const vip of vipLowerList) {
+      if (pubLower === vip) return true;
+      if (vip.length >= 3 && (pubLower.includes(vip) || vip.includes(pubLower))) return true;
+    }
+    return false;
+  }
 
   // Generate AI summaries in parallel (max 5 concurrent)
   const newslettersWithSummaries: NewsletterIngestionResult["newsletters"] = [];
@@ -122,7 +130,7 @@ export async function ingestNewsletters(
     const batch = parsed.slice(i, i + batchSize);
     const summaries = await Promise.all(
       batch.map((nl) => {
-        const isVip = vipSet.has(nl.publication.toLowerCase());
+        const isVip = isVipPublication(nl.publication);
         if (isVip) {
           return generateVIPNewsletterSummary(
             nl.publication,
@@ -138,7 +146,7 @@ export async function ingestNewsletters(
       })
     );
     for (let j = 0; j < batch.length; j++) {
-      const isVip = vipSet.has(batch[j].publication.toLowerCase());
+      const isVip = isVipPublication(batch[j].publication);
       const sourceTier = getNewsletterSourceTier(batch[j].publication, batch[j].senderEmail);
       newslettersWithSummaries.push({
         id: batch[j].gmailMessageId,

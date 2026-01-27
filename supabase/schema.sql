@@ -163,7 +163,7 @@ create table if not exists settings (
   user_id uuid unique references users(id) on delete cascade,
   theme text default 'light' check (theme in ('light', 'dark', 'newspaper')),
   topic_preferences jsonb default '{}',
-  vip_newsletters jsonb default '["Stratechery"]',
+  vip_newsletters jsonb default '["Stratechery","Matt Levine","Money Stuff","The Diff","Eric Newcomer","Newcomer"]',
   last_newsletter_fetch timestamptz,
   notifications_enabled boolean default true,
   quiet_hours_start time,

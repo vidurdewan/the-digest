@@ -138,6 +138,7 @@ export function CompactListItem({
             sourceUrl={article.sourceUrl}
             articleId={article.id}
             intelligence={article.intelligence}
+            signals={article.signals}
             articleTitle={article.title}
             articleContent={article.content}
           />

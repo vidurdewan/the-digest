@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Bookmark, BookmarkCheck } from "lucide-react";
 import type { Article, Summary, ArticleWithIntelligence, TopicCategory } from "@/types";
 import { getRelativeTime } from "@/lib/mock-data";
+import { SignalBadges } from "@/components/intelligence/SignalBadge";
 
 interface SwimlaneCardProps {
   article: ArticleWithIntelligence;
@@ -17,6 +18,7 @@ export function SwimlaneCard({
   onOpenReader,
 }: SwimlaneCardProps) {
   const [isSaved, setIsSaved] = useState(article.isSaved);
+  const [imgError, setImgError] = useState(false);
 
   const handleSave = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -24,18 +26,21 @@ export function SwimlaneCard({
     onSave?.(article.id);
   };
 
+  const showImage = article.imageUrl && !imgError;
+
   return (
     <div
       className="group relative w-[280px] shrink-0 snap-start cursor-pointer rounded-xl border border-border-primary bg-bg-card transition-all duration-150 hover:border-accent-primary/20 hover:shadow-sm"
       onClick={() => onOpenReader?.(article)}
     >
       {/* Image thumbnail */}
-      {article.imageUrl && (
+      {showImage && (
         <div className="h-32 w-full overflow-hidden rounded-t-xl bg-bg-secondary">
           <img
             src={article.imageUrl}
             alt=""
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            onError={() => setImgError(true)}
           />
         </div>
       )}
@@ -45,6 +50,13 @@ export function SwimlaneCard({
         <h4 className="mb-2 text-sm font-semibold leading-snug text-text-primary line-clamp-2 group-hover:text-accent-primary transition-colors">
           {article.title}
         </h4>
+
+        {/* Signal badges */}
+        {article.signals && article.signals.length > 0 && (
+          <div className="mb-2 flex flex-wrap gap-1">
+            <SignalBadges signals={article.signals} compact max={1} />
+          </div>
+        )}
 
         {/* Brief preview */}
         {article.summary?.brief && (

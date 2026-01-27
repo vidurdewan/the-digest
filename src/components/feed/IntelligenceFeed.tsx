@@ -149,25 +149,35 @@ export function IntelligenceFeed({
       {/* Reading Progress */}
       <ReadingProgress totalItems={priorityItems} readItems={readPriorityItems} />
 
-      {/* Stats bar */}
-      <div className="flex gap-3 overflow-x-auto pb-1">
-        {[
-          { label: "Unread", value: unread.toString(), icon: Mail },
-          { label: "Total", value: articles.length.toString(), icon: TrendingUp },
-          { label: "Watchlist", value: watchlistCount.toString(), icon: Eye },
-          { label: "Saved", value: savedCount.toString(), icon: Bookmark },
-        ].map((stat) => (
-          <div
-            key={stat.label}
-            className="flex min-w-[120px] items-center gap-3 rounded-lg border border-border-primary bg-bg-card p-2.5 transition-theme"
-          >
-            <stat.icon size={16} className="shrink-0 text-accent-primary" />
-            <div>
-              <p className="text-base font-bold text-text-primary">{stat.value}</p>
-              <p className="text-[11px] text-text-tertiary">{stat.label}</p>
-            </div>
-          </div>
-        ))}
+      {/* Stats bar — minimal inline */}
+      <div className="flex items-center gap-4 text-xs text-text-tertiary">
+        <span className="flex items-center gap-1.5">
+          <Mail size={13} className="text-accent-primary" />
+          <span className="font-semibold text-text-primary">{unread}</span> unread
+        </span>
+        <span className="text-border-primary">|</span>
+        <span className="flex items-center gap-1.5">
+          <TrendingUp size={13} />
+          <span className="font-semibold text-text-primary">{articles.length}</span> total
+        </span>
+        {watchlistCount > 0 && (
+          <>
+            <span className="text-border-primary">|</span>
+            <span className="flex items-center gap-1.5">
+              <Eye size={13} className="text-accent-warning" />
+              <span className="font-semibold text-text-primary">{watchlistCount}</span> watchlist
+            </span>
+          </>
+        )}
+        {savedCount > 0 && (
+          <>
+            <span className="text-border-primary">|</span>
+            <span className="flex items-center gap-1.5">
+              <Bookmark size={13} />
+              <span className="font-semibold text-text-primary">{savedCount}</span> saved
+            </span>
+          </>
+        )}
       </div>
 
       {/* ═══ SECTION 1: Today's Brief ═══ */}

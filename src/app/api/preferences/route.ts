@@ -16,7 +16,14 @@ const defaultPreferences: TopicPreferences = {
   politics: "medium",
 };
 
-const defaultVipNewsletters: string[] = ["Stratechery"];
+const defaultVipNewsletters: string[] = [
+  "Stratechery",
+  "Matt Levine",
+  "Money Stuff",
+  "The Diff",
+  "Eric Newcomer",
+  "Newcomer",
+];
 
 /**
  * GET /api/preferences
