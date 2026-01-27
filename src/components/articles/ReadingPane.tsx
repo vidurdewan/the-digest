@@ -19,6 +19,81 @@ import { RemindMeButton } from "@/components/intelligence/RemindMeButton";
 import { SignalBadges } from "@/components/intelligence/SignalBadge";
 import type { ArticleWithIntelligence } from "@/types";
 
+/**
+ * Decode common HTML entities and intelligently split article content into paragraphs.
+ */
+function decodeEntities(text: string): string {
+  const textarea = typeof document !== "undefined" ? document.createElement("textarea") : null;
+  if (textarea) {
+    textarea.innerHTML = text;
+    return textarea.value;
+  }
+  // SSR fallback — handle the most common entities
+  return text
+    .replace(/&#x27;/g, "'")
+    .replace(/&#x2019;/g, "\u2019")
+    .replace(/&#x2018;/g, "\u2018")
+    .replace(/&#x201C;/g, "\u201C")
+    .replace(/&#x201D;/g, "\u201D")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&nbsp;/g, " ")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, h) => String.fromCharCode(parseInt(h, 16)));
+}
+
+function splitIntoParagraphs(raw: string): string[] {
+  const decoded = decodeEntities(raw);
+
+  // 1. Try double-newline split (standard)
+  const byDouble = decoded.split(/\n\n+/).map((s) => s.trim()).filter(Boolean);
+  if (byDouble.length > 1) return byDouble;
+
+  // 2. Try single-newline split
+  const bySingle = decoded.split(/\n/).map((s) => s.trim()).filter(Boolean);
+  if (bySingle.length > 1) return bySingle;
+
+  // 3. No newlines at all — split at sentence boundaries roughly every 3-4 sentences
+  const text = decoded.trim();
+  if (!text) return [];
+  const sentences = text.match(/[^.!?]+[.!?]+(?:\s+|$)/g);
+  if (!sentences || sentences.length <= 4) return [text];
+
+  const paragraphs: string[] = [];
+  let current = "";
+  let count = 0;
+  for (const sentence of sentences) {
+    current += sentence;
+    count++;
+    // Break at natural transition points (after "." followed by a capital letter) every ~3 sentences
+    if (count >= 3) {
+      paragraphs.push(current.trim());
+      current = "";
+      count = 0;
+    }
+  }
+  if (current.trim()) paragraphs.push(current.trim());
+  return paragraphs;
+}
+
+/** Clean author string: extract display name from "email@example.com (Name)" format */
+function cleanAuthor(author: string): string {
+  // Pattern: email (Display Name) or email@domain.com (Display Name)
+  const parenMatch = author.match(/\(([^)]+)\)/);
+  if (parenMatch) return parenMatch[1];
+  // If it looks like just an email, try to extract name from email prefix
+  if (author.includes("@") && !author.includes(" ")) {
+    const prefix = author.split("@")[0];
+    return prefix
+      .split(/[._-]/)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ");
+  }
+  return author;
+}
+
 interface ReadingPaneProps {
   article: (Article & { summary?: Summary }) | null;
   onClose: () => void;
@@ -163,7 +238,7 @@ export function ReadingPane({ article, onClose, onSave, onRequestSummary }: Read
           <div className="mb-6 flex items-center gap-3 text-sm text-text-tertiary border-b border-border-secondary pb-6">
             {article.author && (
               <span className="font-medium text-text-secondary">
-                By {article.author}
+                By {cleanAuthor(article.author)}
               </span>
             )}
             <span className="flex items-center gap-1.5">
@@ -249,10 +324,10 @@ export function ReadingPane({ article, onClose, onSave, onRequestSummary }: Read
           {/* Full article content */}
           {article.content ? (
             <div
-              className="prose max-w-none leading-relaxed text-text-primary"
-              style={{ fontSize: `${fontSize}px`, lineHeight: 1.75 }}
+              className="prose max-w-none text-text-primary"
+              style={{ fontSize: `${fontSize}px`, lineHeight: 1.8 }}
             >
-              {article.content.split("\n\n").map((paragraph, i) => (
+              {splitIntoParagraphs(article.content).map((paragraph, i) => (
                 <p key={i} className="mb-5 text-text-primary">
                   {paragraph}
                 </p>

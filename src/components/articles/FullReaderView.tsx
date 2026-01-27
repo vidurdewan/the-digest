@@ -15,6 +15,64 @@ import { useState } from "react";
 import type { Article, Summary } from "@/types";
 import { topicLabels, getRelativeTime } from "@/lib/mock-data";
 
+/** Decode common HTML entities */
+function decodeEntities(text: string): string {
+  const textarea = typeof document !== "undefined" ? document.createElement("textarea") : null;
+  if (textarea) {
+    textarea.innerHTML = text;
+    return textarea.value;
+  }
+  return text
+    .replace(/&#x27;/g, "'")
+    .replace(/&#x2019;/g, "\u2019")
+    .replace(/&#x2018;/g, "\u2018")
+    .replace(/&#x201C;/g, "\u201C")
+    .replace(/&#x201D;/g, "\u201D")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&nbsp;/g, " ")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, h) => String.fromCharCode(parseInt(h, 16)));
+}
+
+function splitIntoParagraphs(raw: string): string[] {
+  const decoded = decodeEntities(raw);
+  const byDouble = decoded.split(/\n\n+/).map((s) => s.trim()).filter(Boolean);
+  if (byDouble.length > 1) return byDouble;
+  const bySingle = decoded.split(/\n/).map((s) => s.trim()).filter(Boolean);
+  if (bySingle.length > 1) return bySingle;
+  const text = decoded.trim();
+  if (!text) return [];
+  const sentences = text.match(/[^.!?]+[.!?]+(?:\s+|$)/g);
+  if (!sentences || sentences.length <= 4) return [text];
+  const paragraphs: string[] = [];
+  let current = "";
+  let count = 0;
+  for (const sentence of sentences) {
+    current += sentence;
+    count++;
+    if (count >= 3) {
+      paragraphs.push(current.trim());
+      current = "";
+      count = 0;
+    }
+  }
+  if (current.trim()) paragraphs.push(current.trim());
+  return paragraphs;
+}
+
+function cleanAuthor(author: string): string {
+  const parenMatch = author.match(/\(([^)]+)\)/);
+  if (parenMatch) return parenMatch[1];
+  if (author.includes("@") && !author.includes(" ")) {
+    const prefix = author.split("@")[0];
+    return prefix.split(/[._-]/).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+  }
+  return author;
+}
+
 interface FullReaderViewProps {
   article: (Article & { summary?: Summary }) | null;
   onClose: () => void;
@@ -133,7 +191,7 @@ export function FullReaderView({ article, onClose }: FullReaderViewProps) {
           <div className="mb-6 flex items-center gap-3 border-b border-border-secondary pb-6">
             {article.author && (
               <span className="text-sm font-medium text-text-secondary">
-                By {article.author}
+                By {cleanAuthor(article.author)}
               </span>
             )}
             <span className="text-sm text-text-tertiary">
@@ -180,11 +238,11 @@ export function FullReaderView({ article, onClose }: FullReaderViewProps) {
           {/* Full article content */}
           {article.content ? (
             <div
-              className="prose max-w-none leading-relaxed text-text-primary"
-              style={{ fontSize: `${fontSize}px`, lineHeight: 1.7 }}
+              className="prose max-w-none text-text-primary"
+              style={{ fontSize: `${fontSize}px`, lineHeight: 1.8 }}
             >
-              {article.content.split("\n\n").map((paragraph, i) => (
-                <p key={i} className="mb-4 text-text-primary">
+              {splitIntoParagraphs(article.content).map((paragraph, i) => (
+                <p key={i} className="mb-5 text-text-primary">
                   {paragraph}
                 </p>
               ))}

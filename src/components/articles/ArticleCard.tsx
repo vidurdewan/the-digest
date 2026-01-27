@@ -16,6 +16,16 @@ import type { Article, Summary, TopicCategory } from "@/types";
 import { topicLabels, topicColors, getRelativeTime } from "@/lib/mock-data";
 import { ExpandedArticleView } from "./ExpandedArticleView";
 
+function cleanAuthor(author: string): string {
+  const parenMatch = author.match(/\(([^)]+)\)/);
+  if (parenMatch) return parenMatch[1];
+  if (author.includes("@") && !author.includes(" ")) {
+    const prefix = author.split("@")[0];
+    return prefix.split(/[._-]/).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+  }
+  return author;
+}
+
 interface ArticleCardProps {
   article: Article & { summary?: Summary };
   onSave?: (id: string) => void;
@@ -115,7 +125,7 @@ export function ArticleCard({
               <>
                 <span className="text-text-tertiary">&middot;</span>
                 <span className="text-xs text-text-tertiary">
-                  {article.author}
+                  {cleanAuthor(article.author)}
                 </span>
               </>
             )}

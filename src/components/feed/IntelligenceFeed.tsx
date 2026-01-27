@@ -9,7 +9,7 @@ import {
   ArrowUp,
   Loader2,
 } from "lucide-react";
-import type { Article, Summary, ArticleIntelligence, ArticleWithIntelligence, TopicCategory } from "@/types";
+import type { Article, Summary, ArticleIntelligence, ArticleWithIntelligence } from "@/types";
 import { topicLabels } from "@/lib/mock-data";
 import { selectDiverseTopStories, groupByTopic } from "@/lib/feed-layout";
 import { TodaysBrief } from "./TodaysBrief";
@@ -57,7 +57,6 @@ export function IntelligenceFeed({
   isRefreshing,
 }: IntelligenceFeedProps) {
   const [everythingElseOpen, setEverythingElseOpen] = useState(false);
-  const [selectedTopic, setSelectedTopic] = useState<TopicCategory | "all">("all");
 
   // Split articles into top stories (diverse) and remaining
   const { topStories, remaining } = useMemo(
@@ -189,44 +188,14 @@ export function IntelligenceFeed({
       {/* ═══ TOPIC SWIMLANES ═══ */}
       {topicGroups.length > 0 && (
         <section>
-          <div className="mb-4 flex items-center gap-3">
+          <div className="mb-6 flex items-center gap-3">
             <h3 className="text-lg font-bold text-text-primary">
               By Topic
             </h3>
           </div>
 
-          {/* Topic filter tabs */}
-          <div className="mb-6 flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
-            <button
-              onClick={() => setSelectedTopic("all")}
-              className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
-                selectedTopic === "all"
-                  ? "bg-accent-primary text-text-inverse"
-                  : "bg-bg-secondary text-text-tertiary hover:text-text-secondary hover:bg-bg-hover"
-              }`}
-            >
-              All
-            </button>
-            {topicGroups.map(({ topic, articles: ta }) => (
-              <button
-                key={topic}
-                onClick={() => setSelectedTopic(topic)}
-                className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
-                  selectedTopic === topic
-                    ? "bg-accent-primary text-text-inverse"
-                    : "bg-bg-secondary text-text-tertiary hover:text-text-secondary hover:bg-bg-hover"
-                }`}
-              >
-                {topicLabels[topic]}
-                <span className="ml-1 opacity-60">{ta.length}</span>
-              </button>
-            ))}
-          </div>
-
           <div className="space-y-8">
-            {topicGroups
-              .filter(({ topic }) => selectedTopic === "all" || selectedTopic === topic)
-              .map(({ topic, articles: topicArticles }) => {
+            {topicGroups.map(({ topic, articles: topicArticles }) => {
               const displayArticles = topicArticles.slice(0, SWIMLANE_MAX_PER_TOPIC);
               if (displayArticles.length === 0) return null;
 

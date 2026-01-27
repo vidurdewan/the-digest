@@ -122,6 +122,14 @@ function formatFullDate(dateStr: string): string {
   });
 }
 
+/** Strip markdown bold/italic markers for plain-text previews */
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/\*([^*]+)\*/g, "$1")
+    .replace(/\[([^\]]+)\]/g, "$1");
+}
+
 // ─── Source Citation Badge ────────────────────────────────────
 function SourceBadge({ name }: { name: string }) {
   return (
@@ -623,7 +631,7 @@ function NewsletterCard({
           </p>
           {summary && "theNews" in summary && (
             <p className="mt-1.5 line-clamp-2 text-xs text-text-tertiary">
-              {(summary as { theNews: string }).theNews.slice(0, 150)}...
+              {stripMarkdown((summary as { theNews: string }).theNews).slice(0, 150)}...
             </p>
           )}
 
