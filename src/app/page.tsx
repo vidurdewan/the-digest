@@ -320,6 +320,15 @@ export default function Home() {
             onSelectDigestDate={newsletterData.selectDigestDate}
             onToggleRead={newsletterData.toggleRead}
             onToggleSave={newsletterData.toggleSave}
+            vipNewsletters={preferences.vipNewsletters}
+            onToggleVip={(publication: string) => {
+              if (preferences.vipNewsletters.includes(publication)) {
+                preferences.removeVipNewsletter(publication);
+              } else {
+                preferences.addVipNewsletter(publication);
+              }
+              preferences.save();
+            }}
           />
         );
       case "news":

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Mail,
   ChevronDown,
@@ -24,6 +24,7 @@ import {
   ChevronRight,
   AlertTriangle,
   Briefcase,
+  Star,
 } from "lucide-react";
 import type { Newsletter } from "@/types";
 import { getRelativeTime } from "@/lib/mock-data";
@@ -57,6 +58,8 @@ interface NewsletterViewProps {
   onSelectDigestDate: (date: string | null) => void;
   onToggleRead: (id: string) => void;
   onToggleSave: (id: string) => void;
+  vipNewsletters: string[];
+  onToggleVip: (publication: string) => void;
 }
 
 function publicationInitials(name: string): string {
@@ -181,60 +184,78 @@ function RichText({ text }: { text: string }) {
   );
 }
 
-// ─── Day Tabs for Digest History ─────────────────────────────
-function DigestDayTabs({
-  history,
+// ─── 7-Day Date Strip ────────────────────────────────────────
+function DateStrip({
   selectedDate,
   onSelect,
+  digestDates,
 }: {
-  history: StoredDigest[];
   selectedDate: string | null;
   onSelect: (date: string | null) => void;
+  digestDates: Set<string>;
 }) {
-  if (history.length === 0) return null;
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const selectedRef = useRef<HTMLButtonElement>(null);
 
-  // Show up to 7 recent days as tabs, rest in a dropdown
-  const tabDays = history.slice(0, 7);
-  const moreDays = history.slice(7);
-  const activeDate = selectedDate || history[0]?.date;
+  // Build last 7 days
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - i));
+    return {
+      dateStr: d.toISOString().slice(0, 10),
+      dayAbbr: d.toLocaleDateString("en-US", { weekday: "short" }),
+      dayNum: d.getDate(),
+      isToday: i === 6,
+    };
+  });
+
+  const todayStr = days[6].dateStr;
+  const activeDate = selectedDate || todayStr;
+
+  // Auto-scroll to center the selected date
+  useEffect(() => {
+    if (selectedRef.current && scrollRef.current) {
+      selectedRef.current.scrollIntoView({
+        behavior: "smooth",
+        inline: "center",
+        block: "nearest",
+      });
+    }
+  }, [activeDate]);
 
   return (
-    <div className="flex items-center gap-1 overflow-x-auto pb-1">
-      {tabDays.map((d) => (
-        <button
-          key={d.date}
-          onClick={() =>
-            onSelect(d.date === history[0]?.date ? null : d.date)
-          }
-          className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-            activeDate === d.date
-              ? "bg-accent-primary text-text-inverse"
-              : "bg-bg-secondary text-text-tertiary hover:text-text-secondary"
-          }`}
-        >
-          {formatDateLabel(d.date)}
-        </button>
-      ))}
-      {moreDays.length > 0 && (
-        <select
-          value={
-            moreDays.some((d) => d.date === activeDate)
-              ? activeDate
-              : ""
-          }
-          onChange={(e) => {
-            if (e.target.value) onSelect(e.target.value);
-          }}
-          className="shrink-0 rounded-lg border border-border-primary bg-bg-secondary px-2 py-1.5 text-xs text-text-tertiary"
-        >
-          <option value="">Older...</option>
-          {moreDays.map((d) => (
-            <option key={d.date} value={d.date}>
-              {formatDateLabel(d.date)} ({d.newsletterCount})
-            </option>
-          ))}
-        </select>
-      )}
+    <div
+      ref={scrollRef}
+      className="scrollbar-hide flex items-center gap-2 overflow-x-auto pb-1"
+    >
+      {days.map((day) => {
+        const isActive = activeDate === day.dateStr;
+        const hasDigest = digestDates.has(day.dateStr);
+        return (
+          <button
+            key={day.dateStr}
+            ref={isActive ? selectedRef : undefined}
+            onClick={() =>
+              onSelect(day.dateStr === todayStr ? null : day.dateStr)
+            }
+            className={`relative flex shrink-0 flex-col items-center rounded-xl px-3 py-2 text-xs font-medium transition-colors ${
+              isActive
+                ? "bg-bg-active text-accent-primary"
+                : hasDigest
+                  ? "bg-bg-secondary text-text-secondary hover:bg-bg-hover"
+                  : "text-text-tertiary hover:bg-bg-secondary hover:text-text-secondary"
+            }`}
+          >
+            <span className="text-[10px] uppercase tracking-wider">
+              {day.dayAbbr}
+            </span>
+            <span className="text-sm font-semibold">{day.dayNum}</span>
+            {day.isToday && (
+              <span className="mt-0.5 h-1 w-1 rounded-full bg-accent-primary" />
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -420,9 +441,16 @@ function DailyDigestSection({
   selectedDigestDate: string | null;
   onSelectDigestDate: (date: string | null) => void;
 }) {
+  const digestDates = new Set(digestHistory.map((d) => d.date));
+
   if (!digest && !isGenerating) {
     return (
       <div className="space-y-3">
+        <DateStrip
+          selectedDate={selectedDigestDate}
+          onSelect={onSelectDigestDate}
+          digestDates={digestDates}
+        />
         <div className="rounded-2xl border border-border-secondary bg-bg-card p-6">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-3">
@@ -448,13 +476,6 @@ function DailyDigestSection({
             </button>
           </div>
         </div>
-        {digestHistory.length > 0 && (
-          <DigestDayTabs
-            history={digestHistory}
-            selectedDate={selectedDigestDate}
-            onSelect={onSelectDigestDate}
-          />
-        )}
       </div>
     );
   }
@@ -483,14 +504,12 @@ function DailyDigestSection({
 
   return (
     <div className="space-y-3">
-      {/* Day tabs */}
-      {digestHistory.length > 1 && (
-        <DigestDayTabs
-          history={digestHistory}
-          selectedDate={selectedDigestDate}
-          onSelect={onSelectDigestDate}
-        />
-      )}
+      {/* Date strip */}
+      <DateStrip
+        selectedDate={selectedDigestDate}
+        onSelect={onSelectDigestDate}
+        digestDates={digestDates}
+      />
 
       {/* Digest card */}
       <div className="rounded-2xl border border-border-secondary bg-bg-card shadow-sm">
@@ -564,15 +583,26 @@ function DailyDigestSection({
   );
 }
 
+/** Extract first sentence from text for preview snippets */
+function firstSentence(text: string): string {
+  const plain = stripMarkdown(text);
+  const match = plain.match(/^(.+?[.!?])\s/);
+  return match ? match[1] : plain.slice(0, 120);
+}
+
 // ─── Newsletter Card ─────────────────────────────────────────
 function NewsletterCard({
   newsletter,
   onToggleRead,
   onToggleSave,
+  isVip,
+  onToggleVip,
 }: {
   newsletter: Newsletter;
   onToggleRead: (id: string) => void;
   onToggleSave: (id: string) => void;
+  isVip: boolean;
+  onToggleVip: (publication: string) => void;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showRawContent, setShowRawContent] = useState(false);
@@ -611,19 +641,21 @@ function NewsletterCard({
               <h3 className="text-sm font-semibold text-text-primary">
                 {newsletter.publication}
               </h3>
+              {isVip && (
+                <Star size={12} className="fill-accent-warning text-accent-warning" />
+              )}
               {!newsletter.isRead && (
                 <span className="h-2 w-2 rounded-full bg-accent-primary" />
               )}
             </div>
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="flex shrink-0 items-center gap-3">
               {newsletter.readingTimeMinutes && (
-                <span className="flex items-center gap-1 text-xs text-text-tertiary">
-                  <Clock size={11} />
+                <span className="flex items-center gap-1 rounded-md bg-bg-secondary px-1.5 py-0.5 text-xs font-medium text-text-secondary">
+                  <Clock size={12} className="text-accent-primary" />
                   {newsletter.readingTimeMinutes} min
                 </span>
               )}
-              <span className="flex items-center gap-1 text-xs text-text-tertiary">
-                <Clock size={12} />
+              <span className="text-xs text-text-tertiary">
                 {getRelativeTime(newsletter.receivedAt)}
               </span>
             </div>
@@ -632,8 +664,8 @@ function NewsletterCard({
             {newsletter.subject}
           </p>
           {summary && "theNews" in summary && (
-            <p className="mt-1.5 line-clamp-2 text-xs text-text-tertiary">
-              {stripMarkdown((summary as { theNews: string }).theNews).slice(0, 150)}...
+            <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-text-tertiary">
+              {firstSentence((summary as { theNews: string }).theNews)}
             </p>
           )}
 
@@ -674,6 +706,20 @@ function NewsletterCard({
                 <Bookmark size={12} />
               )}
               {newsletter.isSaved ? "Saved" : "Save"}
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleVip(newsletter.publication);
+              }}
+              className={`flex items-center gap-1 rounded-md px-2 py-1 text-xs transition-colors ${
+                isVip
+                  ? "bg-accent-warning/10 text-accent-warning"
+                  : "bg-bg-secondary text-text-tertiary hover:text-text-secondary"
+              }`}
+            >
+              <Star size={12} className={isVip ? "fill-accent-warning" : ""} />
+              {isVip ? "VIP" : "Pin"}
             </button>
           </div>
         </div>
@@ -848,6 +894,8 @@ export function NewsletterView({
   onSelectDigestDate,
   onToggleRead,
   onToggleSave,
+  vipNewsletters,
+  onToggleVip,
 }: NewsletterViewProps) {
   const [ingestResult, setIngestResult] = useState<{
     fetched: number;
@@ -866,11 +914,19 @@ export function NewsletterView({
     }
   };
 
-  const filteredNewsletters = newsletters.filter((nl) => {
-    if (filterMode === "unread") return !nl.isRead;
-    if (filterMode === "saved") return nl.isSaved;
-    return true;
-  });
+  const vipSet = new Set(vipNewsletters);
+
+  const filteredNewsletters = newsletters
+    .filter((nl) => {
+      if (filterMode === "unread") return !nl.isRead;
+      if (filterMode === "saved") return nl.isSaved;
+      return true;
+    })
+    .sort((a, b) => {
+      const aVip = vipSet.has(a.publication) ? 0 : 1;
+      const bVip = vipSet.has(b.publication) ? 0 : 1;
+      return aVip - bVip;
+    });
 
   const unreadCount = newsletters.filter((nl) => !nl.isRead).length;
   const savedCount = newsletters.filter((nl) => nl.isSaved).length;
@@ -1036,6 +1092,8 @@ export function NewsletterView({
               newsletter={nl}
               onToggleRead={onToggleRead}
               onToggleSave={onToggleSave}
+              isVip={vipSet.has(nl.publication)}
+              onToggleVip={onToggleVip}
             />
           ))}
         </div>

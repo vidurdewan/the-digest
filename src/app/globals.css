@@ -61,25 +61,25 @@
 
 /* ===== DARK THEME ===== */
 [data-theme="dark"] {
-  --bg-primary: #0d0d0d;
-  --bg-secondary: #141414;
-  --bg-tertiary: #1e1e1e;
-  --bg-sidebar: #111111;
-  --bg-card: #181818;
-  --bg-hover: #222222;
-  --bg-active: #2a2220;
-  --bg-elevated: #1e1e1e;
-  --bg-surface-1: #141414;
-  --bg-surface-2: #181818;
-  --bg-surface-3: #1e1e1e;
+  --bg-primary: #1a1816;
+  --bg-secondary: #232019;
+  --bg-tertiary: #2e2a23;
+  --bg-sidebar: #1a1816;
+  --bg-card: #2a2722;
+  --bg-hover: #332f29;
+  --bg-active: #3a342c;
+  --bg-elevated: #2e2a23;
+  --bg-surface-1: #232019;
+  --bg-surface-2: #2a2722;
+  --bg-surface-3: #2e2a23;
 
   --text-primary: #f5f5f5;
   --text-secondary: #a3a3a3;
   --text-tertiary: #737373;
-  --text-inverse: #0d0d0d;
+  --text-inverse: #1a1816;
 
-  --border-primary: #2e2e2e;
-  --border-secondary: #252525;
+  --border-primary: #3a352e;
+  --border-secondary: #302b25;
 
   --accent-primary: #E09A8B;
   --accent-primary-hover: #EBB0A3;
@@ -89,32 +89,32 @@
   --accent-success: #4A9670;
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
 
   --font-heading: var(--font-libre), Georgia, "Times New Roman", serif;
   --font-body: var(--font-inter), system-ui, -apple-system, sans-serif;
   --font-mono: var(--font-geist-mono), monospace;
 
-  /* Topic colors — brighter for dark mode */
-  --topic-vc: #818cf8;
-  --topic-vc-bg: #1e1b4b;
-  --topic-fundraising: #34d399;
-  --topic-fundraising-bg: #022c22;
-  --topic-executive: #a78bfa;
-  --topic-executive-bg: #1e1033;
-  --topic-financial: #38bdf8;
-  --topic-financial-bg: #0c1929;
-  --topic-geopolitics: #f87171;
-  --topic-geopolitics-bg: #2a0f0f;
-  --topic-automotive: #94a3b8;
-  --topic-automotive-bg: #1a1e25;
-  --topic-science: #22d3ee;
-  --topic-science-bg: #0c1f24;
-  --topic-local: #fb923c;
-  --topic-local-bg: #271608;
-  --topic-politics: #fb7185;
-  --topic-politics-bg: #2a0f15;
+  /* Topic colors — brighter for dark mode with sufficient contrast */
+  --topic-vc: #a5b4fc;
+  --topic-vc-bg: #2a2548;
+  --topic-fundraising: #6ee7b7;
+  --topic-fundraising-bg: #15332a;
+  --topic-executive: #c4b5fd;
+  --topic-executive-bg: #2a1f40;
+  --topic-financial: #7dd3fc;
+  --topic-financial-bg: #1a2738;
+  --topic-geopolitics: #fca5a5;
+  --topic-geopolitics-bg: #351a1a;
+  --topic-automotive: #cbd5e1;
+  --topic-automotive-bg: #252a32;
+  --topic-science: #67e8f9;
+  --topic-science-bg: #1a2c30;
+  --topic-local: #fdba74;
+  --topic-local-bg: #302214;
+  --topic-politics: #fda4af;
+  --topic-politics-bg: #351a22;
 }
 
 /* ===== NEWSPAPER THEME ===== */
