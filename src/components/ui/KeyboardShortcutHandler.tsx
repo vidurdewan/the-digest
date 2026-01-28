@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { X, Keyboard } from "lucide-react";
-import { useFeedNavigationStore } from "@/lib/store";
+import { useFeedNavigationStore, useOverlayStore } from "@/lib/store";
 import { useKeyboardShortcuts, SHORTCUT_LIST } from "@/hooks/useKeyboardShortcuts";
 
 interface KeyboardShortcutHandlerProps {
@@ -20,6 +20,7 @@ export function KeyboardShortcutHandler({
 }: KeyboardShortcutHandlerProps) {
   const [showHelp, setShowHelp] = useState(false);
   const { focusedIndex, focusNext, focusPrev } = useFeedNavigationStore();
+  const { openSearchOverlay, toggleChatPanel } = useOverlayStore();
 
   const handleNavigateNext = useCallback(() => {
     const total = document.querySelectorAll("[data-feed-index]").length;
@@ -57,6 +58,14 @@ export function KeyboardShortcutHandler({
     setShowHelp((prev) => !prev);
   }, []);
 
+  const handleOpenSearch = useCallback(() => {
+    openSearchOverlay();
+  }, [openSearchOverlay]);
+
+  const handleOpenChat = useCallback(() => {
+    toggleChatPanel();
+  }, [toggleChatPanel]);
+
   useKeyboardShortcuts({
     onNavigateNext: handleNavigateNext,
     onNavigatePrev: handleNavigatePrev,
@@ -65,6 +74,8 @@ export function KeyboardShortcutHandler({
     onOpenReader: handleOpenReader,
     onCloseReader: handleCloseReader,
     onShowHelp: handleShowHelp,
+    onOpenSearch: handleOpenSearch,
+    onOpenChat: handleOpenChat,
   });
 
   // Scroll focused element into view

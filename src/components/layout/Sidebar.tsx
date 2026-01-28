@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useSidebarStore, navigationGroups, bottomNavSections } from "@/lib/store";
+import { useSidebarStore, useOverlayStore, navigationGroups, bottomNavSections } from "@/lib/store";
 import {
   Zap,
   Mail,
@@ -41,7 +41,26 @@ const iconMap: Record<string, React.ReactNode> = {
 export function Sidebar() {
   const { isOpen, activeSection, toggle, setActiveSection, setOpen } =
     useSidebarStore();
+  const { searchOverlayOpen, chatPanelOpen, openSearchOverlay, toggleChatPanel } =
+    useOverlayStore();
   const [toolsCollapsed, setToolsCollapsed] = useState(false);
+
+  const handleNavClick = (sectionId: string, closeMobile?: boolean) => {
+    if (sectionId === "search") {
+      openSearchOverlay();
+    } else if (sectionId === "chat") {
+      toggleChatPanel();
+    } else {
+      setActiveSection(sectionId);
+    }
+    if (closeMobile) setOpen(false);
+  };
+
+  const isItemActive = (sectionId: string) => {
+    if (sectionId === "search") return searchOverlayOpen;
+    if (sectionId === "chat") return chatPanelOpen;
+    return activeSection === sectionId;
+  };
 
   return (
     <>
@@ -65,14 +84,11 @@ export function Sidebar() {
                 )}
                 <ul className="space-y-0.5">
                   {group.items.map((section) => {
-                    const isActive = activeSection === section.id;
+                    const isActive = isItemActive(section.id);
                     return (
                       <li key={section.id}>
                         <button
-                          onClick={() => {
-                            setActiveSection(section.id);
-                            setOpen(false);
-                          }}
+                          onClick={() => handleNavClick(section.id, true)}
                           className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
                             isActive
                               ? "bg-bg-active text-accent-primary"
@@ -91,14 +107,11 @@ export function Sidebar() {
             <div className="mt-2 border-t border-border-secondary pt-2">
               <ul className="space-y-0.5">
                 {bottomNavSections.map((section) => {
-                  const isActive = activeSection === section.id;
+                  const isActive = isItemActive(section.id);
                   return (
                     <li key={section.id}>
                       <button
-                        onClick={() => {
-                          setActiveSection(section.id);
-                          setOpen(false);
-                        }}
+                        onClick={() => handleNavClick(section.id, true)}
                         className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
                           isActive
                             ? "bg-bg-active text-accent-primary"
@@ -142,11 +155,11 @@ export function Sidebar() {
         {/* Grouped Navigation */}
         <nav className="flex-1 overflow-y-auto px-2 py-3">
           {navigationGroups.map((group, gi) => {
-            const isToolsGroup = group.label === "AI & Search";
+            const isToolsGroup = group.label === "Tools";
             const isCollapsible = isToolsGroup && isOpen;
             const isGroupOpen = isToolsGroup ? !toolsCollapsed : true;
             // Auto-expand Tools if a tools item is active
-            const hasActiveItem = group.items.some((s) => s.id === activeSection);
+            const hasActiveItem = group.items.some((s) => isItemActive(s.id));
 
             return (
               <div key={gi}>
@@ -169,11 +182,11 @@ export function Sidebar() {
                 {(isGroupOpen || hasActiveItem || !isOpen) && (
                   <ul className="space-y-0.5">
                     {group.items.map((section) => {
-                      const isActive = activeSection === section.id;
+                      const isActive = isItemActive(section.id);
                       return (
                         <li key={section.id}>
                           <button
-                            onClick={() => setActiveSection(section.id)}
+                            onClick={() => handleNavClick(section.id)}
                             className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-medium transition-all duration-150 ${
                               isActive
                                 ? `bg-bg-active text-accent-primary${!isOpen ? " sidebar-icon-active" : ""}`
@@ -202,11 +215,11 @@ export function Sidebar() {
         <div className="border-t border-border-secondary px-2 py-2">
           <ul className="space-y-0.5">
             {bottomNavSections.map((section) => {
-              const isActive = activeSection === section.id;
+              const isActive = isItemActive(section.id);
               return (
                 <li key={section.id}>
                   <button
-                    onClick={() => setActiveSection(section.id)}
+                    onClick={() => handleNavClick(section.id)}
                     className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-medium transition-all duration-150 ${
                       isActive
                         ? `bg-bg-active text-accent-primary${!isOpen ? " sidebar-icon-active" : ""}`

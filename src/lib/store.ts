@@ -85,7 +85,7 @@ export const navigationGroups: NavGroup[] = [
     ],
   },
   {
-    label: "AI & Search",
+    label: "Tools",
     items: [
       { id: "search", label: "Search", icon: "Search", path: "/search" },
       { id: "chat", label: "AI Chat", icon: "MessageSquare", path: "/chat" },
@@ -105,3 +105,44 @@ export const navigationSections: NavigationSection[] = [
   ...navigationGroups.flatMap((g) => g.items),
   ...bottomNavSections,
 ];
+
+// ─── Overlay / Panel state ────────────────────────────────────
+interface OverlayState {
+  commandPaletteOpen: boolean;
+  searchOverlayOpen: boolean;
+  chatPanelOpen: boolean;
+  openCommandPalette: () => void;
+  closeCommandPalette: () => void;
+  toggleCommandPalette: () => void;
+  openSearchOverlay: () => void;
+  closeSearchOverlay: () => void;
+  toggleSearchOverlay: () => void;
+  openChatPanel: () => void;
+  closeChatPanel: () => void;
+  toggleChatPanel: () => void;
+}
+
+export const useOverlayStore = create<OverlayState>()((set) => ({
+  commandPaletteOpen: false,
+  searchOverlayOpen: false,
+  chatPanelOpen: false,
+  openCommandPalette: () =>
+    set({ commandPaletteOpen: true, searchOverlayOpen: false }),
+  closeCommandPalette: () => set({ commandPaletteOpen: false }),
+  toggleCommandPalette: () =>
+    set((s) => ({
+      commandPaletteOpen: !s.commandPaletteOpen,
+      searchOverlayOpen: false,
+    })),
+  openSearchOverlay: () =>
+    set({ searchOverlayOpen: true, commandPaletteOpen: false }),
+  closeSearchOverlay: () => set({ searchOverlayOpen: false }),
+  toggleSearchOverlay: () =>
+    set((s) => ({
+      searchOverlayOpen: !s.searchOverlayOpen,
+      commandPaletteOpen: false,
+    })),
+  openChatPanel: () => set({ chatPanelOpen: true }),
+  closeChatPanel: () => set({ chatPanelOpen: false }),
+  toggleChatPanel: () => set((s) => ({ chatPanelOpen: !s.chatPanelOpen })),
+}));

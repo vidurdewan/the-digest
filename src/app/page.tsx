@@ -25,14 +25,15 @@ import { TopicSection } from "@/components/articles/TopicSection";
 import { ReadingPane } from "@/components/articles/ReadingPane";
 import { NewsletterView } from "@/components/articles/NewsletterView";
 import { SavedView } from "@/components/articles/SavedView";
-import { SearchView } from "@/components/search/SearchBar";
+import { CommandPalette } from "@/components/CommandPalette";
+import { AIChatPanel } from "@/components/AIChatPanel";
+import { SearchOverlay } from "@/components/SearchOverlay";
 import { WatchlistView } from "@/components/watchlist/WatchlistView";
 import { SettingsView } from "@/components/settings/SettingsView";
 import { SourceManager } from "@/components/settings/SourceManager";
 import { PageSkeleton } from "@/components/ui/LoadingSkeleton";
 import { PeopleMovesView } from "@/components/intelligence/PeopleMovesView";
 import { CompanyView } from "@/components/intelligence/CompanyView";
-import { ChatView } from "@/components/intelligence/ChatView";
 import { BriefMeView } from "@/components/intelligence/BriefMeView";
 import { WeeklySynthesisView } from "@/components/intelligence/WeeklySynthesisView";
 import {
@@ -358,16 +359,6 @@ export default function Home() {
             onExpand={handleExpand}
           />
         );
-      case "search":
-        return (
-          <SearchView
-            articles={articlesWithMatches}
-            onSave={handleSave}
-            onOpenReader={handleOpenReader}
-            onRequestSummary={articleData.requestFullSummary}
-            onExpand={handleExpand}
-          />
-        );
       case "people-moves":
         return (
           <PeopleMovesView
@@ -385,8 +376,6 @@ export default function Home() {
             onExpand={handleExpand}
           />
         );
-      case "chat":
-        return <ChatView articles={articlesWithMatches} />;
       case "brief":
         return <BriefMeView articles={articlesWithMatches} />;
       case "weekly-synthesis":
@@ -428,6 +417,18 @@ export default function Home() {
         />
       )}
       <MobileNav />
+      <CommandPalette
+        articles={rankedArticles}
+        onOpenReader={handleOpenReader}
+      />
+      <AIChatPanel articles={articlesWithMatches} />
+      <SearchOverlay
+        articles={articlesWithMatches}
+        onSave={handleSave}
+        onOpenReader={handleOpenReader}
+        onRequestSummary={articleData.requestFullSummary}
+        onExpand={handleExpand}
+      />
       <KeyboardShortcutHandler
         onSaveFocused={handleSaveFocused}
         onExpandFocused={handleExpandFocused}

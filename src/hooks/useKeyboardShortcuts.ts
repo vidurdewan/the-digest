@@ -19,6 +19,8 @@ interface UseKeyboardShortcutsOptions {
   onOpenReader: () => void;
   onCloseReader: () => void;
   onShowHelp: () => void;
+  onOpenSearch?: () => void;
+  onOpenChat?: () => void;
   enabled?: boolean;
 }
 
@@ -30,6 +32,8 @@ export function useKeyboardShortcuts({
   onOpenReader,
   onCloseReader,
   onShowHelp,
+  onOpenSearch,
+  onOpenChat,
   enabled = true,
 }: UseKeyboardShortcutsOptions) {
   const handlerRef = useRef<(e: KeyboardEvent) => void>(undefined);
@@ -84,9 +88,18 @@ export function useKeyboardShortcuts({
           e.preventDefault();
           onShowHelp();
           break;
+        case "/":
+          e.preventDefault();
+          onOpenSearch?.();
+          break;
+        case "c":
+        case "C":
+          e.preventDefault();
+          onOpenChat?.();
+          break;
       }
     },
-    [onNavigateNext, onNavigatePrev, onSave, onExpand, onOpenReader, onCloseReader, onShowHelp]
+    [onNavigateNext, onNavigatePrev, onSave, onExpand, onOpenReader, onCloseReader, onShowHelp, onOpenSearch, onOpenChat]
   );
 
   handlerRef.current = handleKeyDown;
@@ -107,5 +120,8 @@ export const SHORTCUT_LIST = [
   { key: "Enter", description: "Expand / collapse article" },
   { key: "O", description: "Open in reader view" },
   { key: "Esc", description: "Close reader view" },
+  { key: "⌘K", description: "Command palette" },
+  { key: "/", description: "Search" },
+  { key: "C", description: "AI Chat" },
   { key: "?", description: "Show keyboard shortcuts" },
 ];
