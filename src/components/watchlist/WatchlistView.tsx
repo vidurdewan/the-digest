@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Eye,
   Plus,
@@ -9,10 +9,12 @@ import {
   User,
   Landmark,
   Hash,
+  Sparkles,
 } from "lucide-react";
-import type { Article, Summary, WatchlistItem } from "@/types";
+import type { Article, Summary, WatchlistItem, TopicCategory } from "@/types";
 import { ArticleCard } from "@/components/articles/ArticleCard";
 import { useToastStore } from "@/components/ui/Toast";
+import { topicLabels } from "@/lib/mock-data";
 
 interface WatchlistViewProps {
   watchlist: WatchlistItem[];
@@ -25,6 +27,7 @@ interface WatchlistViewProps {
   onAddItem?: (name: string, type: WatchlistItem["type"]) => Promise<boolean>;
   onRemoveItem?: (id: string) => Promise<boolean>;
   onExpand?: (articleId: string) => void;
+  embedded?: boolean;
 }
 
 const typeIcons: Record<string, React.ReactNode> = {
@@ -41,6 +44,80 @@ const typeLabels: Record<string, string> = {
   keyword: "Keyword",
 };
 
+// Stop words to filter when extracting entities from titles
+const STOP_WORDS = new Set([
+  "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for", "of",
+  "with", "by", "from", "as", "is", "was", "are", "were", "be", "been", "being",
+  "have", "has", "had", "do", "does", "did", "will", "would", "could", "should",
+  "may", "might", "shall", "can", "not", "no", "its", "it", "this", "that",
+  "these", "those", "new", "how", "why", "what", "who", "when", "where", "which",
+  "after", "before", "into", "over", "up", "says", "said", "report", "reports",
+  "more", "most", "than", "also", "about", "just", "out", "now", "all", "first",
+  "last", "next", "back", "down", "off", "top", "set", "big", "get", "own",
+]);
+
+function extractSuggestedEntities(
+  articles: (Article & { summary?: Summary })[],
+  existingWatchlist: WatchlistItem[]
+): { name: string; count: number }[] {
+  const counts = new Map<string, number>();
+  const existingNames = new Set(
+    existingWatchlist.map((w) => w.name.toLowerCase())
+  );
+
+  // Primary: use keyEntities from summaries
+  for (const article of articles) {
+    if (article.summary?.keyEntities) {
+      for (const entity of article.summary.keyEntities) {
+        if (existingNames.has(entity.name.toLowerCase())) continue;
+        if (entity.name.length < 2) continue;
+        const key = entity.name;
+        counts.set(key, (counts.get(key) || 0) + 1);
+      }
+    }
+  }
+
+  // Fallback: extract proper noun sequences from titles
+  if (counts.size < 5) {
+    for (const article of articles) {
+      const matches = article.title.match(
+        /\b[A-Z][a-zA-Z]*(?:\s+[A-Z][a-zA-Z]*)+\b/g
+      );
+      if (matches) {
+        for (const match of matches) {
+          const words = match.split(/\s+/);
+          if (words.every((w) => STOP_WORDS.has(w.toLowerCase()))) continue;
+          if (existingNames.has(match.toLowerCase())) continue;
+          if (!counts.has(match)) {
+            counts.set(match, (counts.get(match) || 0) + 1);
+          }
+        }
+      }
+    }
+  }
+
+  return Array.from(counts.entries())
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+}
+
+function getTopTopics(
+  articles: (Article & { summary?: Summary })[]
+): { topic: TopicCategory; label: string }[] {
+  const topicCounts = new Map<TopicCategory, number>();
+  for (const article of articles) {
+    topicCounts.set(article.topic, (topicCounts.get(article.topic) || 0) + 1);
+  }
+  return Array.from(topicCounts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([topic]) => ({
+      topic,
+      label: topicLabels[topic] || topic,
+    }));
+}
+
 export function WatchlistView({
   watchlist,
   articles,
@@ -50,6 +127,7 @@ export function WatchlistView({
   onAddItem,
   onRemoveItem,
   onExpand,
+  embedded,
 }: WatchlistViewProps) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newName, setNewName] = useState("");
@@ -59,6 +137,13 @@ export function WatchlistView({
   const matchingArticles = articles.filter(
     (a) => a.watchlistMatches.length > 0
   );
+
+  const suggestedEntities = useMemo(
+    () => extractSuggestedEntities(articles, watchlist),
+    [articles, watchlist]
+  );
+
+  const topTopics = useMemo(() => getTopTopics(articles), [articles]);
 
   const handleAdd = async () => {
     if (!newName.trim()) return;
@@ -84,31 +169,42 @@ export function WatchlistView({
     }
   };
 
+  const handleAddSuggested = async (name: string) => {
+    if (onAddItem) {
+      const success = await onAddItem(name, "company");
+      if (success) {
+        addToast(`Added "${name}" to watchlist`, "success");
+      }
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Eye size={24} className="text-accent-primary" />
-          <div>
-            <h2 className="text-2xl font-bold text-text-primary">
-              Watchlist Alerts
-            </h2>
-            <p className="text-sm text-text-tertiary">
-              {matchingArticles.length} article
-              {matchingArticles.length !== 1 ? "s" : ""} match your{" "}
-              {watchlist.length} watchlist item
-              {watchlist.length !== 1 ? "s" : ""}
-            </p>
+      {!embedded && (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Eye size={24} className="text-accent-primary" />
+            <div>
+              <h2 className="text-2xl font-bold text-text-primary">
+                Watchlist Alerts
+              </h2>
+              <p className="text-sm text-text-tertiary">
+                {matchingArticles.length} article
+                {matchingArticles.length !== 1 ? "s" : ""} match your{" "}
+                {watchlist.length} watchlist item
+                {watchlist.length !== 1 ? "s" : ""}
+              </p>
+            </div>
           </div>
+          <button
+            onClick={() => setShowAddForm(!showAddForm)}
+            className="flex items-center gap-1.5 rounded-lg bg-accent-primary px-3 py-2 text-sm font-medium text-text-inverse hover:bg-accent-primary-hover transition-colors"
+          >
+            <Plus size={16} />
+            Add Item
+          </button>
         </div>
-        <button
-          onClick={() => setShowAddForm(!showAddForm)}
-          className="flex items-center gap-1.5 rounded-lg bg-accent-primary px-3 py-2 text-sm font-medium text-text-inverse hover:bg-accent-primary-hover transition-colors"
-        >
-          <Plus size={16} />
-          Add Item
-        </button>
-      </div>
+      )}
 
       {/* Add form */}
       {showAddForm && (
@@ -170,16 +266,81 @@ export function WatchlistView({
           </div>
         ))}
         {watchlist.length === 0 && (
-          <div className="rounded-xl border border-dashed border-border-primary bg-bg-secondary/50 px-5 py-4 text-center">
-            <p className="text-sm text-text-secondary">
-              No watchlist items yet
+          <div className="w-full rounded-2xl border border-border-secondary bg-bg-card p-12 text-center">
+            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-bg-secondary">
+              <Eye size={28} className="text-text-tertiary opacity-50" />
+            </div>
+            <h3 className="text-lg font-semibold text-text-primary mb-2">
+              Track companies, topics, or keywords
+            </h3>
+            <p className="text-sm text-text-secondary max-w-sm mx-auto mb-5">
+              Add items to your watchlist and matching articles will surface here automatically.
             </p>
-            <p className="mt-0.5 text-xs text-text-tertiary">
-              Add companies, funds, people, or keywords to track across your feed.
-            </p>
+            <button
+              onClick={() => setShowAddForm(true)}
+              className="inline-flex items-center gap-2 rounded-full bg-accent-primary px-5 py-2.5 text-sm font-semibold text-text-inverse hover:bg-accent-primary-hover transition-colors"
+            >
+              <Plus size={16} />
+              Add to Watchlist
+            </button>
+            {topTopics.length > 0 && (
+              <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+                {topTopics.map(({ topic, label }) => (
+                  <button
+                    key={topic}
+                    onClick={() => {
+                      if (onAddItem) {
+                        onAddItem(label, "keyword").then((ok) => {
+                          if (ok) addToast(`Added "${label}" to watchlist`, "success");
+                        });
+                      }
+                    }}
+                    className="rounded-full border border-border-primary bg-bg-secondary px-3 py-1.5 text-xs font-medium text-text-secondary hover:border-accent-primary/40 hover:text-accent-primary transition-colors"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
+
+      {/* Suggested section */}
+      {suggestedEntities.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Sparkles size={14} className="text-accent-primary" />
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-text-tertiary">
+              Suggested
+            </h3>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {suggestedEntities.map((entity) => (
+              <div
+                key={entity.name}
+                className="flex items-center justify-between rounded-xl border border-border-secondary bg-bg-card px-4 py-3"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-text-primary truncate">
+                    {entity.name}
+                  </p>
+                  <p className="text-xs text-text-tertiary">
+                    {entity.count} mention{entity.count !== 1 ? "s" : ""}
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleAddSuggested(entity.name)}
+                  className="ml-3 shrink-0 rounded-lg border border-border-primary px-2.5 py-1.5 text-xs font-medium text-text-secondary hover:border-accent-primary/40 hover:text-accent-primary transition-colors"
+                >
+                  <Plus size={12} className="inline -mt-0.5 mr-0.5" />
+                  Add
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Matching articles */}
       <div className="space-y-3">

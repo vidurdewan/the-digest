@@ -27,6 +27,7 @@ interface CompanyViewProps {
     article: Article & { summary?: Summary }
   ) => Promise<Summary | null>;
   onExpand?: (articleId: string) => void;
+  embedded?: boolean;
 }
 
 export function CompanyView({
@@ -35,6 +36,7 @@ export function CompanyView({
   onOpenReader,
   onRequestSummary,
   onExpand,
+  embedded,
 }: CompanyViewProps) {
   const companies = useMemo(() => aggregateByCompany(articles), [articles]);
   const [filter, setFilter] = useState<"all" | "company" | "fund">("all");
@@ -51,18 +53,20 @@ export function CompanyView({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Building2 size={24} className="text-accent-primary" />
-        <div>
-          <h2 className="text-2xl font-bold text-text-primary">
-            Company Intelligence
-          </h2>
-          <p className="text-sm text-text-tertiary">
-            {companies.length} entit{companies.length !== 1 ? "ies" : "y"}{" "}
-            tracked across {articles.length} articles
-          </p>
+      {!embedded && (
+        <div className="flex items-center gap-3">
+          <Building2 size={24} className="text-accent-primary" />
+          <div>
+            <h2 className="text-2xl font-bold text-text-primary">
+              Company Intelligence
+            </h2>
+            <p className="text-sm text-text-tertiary">
+              {companies.length} entit{companies.length !== 1 ? "ies" : "y"}{" "}
+              tracked across {articles.length} articles
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Search */}
       <div className="relative">

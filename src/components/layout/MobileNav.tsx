@@ -1,13 +1,13 @@
 "use client";
 
 import { useSidebarStore } from "@/lib/store";
-import { Zap, Mail, Newspaper, Eye, Bookmark } from "lucide-react";
+import { Zap, Mail, Newspaper, Radar, Bookmark } from "lucide-react";
 
 const mobileNavItems = [
   { id: "priority-feed", label: "Feed", icon: Zap },
   { id: "newsletters", label: "Letters", icon: Mail },
   { id: "news", label: "News", icon: Newspaper },
-  { id: "watchlist", label: "Watchlist", icon: Eye },
+  { id: "intelligence", label: "Intel", icon: Radar },
   { id: "saved", label: "Saved", icon: Bookmark },
 ];
 

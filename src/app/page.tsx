@@ -28,12 +28,10 @@ import { SavedView } from "@/components/articles/SavedView";
 import { CommandPalette } from "@/components/CommandPalette";
 import { AIChatPanel } from "@/components/AIChatPanel";
 import { SearchOverlay } from "@/components/SearchOverlay";
-import { WatchlistView } from "@/components/watchlist/WatchlistView";
 import { SettingsView } from "@/components/settings/SettingsView";
 import { SourceManager } from "@/components/settings/SourceManager";
 import { PageSkeleton } from "@/components/ui/LoadingSkeleton";
-import { PeopleMovesView } from "@/components/intelligence/PeopleMovesView";
-import { CompanyView } from "@/components/intelligence/CompanyView";
+import { IntelligenceView } from "@/components/intelligence/IntelligenceView";
 import { BriefMeView } from "@/components/intelligence/BriefMeView";
 import { WeeklySynthesisView } from "@/components/intelligence/WeeklySynthesisView";
 import {
@@ -336,9 +334,9 @@ export default function Home() {
             isIngesting={articleData.isIngesting}
           />
         );
-      case "watchlist":
+      case "intelligence":
         return (
-          <WatchlistView
+          <IntelligenceView
             watchlist={watchlist.items}
             articles={articlesWithMatches}
             onSave={handleSave}
@@ -352,23 +350,6 @@ export default function Home() {
       case "saved":
         return (
           <SavedView
-            articles={articlesWithMatches}
-            onSave={handleSave}
-            onOpenReader={handleOpenReader}
-            onRequestSummary={articleData.requestFullSummary}
-            onExpand={handleExpand}
-          />
-        );
-      case "people-moves":
-        return (
-          <PeopleMovesView
-            articles={articlesWithMatches}
-            onOpenReader={handleOpenReader}
-          />
-        );
-      case "companies":
-        return (
-          <CompanyView
             articles={articlesWithMatches}
             onSave={handleSave}
             onOpenReader={handleOpenReader}

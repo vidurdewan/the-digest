@@ -73,15 +73,12 @@ export const navigationGroups: NavGroup[] = [
       { id: "priority-feed", label: "Priority Feed", icon: "Zap", path: "/" },
       { id: "newsletters", label: "Newsletters", icon: "Mail", path: "/newsletters" },
       { id: "news", label: "News by Topic", icon: "Newspaper", path: "/news" },
-      { id: "saved", label: "Saved", icon: "Bookmark", path: "/saved" },
     ],
   },
   {
     label: "Intelligence",
     items: [
-      { id: "watchlist", label: "Watchlist Alerts", icon: "Eye", path: "/watchlist" },
-      { id: "people-moves", label: "People Moves", icon: "UserCheck", path: "/people-moves" },
-      { id: "companies", label: "Company Intel", icon: "Building2", path: "/companies" },
+      { id: "intelligence", label: "Intelligence", icon: "Radar", path: "/intelligence" },
     ],
   },
   {
@@ -91,6 +88,7 @@ export const navigationGroups: NavGroup[] = [
       { id: "chat", label: "AI Chat", icon: "MessageSquare", path: "/chat" },
       { id: "brief", label: "Brief Me", icon: "FileText", path: "/brief" },
       { id: "weekly-synthesis", label: "Weekly Synthesis", icon: "BookOpen", path: "/weekly-synthesis" },
+      { id: "saved", label: "Saved", icon: "Bookmark", path: "/saved" },
     ],
   },
 ];

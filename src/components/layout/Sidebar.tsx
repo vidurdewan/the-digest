@@ -20,6 +20,7 @@ import {
   BookOpen,
   ChevronDown,
   ChevronRight,
+  Radar,
 } from "lucide-react";
 
 const iconMap: Record<string, React.ReactNode> = {
@@ -36,6 +37,7 @@ const iconMap: Record<string, React.ReactNode> = {
   MessageSquare: <MessageSquare size={18} />,
   FileText: <FileText size={18} />,
   BookOpen: <BookOpen size={18} />,
+  Radar: <Radar size={18} />,
 };
 
 export function Sidebar() {

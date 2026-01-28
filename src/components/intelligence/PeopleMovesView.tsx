@@ -17,6 +17,7 @@ import { getRelativeTime } from "@/lib/mock-data";
 interface PeopleMovesViewProps {
   articles: (Article & { summary?: Summary })[];
   onOpenReader?: (article: Article & { summary?: Summary }) => void;
+  embedded?: boolean;
 }
 
 const moveTypeConfig: Record<
@@ -64,6 +65,7 @@ function isValidPersonName(name: string): boolean {
 export function PeopleMovesView({
   articles,
   onOpenReader,
+  embedded,
 }: PeopleMovesViewProps) {
   const allMoves = useMemo(() => detectAllMovements(articles), [articles]);
 
@@ -80,18 +82,20 @@ export function PeopleMovesView({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <UserCheck size={24} className="text-accent-primary" />
-        <div>
-          <h2 className="text-2xl font-bold text-text-primary">
-            People Moves
-          </h2>
-          <p className="text-sm text-text-tertiary">
-            {moves.length} executive movement{moves.length !== 1 ? "s" : ""}{" "}
-            detected
-          </p>
+      {!embedded && (
+        <div className="flex items-center gap-3">
+          <UserCheck size={24} className="text-accent-primary" />
+          <div>
+            <h2 className="text-2xl font-bold text-text-primary">
+              People Moves
+            </h2>
+            <p className="text-sm text-text-tertiary">
+              {moves.length} executive movement{moves.length !== 1 ? "s" : ""}{" "}
+              detected
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       {moves.length > 0 ? (
         <div className="space-y-3">
@@ -117,11 +121,8 @@ export function PeopleMovesView({
           <h3 className="text-lg font-semibold text-text-primary mb-1.5">
             No executive movements detected
           </h3>
-          <p className="text-sm text-text-secondary max-w-sm mx-auto mb-1">
-            As articles are ingested, hires, departures, promotions, and board appointments will surface here.
-          </p>
-          <p className="text-xs text-text-tertiary max-w-sm mx-auto">
-            Movements are extracted from article titles and summaries using NLP heuristics.
+          <p className="text-sm text-text-secondary max-w-sm mx-auto">
+            Executive moves appear here automatically &mdash; detected from your news sources.
           </p>
         </div>
       )}
