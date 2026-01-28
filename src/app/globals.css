@@ -529,6 +529,18 @@ h1, h2, h3, h4, h5, h6 {
               0 2px 12px rgba(251, 191, 36, 0.08);
 }
 
+/* ===== Touch devices — always show carousel arrows ===== */
+@media (hover: none) {
+  .carousel-container .carousel-arrow {
+    opacity: 1;
+  }
+}
+
+/* ===== Scroll indicator dot transitions ===== */
+.scroll-dot {
+  transition: width 0.2s ease, background-color 0.2s ease;
+}
+
 /* ===== Image card hover — enhanced lift for cards with images ===== */
 .card-interactive:has(img):hover {
   transform: translateY(-3px);

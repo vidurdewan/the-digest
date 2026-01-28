@@ -143,11 +143,16 @@ export function SurpriseMe({
       </button>
 
       {/* Header */}
-      <div className="mb-3 flex items-center gap-1.5">
-        <Sparkles size={14} className="text-accent-primary" />
-        <span className="text-xs font-semibold text-accent-primary">
-          Something Different
-        </span>
+      <div className="mb-3">
+        <div className="flex items-center gap-1.5">
+          <Sparkles size={14} className="text-accent-primary" />
+          <span className="text-xs font-semibold text-accent-primary">
+            Something Different
+          </span>
+        </div>
+        <p className="mt-0.5 ml-5 text-[11px] text-text-tertiary">
+          A story outside your usual topics, picked daily to broaden your lens.
+        </p>
       </div>
 
       {/* Article preview */}

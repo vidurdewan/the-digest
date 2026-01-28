@@ -172,49 +172,49 @@ export function ReadingPane({ article, onClose, onSave, onRequestSummary }: Read
               {getRelativeTime(article.publishedAt)}
             </span>
           </div>
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-0.5 shrink-0">
             {/* Font size controls */}
             <button
               onClick={() => setFontSize(Math.max(14, fontSize - 1))}
-              className="rounded-md p-1.5 text-text-tertiary hover:bg-bg-hover hover:text-text-primary transition-colors"
+              className="rounded-md p-2 min-w-[36px] min-h-[36px] flex items-center justify-center text-text-tertiary hover:bg-bg-hover hover:text-text-primary transition-colors"
               aria-label="Decrease font size"
             >
-              <Minus size={15} />
+              <Minus size={16} />
             </button>
             <button
               onClick={() => setFontSize(Math.min(24, fontSize + 1))}
-              className="rounded-md p-1.5 text-text-tertiary hover:bg-bg-hover hover:text-text-primary transition-colors"
+              className="rounded-md p-2 min-w-[36px] min-h-[36px] flex items-center justify-center text-text-tertiary hover:bg-bg-hover hover:text-text-primary transition-colors"
               aria-label="Increase font size"
             >
-              <Plus size={15} />
+              <Plus size={16} />
             </button>
             <div className="mx-1 h-5 w-px bg-border-secondary" />
             <button
               onClick={handleSave}
-              className="rounded-md p-1.5 text-text-tertiary hover:bg-bg-hover hover:text-text-primary transition-colors"
+              className="rounded-md p-2 min-w-[36px] min-h-[36px] flex items-center justify-center text-text-tertiary hover:bg-bg-hover hover:text-text-primary transition-colors"
               aria-label={isSaved ? "Unsave" : "Save"}
             >
               {isSaved ? (
-                <BookmarkCheck size={15} className="text-accent-primary" />
+                <BookmarkCheck size={16} className="text-accent-primary" />
               ) : (
-                <Bookmark size={15} />
+                <Bookmark size={16} />
               )}
             </button>
             <a
               href={article.sourceUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded-md p-1.5 text-text-tertiary hover:bg-bg-hover hover:text-text-primary transition-colors"
+              className="rounded-md p-2 min-w-[36px] min-h-[36px] flex items-center justify-center text-text-tertiary hover:bg-bg-hover hover:text-text-primary transition-colors"
               aria-label="Open source"
             >
-              <ExternalLink size={15} />
+              <ExternalLink size={16} />
             </a>
             <button
               onClick={onClose}
-              className="rounded-md p-1.5 text-text-tertiary hover:bg-bg-hover hover:text-text-primary transition-colors"
+              className="rounded-md p-2.5 min-w-[36px] min-h-[36px] flex items-center justify-center text-text-tertiary hover:bg-bg-hover hover:text-text-primary transition-colors"
               aria-label="Close"
             >
-              <X size={17} />
+              <X size={18} />
             </button>
           </div>
         </div>

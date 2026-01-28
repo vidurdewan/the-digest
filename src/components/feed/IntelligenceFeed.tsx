@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useReadingProgress } from "@/hooks/useReadingProgress";
 import {
   ChevronDown,
@@ -34,6 +34,8 @@ function getRelativeTimeShort(date: Date): string {
 
 function ScrollableRow({ children, gap = "gap-4" }: { children: React.ReactNode; gap?: string }) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [childCount, setChildCount] = useState(0);
 
   const scroll = (direction: "left" | "right") => {
     if (!scrollRef.current) return;
@@ -43,6 +45,30 @@ function ScrollableRow({ children, gap = "gap-4" }: { children: React.ReactNode;
       behavior: "smooth",
     });
   };
+
+  const updateScrollPosition = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const count = el.children.length;
+    setChildCount(count);
+    if (count === 0) return;
+    const firstChild = el.children[0] as HTMLElement;
+    const cardWidth = firstChild.offsetWidth;
+    const gapSize = parseInt(gap.replace("gap-", "")) * 4; // Tailwind gap units
+    const idx = Math.round(el.scrollLeft / (cardWidth + gapSize));
+    setActiveIndex(Math.min(idx, count - 1));
+  }, [gap]);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    updateScrollPosition();
+    el.addEventListener("scroll", updateScrollPosition, { passive: true });
+    return () => el.removeEventListener("scroll", updateScrollPosition);
+  }, [updateScrollPosition, children]);
+
+  const maxDots = 8;
+  const showDots = childCount > 1;
 
   return (
     <div className="carousel-container">
@@ -55,7 +81,7 @@ function ScrollableRow({ children, gap = "gap-4" }: { children: React.ReactNode;
       </button>
       <div
         ref={scrollRef}
-        className={`flex ${gap} overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide`}
+        className={`flex ${gap} overflow-x-auto pb-2 pr-8 snap-x snap-mandatory scrollbar-hide`}
       >
         {children}
       </div>
@@ -66,6 +92,28 @@ function ScrollableRow({ children, gap = "gap-4" }: { children: React.ReactNode;
       >
         <ChevronRight size={16} />
       </button>
+      {/* Right-edge fade */}
+      <div className="pointer-events-none absolute right-0 top-0 bottom-2 w-12 bg-gradient-to-l from-[var(--bg-primary)] to-transparent" />
+      {/* Scroll indicators */}
+      {showDots && (
+        <div className="mt-2 flex items-center justify-center gap-1">
+          {Array.from({ length: Math.min(childCount, maxDots) }).map((_, i) => (
+            <span
+              key={i}
+              className={`h-1 rounded-full transition-all duration-200 ${
+                i === activeIndex
+                  ? "w-4 bg-accent-primary"
+                  : "w-1 bg-border-primary"
+              }`}
+            />
+          ))}
+          {childCount > maxDots && (
+            <span className="text-[10px] text-text-tertiary ml-1">
+              +{childCount - maxDots}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -165,19 +213,20 @@ export function IntelligenceFeed({
           <button
             onClick={onForceRefresh}
             disabled={isRefreshing}
-            className="rounded-lg p-2 text-text-tertiary hover:text-text-secondary hover:bg-bg-secondary transition-colors disabled:opacity-50"
-            title="Refresh"
+            className="flex items-center gap-1.5 rounded-xl border border-border-primary px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-bg-hover disabled:opacity-50"
+            title="Refresh articles"
           >
             {isRefreshing ? (
-              <Loader2 size={16} className="animate-spin" />
+              <Loader2 size={14} className="animate-spin" />
             ) : (
-              <RefreshCw size={16} />
+              <RefreshCw size={14} />
             )}
+            {isRefreshing ? "Refreshing..." : "Refresh"}
           </button>
         )}
       </div>
 
-      {/* Reading Progress — very subtle */}
+      {/* Reading Progress */}
       <ReadingProgress totalItems={priorityItems} readItems={readPriorityItems} />
 
       {/* ═══ TODAY'S BRIEF ═══ */}
@@ -285,7 +334,7 @@ export function IntelligenceFeed({
             className="mb-3 flex w-full items-center justify-between rounded-lg px-1 py-2 text-sm font-semibold text-text-tertiary hover:text-text-secondary transition-colors"
           >
             <span className="flex items-center gap-2">
-              More Stories
+              {everythingElseOpen ? "Hide" : "Show"} Remaining Stories
               <span className="rounded-full bg-bg-secondary px-2 py-0.5 text-[11px] font-medium">
                 {everythingElse.length}
               </span>

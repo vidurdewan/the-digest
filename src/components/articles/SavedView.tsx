@@ -3,6 +3,7 @@
 import { Bookmark } from "lucide-react";
 import type { Article, Summary } from "@/types";
 import { ArticleCard } from "./ArticleCard";
+import { useSidebarStore } from "@/lib/store";
 
 interface SavedViewProps {
   articles: (Article & { summary?: Summary })[];
@@ -46,12 +47,29 @@ export function SavedView({ articles, onSave, onOpenReader, onRequestSummary, on
           ))}
         </div>
       ) : (
-        <div className="rounded-xl border border-border-primary bg-bg-card p-8 text-center">
-          <Bookmark size={32} className="mx-auto mb-3 text-text-tertiary" />
-          <p className="text-text-secondary">No saved articles yet.</p>
-          <p className="mt-1 text-sm text-text-tertiary">
-            Click the bookmark icon on any article to save it for later.
+        <div className="rounded-2xl border border-border-secondary bg-bg-card p-12 text-center">
+          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-bg-secondary">
+            <Bookmark size={28} className="text-text-tertiary opacity-50" />
+          </div>
+          <h3 className="text-lg font-semibold text-text-primary mb-1.5">
+            No saved articles yet
+          </h3>
+          <p className="text-sm text-text-secondary max-w-xs mx-auto mb-1">
+            Bookmark articles from your feed to build a personal reading queue.
           </p>
+          <p className="text-xs text-text-tertiary max-w-xs mx-auto mb-5">
+            Press{" "}
+            <kbd className="rounded border border-border-primary bg-bg-secondary px-1 py-0.5 text-[10px] font-mono">
+              S
+            </kbd>{" "}
+            on any focused article, or click the bookmark icon.
+          </p>
+          <button
+            onClick={() => useSidebarStore.getState().setActiveSection("priority-feed")}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-accent-primary px-4 py-2 text-sm font-medium text-text-inverse hover:bg-accent-primary-hover transition-colors"
+          >
+            Browse your feed
+          </button>
         </div>
       )}
     </div>

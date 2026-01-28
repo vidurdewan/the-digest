@@ -523,9 +523,10 @@ function DailyDigestSection({
                       if (prev < digestHistory.length)
                         onSelectDigestDate(digestHistory[prev].date);
                     }}
-                    className="rounded p-1 text-text-tertiary hover:text-text-primary"
+                    className="rounded-lg p-2 text-text-tertiary hover:bg-bg-secondary hover:text-text-primary transition-colors"
+                    aria-label="Previous day"
                   >
-                    <ChevronLeft size={14} />
+                    <ChevronLeft size={18} />
                   </button>
                   <button
                     onClick={() => {
@@ -536,17 +537,18 @@ function DailyDigestSection({
                       if (next >= 0) onSelectDigestDate(digestHistory[next].date);
                       if (next < 0) onSelectDigestDate(null);
                     }}
-                    className="rounded p-1 text-text-tertiary hover:text-text-primary"
+                    className="rounded-lg p-2 text-text-tertiary hover:bg-bg-secondary hover:text-text-primary transition-colors"
+                    aria-label="Next day"
                   >
-                    <ChevronRight size={14} />
+                    <ChevronRight size={18} />
                   </button>
                 </div>
               )}
               <button
                 onClick={onGenerate}
-                className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-text-tertiary hover:bg-bg-secondary hover:text-text-secondary"
+                className="flex items-center gap-1.5 rounded-xl border border-border-primary px-3 py-1.5 text-xs font-medium text-text-secondary hover:bg-bg-hover transition-colors"
               >
-                <RefreshCw size={11} />
+                <RefreshCw size={14} />
                 Regenerate
               </button>
             </div>

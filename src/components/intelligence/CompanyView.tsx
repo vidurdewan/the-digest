@@ -9,6 +9,7 @@ import {
   TrendingUp,
   UserCheck,
   Newspaper,
+  Search,
 } from "lucide-react";
 import type { Article, Summary } from "@/types";
 import {
@@ -37,14 +38,16 @@ export function CompanyView({
 }: CompanyViewProps) {
   const companies = useMemo(() => aggregateByCompany(articles), [articles]);
   const [filter, setFilter] = useState<"all" | "company" | "fund">("all");
+  const [searchTerm, setSearchTerm] = useState("");
 
-  const filtered = useMemo(
-    () =>
-      filter === "all"
-        ? companies
-        : companies.filter((c) => c.type === filter),
-    [companies, filter]
-  );
+  const filtered = useMemo(() => {
+    let result = filter === "all" ? companies : companies.filter((c) => c.type === filter);
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      result = result.filter((c) => c.name.toLowerCase().includes(term));
+    }
+    return result;
+  }, [companies, filter, searchTerm]);
 
   return (
     <div className="space-y-6">
@@ -59,6 +62,18 @@ export function CompanyView({
             tracked across {articles.length} articles
           </p>
         </div>
+      </div>
+
+      {/* Search */}
+      <div className="relative">
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="Search companies and funds..."
+          className="w-full rounded-xl border border-border-secondary bg-bg-secondary pl-9 pr-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent-primary focus:outline-none transition-colors"
+        />
       </div>
 
       {/* Filter tabs */}

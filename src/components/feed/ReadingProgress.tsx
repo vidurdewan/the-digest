@@ -1,5 +1,7 @@
 "use client";
 
+import { BookOpen, CheckCircle } from "lucide-react";
+
 interface ReadingProgressProps {
   totalItems: number;
   readItems: number;
@@ -10,18 +12,23 @@ export function ReadingProgress({ totalItems, readItems }: ReadingProgressProps)
   const allRead = readItems >= totalItems && totalItems > 0;
 
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <span className="text-xs text-text-tertiary">
+        <span className="flex items-center gap-1.5 text-xs font-medium text-text-secondary">
+          {allRead ? (
+            <CheckCircle size={12} className="text-accent-success" />
+          ) : (
+            <BookOpen size={12} />
+          )}
           {allRead
             ? "All caught up"
             : `${readItems} of ${totalItems} read`}
         </span>
-        <span className="text-xs font-medium text-text-tertiary">
+        <span className="text-xs font-semibold text-text-secondary">
           {percent}%
         </span>
       </div>
-      <div className="h-[3px] w-full rounded-full bg-bg-tertiary overflow-hidden">
+      <div className="h-1.5 w-full rounded-full bg-bg-tertiary overflow-hidden">
         <div
           className="h-full rounded-full transition-all duration-500"
           style={{

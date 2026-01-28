@@ -41,6 +41,14 @@ const SIGNAL_CONFIG: Record<SignalType, {
   },
 };
 
+const SIGNAL_DESCRIPTIONS: Record<SignalType, string> = {
+  first_mention: "This entity is appearing in your feed for the first time.",
+  tier1_before_mainstream: "A premium source reported this before mainstream outlets.",
+  convergence: "Multiple independent sources are covering this simultaneously.",
+  unusual_activity: "Activity patterns around this entity deviate from normal.",
+  sentiment_shift: "Media tone around this entity has notably changed direction.",
+};
+
 interface SignalBadgeProps {
   signal: ArticleSignal;
   compact?: boolean;
@@ -49,25 +57,22 @@ interface SignalBadgeProps {
 export function SignalBadge({ signal, compact = false }: SignalBadgeProps) {
   const config = SIGNAL_CONFIG[signal.signalType];
   const Icon = config.icon;
-
-  if (compact) {
-    return (
-      <span
-        className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider ${config.bg} ${config.text} ${config.border}`}
-        title={signal.signalLabel}
-      >
-        <Icon size={9} />
-        {signal.signalLabel}
-      </span>
-    );
-  }
+  const description = SIGNAL_DESCRIPTIONS[signal.signalType];
 
   return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${config.bg} ${config.text} ${config.border}`}
-    >
-      <Icon size={11} />
-      {signal.signalLabel}
+    <span className="group/tooltip relative inline-flex">
+      <span
+        className={`inline-flex items-center gap-${compact ? "1" : "1.5"} rounded-full border ${compact ? "px-1.5 py-0.5 text-[9px]" : "px-2.5 py-0.5 text-[10px]"} font-semibold uppercase tracking-wider ${config.bg} ${config.text} ${config.border} cursor-help`}
+      >
+        <Icon size={compact ? 9 : 11} />
+        {signal.signalLabel}
+      </span>
+      <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 rounded-lg border border-border-primary bg-bg-card p-3 text-xs font-normal normal-case tracking-normal text-text-secondary shadow-lg opacity-0 group-hover/tooltip:opacity-100 transition-opacity z-50">
+        <span className="block font-semibold text-text-primary mb-1">
+          {signal.signalLabel}
+        </span>
+        {description}
+      </span>
     </span>
   );
 }

@@ -41,7 +41,7 @@ const iconMap: Record<string, React.ReactNode> = {
 export function Sidebar() {
   const { isOpen, activeSection, toggle, setActiveSection, setOpen } =
     useSidebarStore();
-  const [toolsCollapsed, setToolsCollapsed] = useState(true);
+  const [toolsCollapsed, setToolsCollapsed] = useState(false);
 
   return (
     <>
@@ -142,7 +142,7 @@ export function Sidebar() {
         {/* Grouped Navigation */}
         <nav className="flex-1 overflow-y-auto px-2 py-3">
           {navigationGroups.map((group, gi) => {
-            const isToolsGroup = group.label === "Tools";
+            const isToolsGroup = group.label === "AI & Search";
             const isCollapsible = isToolsGroup && isOpen;
             const isGroupOpen = isToolsGroup ? !toolsCollapsed : true;
             // Auto-expand Tools if a tools item is active

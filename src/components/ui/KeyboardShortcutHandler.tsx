@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useCallback } from "react";
 import { X, Keyboard } from "lucide-react";
 import { useFeedNavigationStore } from "@/lib/store";
 import { useKeyboardShortcuts, SHORTCUT_LIST } from "@/hooks/useKeyboardShortcuts";
@@ -8,40 +8,18 @@ import { useKeyboardShortcuts, SHORTCUT_LIST } from "@/hooks/useKeyboardShortcut
 interface KeyboardShortcutHandlerProps {
   onSaveFocused?: () => void;
   onExpandFocused?: () => void;
+  onOpenReaderFocused?: () => void;
   onCloseReader?: () => void;
 }
 
 export function KeyboardShortcutHandler({
   onSaveFocused,
   onExpandFocused,
+  onOpenReaderFocused,
   onCloseReader,
 }: KeyboardShortcutHandlerProps) {
   const [showHelp, setShowHelp] = useState(false);
   const { focusedIndex, focusNext, focusPrev } = useFeedNavigationStore();
-
-  // Scroll focused element into view
-  useEffect(() => {
-    if (focusedIndex < 0) return;
-
-    const elements = document.querySelectorAll("[data-feed-index]");
-    const el = elements[focusedIndex] as HTMLElement | undefined;
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "nearest" });
-
-      // Add/remove focus ring
-      elements.forEach((e) => e.classList.remove("ring-2", "ring-accent-primary", "ring-offset-2"));
-      el.classList.add("ring-2", "ring-accent-primary", "ring-offset-2");
-    }
-  }, [focusedIndex]);
-
-  // Clean up focus rings on unmount
-  useEffect(() => {
-    return () => {
-      document.querySelectorAll("[data-feed-index]").forEach((e) =>
-        e.classList.remove("ring-2", "ring-accent-primary", "ring-offset-2")
-      );
-    };
-  }, []);
 
   const handleNavigateNext = useCallback(() => {
     const total = document.querySelectorAll("[data-feed-index]").length;
@@ -65,6 +43,12 @@ export function KeyboardShortcutHandler({
     }
   }, [focusedIndex, onExpandFocused]);
 
+  const handleOpenReader = useCallback(() => {
+    if (focusedIndex >= 0) {
+      onOpenReaderFocused?.();
+    }
+  }, [focusedIndex, onOpenReaderFocused]);
+
   const handleCloseReader = useCallback(() => {
     onCloseReader?.();
   }, [onCloseReader]);
@@ -78,50 +62,75 @@ export function KeyboardShortcutHandler({
     onNavigatePrev: handleNavigatePrev,
     onSave: handleSave,
     onExpand: handleExpand,
+    onOpenReader: handleOpenReader,
     onCloseReader: handleCloseReader,
     onShowHelp: handleShowHelp,
   });
 
-  if (!showHelp) return null;
+  // Scroll focused element into view
+  if (typeof window !== "undefined") {
+    const elements = document.querySelectorAll("[data-feed-index]");
+    if (focusedIndex >= 0 && focusedIndex < elements.length) {
+      const el = elements[focusedIndex] as HTMLElement;
+      el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      elements.forEach((e) => e.classList.remove("ring-2", "ring-accent-primary", "ring-offset-2"));
+      el.classList.add("ring-2", "ring-accent-primary", "ring-offset-2");
+    }
+  }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="mx-4 w-full max-w-sm rounded-xl border border-border-primary bg-bg-primary p-6 shadow-xl">
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Keyboard size={18} className="text-accent-primary" />
-            <h3 className="text-lg font-semibold text-text-primary">
-              Keyboard Shortcuts
-            </h3>
-          </div>
-          <button
-            onClick={() => setShowHelp(false)}
-            className="rounded-md p-1 text-text-tertiary hover:text-text-primary transition-colors"
-          >
-            <X size={18} />
-          </button>
-        </div>
+    <>
+      {/* Keyboard hint — bottom-right corner, desktop only */}
+      <button
+        onClick={() => setShowHelp(true)}
+        className="fixed bottom-4 right-4 z-10 hidden lg:flex items-center gap-1.5 rounded-lg bg-bg-card border border-border-secondary px-2.5 py-1.5 text-xs text-text-tertiary hover:text-text-secondary shadow-sm transition-colors"
+        aria-label="Keyboard shortcuts"
+      >
+        <Keyboard size={12} />
+        <kbd className="font-mono text-[10px]">?</kbd>
+      </button>
 
-        <div className="space-y-2">
-          {SHORTCUT_LIST.map((shortcut) => (
-            <div
-              key={shortcut.key}
-              className="flex items-center justify-between rounded-lg px-3 py-2 hover:bg-bg-secondary transition-colors"
-            >
-              <span className="text-sm text-text-secondary">
-                {shortcut.description}
-              </span>
-              <kbd className="rounded-md border border-border-primary bg-bg-secondary px-2 py-0.5 text-xs font-mono font-medium text-text-primary">
-                {shortcut.key}
-              </kbd>
+      {/* Shortcut help modal */}
+      {showHelp && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="mx-4 w-full max-w-sm rounded-xl border border-border-primary bg-bg-primary p-6 shadow-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Keyboard size={18} className="text-accent-primary" />
+                <h3 className="text-lg font-semibold text-text-primary">
+                  Keyboard Shortcuts
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowHelp(false)}
+                className="rounded-md p-1 text-text-tertiary hover:text-text-primary transition-colors"
+              >
+                <X size={18} />
+              </button>
             </div>
-          ))}
-        </div>
 
-        <p className="mt-4 text-center text-xs text-text-tertiary">
-          Press <kbd className="rounded border border-border-primary bg-bg-secondary px-1 py-0.5 text-[10px] font-mono">?</kbd> to toggle this help
-        </p>
-      </div>
-    </div>
+            <div className="space-y-2">
+              {SHORTCUT_LIST.map((shortcut) => (
+                <div
+                  key={shortcut.key}
+                  className="flex items-center justify-between rounded-lg px-3 py-2 hover:bg-bg-secondary transition-colors"
+                >
+                  <span className="text-sm text-text-secondary">
+                    {shortcut.description}
+                  </span>
+                  <kbd className="rounded-md border border-border-primary bg-bg-secondary px-2 py-0.5 text-xs font-mono font-medium text-text-primary">
+                    {shortcut.key}
+                  </kbd>
+                </div>
+              ))}
+            </div>
+
+            <p className="mt-4 text-center text-xs text-text-tertiary">
+              Press <kbd className="rounded border border-border-primary bg-bg-secondary px-1 py-0.5 text-[10px] font-mono">?</kbd> to toggle this help
+            </p>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

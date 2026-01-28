@@ -73,6 +73,7 @@ export const navigationGroups: NavGroup[] = [
       { id: "priority-feed", label: "Priority Feed", icon: "Zap", path: "/" },
       { id: "newsletters", label: "Newsletters", icon: "Mail", path: "/newsletters" },
       { id: "news", label: "News by Topic", icon: "Newspaper", path: "/news" },
+      { id: "saved", label: "Saved", icon: "Bookmark", path: "/saved" },
     ],
   },
   {
@@ -84,18 +85,12 @@ export const navigationGroups: NavGroup[] = [
     ],
   },
   {
-    label: "Tools",
+    label: "AI & Search",
     items: [
       { id: "search", label: "Search", icon: "Search", path: "/search" },
       { id: "chat", label: "AI Chat", icon: "MessageSquare", path: "/chat" },
       { id: "brief", label: "Brief Me", icon: "FileText", path: "/brief" },
       { id: "weekly-synthesis", label: "Weekly Synthesis", icon: "BookOpen", path: "/weekly-synthesis" },
-    ],
-  },
-  {
-    label: "",
-    items: [
-      { id: "saved", label: "Saved", icon: "Bookmark", path: "/saved" },
     ],
   },
 ];

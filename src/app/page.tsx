@@ -45,6 +45,7 @@ import { useFeedNavigationStore } from "@/lib/store";
 
 import {
   RefreshCw,
+  Search,
 } from "lucide-react";
 
 // ─── News by Topic ──────────────────────────────────────────
@@ -67,10 +68,23 @@ function NewsByTopicSection({
   onIngest?: () => void;
   isIngesting?: boolean;
 }) {
+  const [searchTerm, setSearchTerm] = useState("");
   const topics = Object.keys(topicLabels) as TopicCategory[];
+
+  const filteredArticles = useMemo(() => {
+    if (!searchTerm.trim()) return articles;
+    const term = searchTerm.toLowerCase();
+    return articles.filter(
+      (a) =>
+        a.title.toLowerCase().includes(term) ||
+        a.source.toLowerCase().includes(term) ||
+        (a.author && a.author.toLowerCase().includes(term))
+    );
+  }, [articles, searchTerm]);
+
   const grouped = topics.reduce(
     (acc, topic) => {
-      acc[topic] = articles.filter((a) => a.topic === topic);
+      acc[topic] = filteredArticles.filter((a) => a.topic === topic);
       return acc;
     },
     {} as Record<TopicCategory, (Article & { summary?: Summary })[]>
@@ -102,6 +116,18 @@ function NewsByTopicSection({
         )}
       </div>
 
+      {/* Search filter */}
+      <div className="relative">
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="Filter articles by title, source, or author..."
+          className="w-full rounded-xl border border-border-secondary bg-bg-secondary pl-9 pr-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent-primary focus:outline-none transition-colors"
+        />
+      </div>
+
       <div className="space-y-6">
         {topics
           .filter((t) => grouped[t].length > 0)
@@ -118,6 +144,12 @@ function NewsByTopicSection({
             />
           ))}
       </div>
+
+      {searchTerm && filteredArticles.length === 0 && (
+        <p className="text-center text-sm text-text-tertiary py-8">
+          No articles match &ldquo;{searchTerm}&rdquo;
+        </p>
+      )}
     </div>
   );
 }
@@ -240,6 +272,12 @@ export default function Home() {
     const el = elements[idx] as HTMLElement | undefined;
     if (el) el.click();
   }, []);
+
+  const handleOpenReaderFocused = useCallback(() => {
+    const idx = useFeedNavigationStore.getState().focusedIndex;
+    if (idx < 0 || idx >= rankedArticles.length) return;
+    handleOpenReader(rankedArticles[idx]);
+  }, [rankedArticles]);
 
   const handleCloseReader = useCallback(() => {
     setReaderArticle(null);
@@ -393,6 +431,7 @@ export default function Home() {
       <KeyboardShortcutHandler
         onSaveFocused={handleSaveFocused}
         onExpandFocused={handleExpandFocused}
+        onOpenReaderFocused={handleOpenReaderFocused}
         onCloseReader={handleCloseReader}
       />
       {showOnboarding && (
