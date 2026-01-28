@@ -1,16 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import {
   X,
   Clock,
   Bookmark,
   BookmarkCheck,
+  Check,
   ExternalLink,
   Minus,
   Plus,
   ArrowRight,
 } from "lucide-react";
+import { useToastStore } from "@/components/ui/Toast";
 import type { Article, Summary } from "@/types";
 import { topicLabels, getRelativeTime } from "@/lib/mock-data";
 import { QuickReactions } from "@/components/intelligence/QuickReactions";
@@ -107,6 +109,19 @@ export function ReadingPane({ article, onClose, onSave, onRequestSummary }: Read
   const [fontSize, setFontSize] = useState(17);
   const [isSaved, setIsSaved] = useState(article?.isSaved ?? false);
   const [isLoadingSummary, setIsLoadingSummary] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+  const [saveAnimating, setSaveAnimating] = useState(false);
+  const [showCheckOverlay, setShowCheckOverlay] = useState(false);
+  const addToast = useToastStore((s) => s.addToast);
+
+  const handleAnimatedClose = useCallback(() => {
+    if (isClosing) return;
+    setIsClosing(true);
+    setTimeout(() => {
+      setIsClosing(false);
+      onClose();
+    }, 150);
+  }, [isClosing, onClose]);
 
   // Sync saved state when article changes
   useEffect(() => {
@@ -125,11 +140,11 @@ export function ReadingPane({ article, onClose, onSave, onRequestSummary }: Read
   // Escape key handler
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") handleAnimatedClose();
     };
     window.addEventListener("keydown", handleEsc);
     return () => window.removeEventListener("keydown", handleEsc);
-  }, [onClose]);
+  }, [handleAnimatedClose]);
 
   // Lock body scroll when pane is open
   useEffect(() => {
@@ -147,7 +162,19 @@ export function ReadingPane({ article, onClose, onSave, onRequestSummary }: Read
   const signals = (article as ArticleWithIntelligence).signals;
 
   const handleSave = () => {
-    setIsSaved(!isSaved);
+    const willSave = !isSaved;
+    setIsSaved(willSave);
+    setSaveAnimating(true);
+    setTimeout(() => setSaveAnimating(false), 200);
+
+    if (willSave) {
+      setShowCheckOverlay(true);
+      setTimeout(() => setShowCheckOverlay(false), 500);
+      addToast("Saved to library", "success");
+    } else {
+      addToast("Removed from library", "info");
+    }
+
     onSave?.(article.id);
   };
 
@@ -155,12 +182,12 @@ export function ReadingPane({ article, onClose, onSave, onRequestSummary }: Read
     <>
       {/* Overlay backdrop */}
       <div
-        className="reading-pane-backdrop fixed inset-0 z-40 bg-black/40 backdrop-blur-[4px]"
-        onClick={onClose}
+        className={`fixed inset-0 z-40 bg-black/40 backdrop-blur-[4px] ${isClosing ? "reading-pane-backdrop-exit" : "reading-pane-backdrop"}`}
+        onClick={handleAnimatedClose}
       />
 
       {/* Reading pane — always fixed drawer from right */}
-      <div className="fixed inset-y-0 right-0 z-50 w-full overflow-y-auto bg-bg-card border-l border-border-primary shadow-lg reading-pane-enter lg:w-[52%] lg:max-w-3xl">
+      <div className={`fixed inset-y-0 right-0 z-50 w-full overflow-y-auto bg-bg-card border-l border-border-primary shadow-lg ${isClosing ? "reading-pane-exit" : "reading-pane-enter"} lg:w-[52%] lg:max-w-3xl`}>
         {/* Sticky header */}
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border-primary bg-bg-card/95 px-5 py-3 backdrop-blur-sm">
           <div className="flex items-center gap-3 min-w-0">
@@ -191,13 +218,20 @@ export function ReadingPane({ article, onClose, onSave, onRequestSummary }: Read
             <div className="mx-1 h-5 w-px bg-border-secondary" />
             <button
               onClick={handleSave}
-              className="rounded-md p-2 min-w-[36px] min-h-[36px] flex items-center justify-center text-text-tertiary hover:bg-bg-hover hover:text-text-primary transition-colors"
+              className="relative rounded-md p-2 min-w-[36px] min-h-[36px] flex items-center justify-center text-text-tertiary hover:bg-bg-hover hover:text-text-primary transition-colors"
               aria-label={isSaved ? "Unsave" : "Save"}
             >
-              {isSaved ? (
-                <BookmarkCheck size={16} className="text-accent-primary" />
-              ) : (
-                <Bookmark size={16} />
+              <span className={saveAnimating ? "save-button-pop" : ""}>
+                {isSaved ? (
+                  <BookmarkCheck size={16} className="text-accent-primary" />
+                ) : (
+                  <Bookmark size={16} />
+                )}
+              </span>
+              {showCheckOverlay && (
+                <span className="save-check-overlay absolute inset-0 flex items-center justify-center">
+                  <Check size={14} className="text-accent-success" />
+                </span>
               )}
             </button>
             <a
@@ -210,7 +244,7 @@ export function ReadingPane({ article, onClose, onSave, onRequestSummary }: Read
               <ExternalLink size={16} />
             </a>
             <button
-              onClick={onClose}
+              onClick={handleAnimatedClose}
               className="rounded-md p-2.5 min-w-[36px] min-h-[36px] flex items-center justify-center text-text-tertiary hover:bg-bg-hover hover:text-text-primary transition-colors"
               aria-label="Close"
             >

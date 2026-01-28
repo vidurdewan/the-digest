@@ -93,7 +93,7 @@ export function Sidebar() {
                           onClick={() => handleNavClick(section.id, true)}
                           className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
                             isActive
-                              ? "bg-bg-active text-accent-primary"
+                              ? "bg-bg-active text-accent-primary sidebar-nav-active"
                               : "text-text-secondary hover:bg-bg-hover hover:text-text-primary"
                           }`}
                         >
@@ -116,7 +116,7 @@ export function Sidebar() {
                         onClick={() => handleNavClick(section.id, true)}
                         className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
                           isActive
-                            ? "bg-bg-active text-accent-primary"
+                            ? "bg-bg-active text-accent-primary sidebar-nav-active"
                             : "text-text-secondary hover:bg-bg-hover hover:text-text-primary"
                         }`}
                       >
@@ -191,7 +191,7 @@ export function Sidebar() {
                             onClick={() => handleNavClick(section.id)}
                             className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-medium transition-all duration-150 ${
                               isActive
-                                ? `bg-bg-active text-accent-primary${!isOpen ? " sidebar-icon-active" : ""}`
+                                ? `bg-bg-active text-accent-primary${!isOpen ? " sidebar-icon-active" : " sidebar-nav-active"}`
                                 : "text-text-secondary hover:bg-bg-hover hover:text-text-primary"
                             } ${!isOpen ? "justify-center" : ""}`}
                             title={section.label}
@@ -224,7 +224,7 @@ export function Sidebar() {
                     onClick={() => handleNavClick(section.id)}
                     className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-medium transition-all duration-150 ${
                       isActive
-                        ? `bg-bg-active text-accent-primary${!isOpen ? " sidebar-icon-active" : ""}`
+                        ? `bg-bg-active text-accent-primary${!isOpen ? " sidebar-icon-active" : " sidebar-nav-active"}`
                         : "text-text-tertiary hover:bg-bg-hover hover:text-text-primary"
                     } ${!isOpen ? "justify-center" : ""}`}
                     title={section.label}

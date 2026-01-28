@@ -7,11 +7,13 @@ import {
   ChevronUp,
   Bookmark,
   BookmarkCheck,
+  Check,
   ExternalLink,
   Share2,
   Eye,
   Loader2,
 } from "lucide-react";
+import { useToastStore } from "@/components/ui/Toast";
 import type { Article, Summary } from "@/types";
 import { topicLabels, getRelativeTime } from "@/lib/mock-data";
 import { ExpandedArticleView } from "./ExpandedArticleView";
@@ -48,15 +50,40 @@ export function ArticleCard({
   const [isExpanded, setIsExpanded] = useState(false);
   const [isSaved, setIsSaved] = useState(article.isSaved);
   const [isLoadingSummary, setIsLoadingSummary] = useState(false);
+  const [saveAnimating, setSaveAnimating] = useState(false);
+  const [showCheckOverlay, setShowCheckOverlay] = useState(false);
+  const [dotFading, setDotFading] = useState(false);
+  const [hasBeenOpened, setHasBeenOpened] = useState(false);
+  const addToast = useToastStore((s) => s.addToast);
+
+  const markAsRead = () => {
+    if (!article.isRead && !hasBeenOpened) {
+      setDotFading(true);
+      setHasBeenOpened(true);
+    }
+  };
 
   const handleSave = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setIsSaved(!isSaved);
+    const willSave = !isSaved;
+    setIsSaved(willSave);
+    setSaveAnimating(true);
+    setTimeout(() => setSaveAnimating(false), 200);
+
+    if (willSave) {
+      setShowCheckOverlay(true);
+      setTimeout(() => setShowCheckOverlay(false), 500);
+      addToast("Saved to library", "success");
+    } else {
+      addToast("Removed from library", "info");
+    }
+
     onSave?.(article.id);
   };
 
   const handleOpenReader = (e: React.MouseEvent) => {
     e.stopPropagation();
+    markAsRead();
     onOpenReader?.(article);
   };
 
@@ -65,6 +92,7 @@ export function ArticleCard({
     setIsExpanded(willExpand);
 
     if (willExpand) {
+      markAsRead();
       onExpand?.(article.id);
 
       // If expanding and no full summary yet, request one
@@ -105,7 +133,7 @@ export function ArticleCard({
             </span>
           )}
           {!article.isRead && (
-            <span className="h-2 w-2 rounded-full bg-accent-primary" />
+            <span className={`h-2 w-2 rounded-full bg-accent-primary unread-dot ${dotFading ? "unread-dot-fade" : ""}`} />
           )}
           <span className="ml-auto flex items-center gap-1 text-xs text-text-tertiary">
             <Clock size={12} />
@@ -113,7 +141,7 @@ export function ArticleCard({
           </span>
         </div>
 
-        <h3 className="mb-1.5 text-base font-semibold leading-snug text-text-primary transition-colors group-hover:text-accent-primary sm:text-lg">
+        <h3 className={`article-title-read-state mb-1.5 text-base font-semibold leading-snug transition-colors group-hover:text-accent-primary sm:text-lg ${hasBeenOpened || article.isRead ? "text-text-secondary" : "text-text-primary"}`}>
           {article.title}
         </h3>
 
@@ -137,13 +165,20 @@ export function ArticleCard({
             </span>
             <button
               onClick={handleSave}
-              className="rounded-md p-1 text-text-tertiary hover:text-accent-primary transition-colors"
+              className="relative rounded-md p-1 text-text-tertiary hover:text-accent-primary transition-colors"
               aria-label={isSaved ? "Unsave article" : "Save article"}
             >
-              {isSaved ? (
-                <BookmarkCheck size={16} className="text-accent-primary" />
-              ) : (
-                <Bookmark size={16} />
+              <span className={saveAnimating ? "save-button-pop" : ""}>
+                {isSaved ? (
+                  <BookmarkCheck size={16} className="text-accent-primary" />
+                ) : (
+                  <Bookmark size={16} />
+                )}
+              </span>
+              {showCheckOverlay && (
+                <span className="save-check-overlay absolute inset-0 flex items-center justify-center">
+                  <Check size={12} className="text-accent-success" />
+                </span>
               )}
             </button>
             <button

@@ -259,6 +259,16 @@ h1, h2, h3, h4, h5, h6 {
     border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
+.transition-transform {
+  transition: transform 150ms ease-out;
+}
+.transition-opacity {
+  transition: opacity 150ms ease-out;
+}
+.transition-all-fast {
+  transition: all 150ms ease-out;
+}
+
 /* Reading pane slide animation */
 .reading-pane-enter {
   animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
@@ -273,6 +283,27 @@ h1, h2, h3, h4, h5, h6 {
     opacity: 1;
     transform: translateX(0);
   }
+}
+
+/* Reading pane slide-out animation */
+@keyframes slideOut {
+  to {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
+
+.reading-pane-exit {
+  animation: slideOut 150ms ease-in forwards;
+}
+
+.reading-pane-backdrop-exit {
+  animation: backdropFadeOut 150ms ease-in forwards;
+}
+
+@keyframes backdropFadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
 }
 
 /* Reading pane backdrop fade */
@@ -564,4 +595,99 @@ h1, h2, h3, h4, h5, h6 {
 
 .chat-panel-enter {
   animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ===== PAGE EXIT TRANSITION ===== */
+@keyframes pageExit {
+  to {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+.page-exit {
+  animation: pageExit 100ms ease-in forwards;
+}
+
+/* ===== SIDEBAR ACTIVE ACCENT BORDER (open state) ===== */
+.sidebar-nav-active {
+  position: relative;
+}
+.sidebar-nav-active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 60%;
+  border-radius: 0 2px 2px 0;
+  background-color: var(--accent-primary);
+  transition: background-color 150ms ease-out;
+}
+
+/* ===== SAVE BUTTON ANIMATION ===== */
+@keyframes saveButtonPop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+.save-button-pop {
+  animation: saveButtonPop 200ms ease-out;
+}
+
+/* Checkmark overlay that fades */
+@keyframes checkFade {
+  0% { opacity: 1; transform: scale(0.8); }
+  60% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1); }
+}
+
+.save-check-overlay {
+  animation: checkFade 500ms ease-out forwards;
+}
+
+/* ===== UNREAD DOT FADE ===== */
+.unread-dot {
+  transition: opacity 300ms ease-out;
+}
+.unread-dot-fade {
+  opacity: 0;
+}
+
+/* ===== READ STATE TITLE TRANSITION ===== */
+.article-title-read-state {
+  transition: color 200ms ease-out;
+}
+
+/* ===== TOAST SLIDE UP FROM BOTTOM ===== */
+@keyframes toastSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes toastSlideDown {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+
+.toast-enter {
+  animation: toastSlideUp 200ms ease-out;
+}
+
+.toast-exit {
+  animation: toastSlideDown 200ms ease-in forwards;
 }

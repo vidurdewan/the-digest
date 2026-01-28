@@ -5,10 +5,12 @@ import {
   Clock,
   Bookmark,
   BookmarkCheck,
+  Check,
   Eye,
   Loader2,
   ArrowRight,
 } from "lucide-react";
+import { useToastStore } from "@/components/ui/Toast";
 import type { Article, Summary, ArticleIntelligence, ArticleWithIntelligence, TopicCategory, StoryType } from "@/types";
 import { topicLabels, getRelativeTime } from "@/lib/mock-data";
 import { QuickReactions } from "@/components/intelligence/QuickReactions";
@@ -44,6 +46,9 @@ export function HeroStoryCard({
 }: HeroStoryCardProps) {
   const [isSaved, setIsSaved] = useState(article.isSaved);
   const [isLoadingSummary, setIsLoadingSummary] = useState(false);
+  const [saveAnimating, setSaveAnimating] = useState(false);
+  const [showCheckOverlay, setShowCheckOverlay] = useState(false);
+  const addToast = useToastStore((s) => s.addToast);
 
   // Auto-request full summary on mount if missing
   useEffect(() => {
@@ -62,7 +67,19 @@ export function HeroStoryCard({
 
   const handleSave = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setIsSaved(!isSaved);
+    const willSave = !isSaved;
+    setIsSaved(willSave);
+    setSaveAnimating(true);
+    setTimeout(() => setSaveAnimating(false), 200);
+
+    if (willSave) {
+      setShowCheckOverlay(true);
+      setTimeout(() => setShowCheckOverlay(false), 500);
+      addToast("Saved to library", "success");
+    } else {
+      addToast("Removed from library", "info");
+    }
+
     onSave?.(article.id);
   };
 
@@ -242,13 +259,20 @@ export function HeroStoryCard({
           </button>
           <button
             onClick={handleSave}
-            className="rounded-md p-1.5 text-text-tertiary hover:text-accent-primary transition-colors"
+            className="relative rounded-md p-1.5 text-text-tertiary hover:text-accent-primary transition-colors"
             aria-label={isSaved ? "Unsave" : "Save"}
           >
-            {isSaved ? (
-              <BookmarkCheck size={18} className="text-accent-primary" />
-            ) : (
-              <Bookmark size={18} />
+            <span className={saveAnimating ? "save-button-pop" : ""}>
+              {isSaved ? (
+                <BookmarkCheck size={18} className="text-accent-primary" />
+              ) : (
+                <Bookmark size={18} />
+              )}
+            </span>
+            {showCheckOverlay && (
+              <span className="save-check-overlay absolute inset-0 flex items-center justify-center">
+                <Check size={14} className="text-accent-success" />
+              </span>
             )}
           </button>
         </div>
