@@ -10,6 +10,7 @@ import {
   RefreshCw,
   ArrowUp,
   Loader2,
+  MoreHorizontal,
 } from "lucide-react";
 import type { Article, Summary, ArticleIntelligence, ArticleWithIntelligence } from "@/types";
 import { topicLabels } from "@/lib/mock-data";
@@ -146,6 +147,23 @@ export function IntelligenceFeed({
   isRefreshing,
 }: IntelligenceFeedProps) {
   const [everythingElseOpen, setEverythingElseOpen] = useState(false);
+  const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set());
+  const [hiddenTopics, setHiddenTopics] = useState<Set<string>>(new Set());
+  const [openMenuTopic, setOpenMenuTopic] = useState<string | null>(null);
+
+  const toggleTopicExpanded = (topic: string) => {
+    setExpandedTopics((prev) => {
+      const next = new Set(prev);
+      if (next.has(topic)) next.delete(topic);
+      else next.add(topic);
+      return next;
+    });
+  };
+
+  const hideTopic = (topic: string) => {
+    setHiddenTopics((prev) => new Set(prev).add(topic));
+    setOpenMenuTopic(null);
+  };
 
   // Split articles into top stories (diverse) and remaining
   const { topStories, remaining } = useMemo(
@@ -273,58 +291,138 @@ export function IntelligenceFeed({
         </section>
       )}
 
-      {/* ═══ TOPIC SWIMLANES ═══ */}
-      {topicGroups.length > 0 && (
-        <section>
-          <div className="mb-6 flex items-center gap-3">
-            <h3 className="text-lg font-bold text-text-primary">
-              By Topic
-            </h3>
-          </div>
+      {/* ═══ TOPIC GRIDS ═══ */}
+      {topicGroups.length > 0 && (() => {
+        const visibleGroups = topicGroups.filter(
+          ({ topic, articles: ta }) =>
+            !hiddenTopics.has(topic) && ta.slice(0, SWIMLANE_MAX_PER_TOPIC).length > 0
+        );
 
-          <div className="space-y-6">
-            {topicGroups.map(({ topic, articles: topicArticles }) => {
-              const displayArticles = topicArticles.slice(0, SWIMLANE_MAX_PER_TOPIC);
-              if (displayArticles.length === 0) return null;
+        return (
+          <section>
+            <div className="mb-6 flex items-center gap-3">
+              <h3 className="text-lg font-bold text-text-primary">
+                By Topic
+              </h3>
+            </div>
 
-              return (
-                <div key={topic}>
-                  {/* Swimlane header — clean */}
-                  <div className="mb-3 flex items-center gap-2">
-                    <h4 className="text-sm font-semibold text-text-primary">
-                      {topicLabels[topic]}
-                    </h4>
-                    <span className="rounded-full bg-bg-secondary px-2 py-0.5 text-[11px] font-medium text-text-tertiary">
-                      {displayArticles.length}
-                    </span>
+            <div className="space-y-6">
+              {visibleGroups.map(({ topic, articles: topicArticles }, visibleIndex) => {
+                const displayArticles = topicArticles.slice(0, SWIMLANE_MAX_PER_TOPIC);
+                const isExpanded = expandedTopics.has(topic);
+                const visibleArticles = isExpanded ? displayArticles : displayArticles.slice(0, 3);
+                const hasMore = displayArticles.length > 3;
+
+                return (
+                  <div key={topic}>
+                    {/* Insert "Something Different" between 2nd and 3rd topic rows */}
+                    {visibleIndex === 2 && (
+                      <div className="mb-6">
+                        <SurpriseMe
+                          articles={everythingElse as ArticleWithIntelligence[]}
+                          onSave={onSave}
+                          onOpenReader={onOpenReader}
+                          onRequestSummary={onRequestSummary}
+                          onExpand={onExpand}
+                          subtitle="Outside your usual reading"
+                        />
+                      </div>
+                    )}
+
+                    {/* Topic header — grid toggle + menu */}
+                    <div className="mb-3 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-semibold text-text-primary">
+                          {topicLabels[topic]}
+                        </h4>
+                        <span className="rounded-full bg-bg-secondary px-2 py-0.5 text-[11px] font-medium text-text-tertiary">
+                          {displayArticles.length}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {hasMore && (
+                          <button
+                            onClick={() => toggleTopicExpanded(topic)}
+                            className="text-xs font-medium text-accent-primary hover:text-accent-primary-hover transition-colors"
+                          >
+                            {isExpanded ? "Show less" : `Show all ${displayArticles.length}`}
+                          </button>
+                        )}
+                        {/* ⋯ menu */}
+                        <div className="relative">
+                          <button
+                            onClick={() => setOpenMenuTopic(openMenuTopic === topic ? null : topic)}
+                            className="rounded-md p-1 text-text-tertiary hover:text-text-secondary hover:bg-bg-secondary transition-colors"
+                            aria-label="Topic options"
+                          >
+                            <MoreHorizontal size={14} />
+                          </button>
+                          {openMenuTopic === topic && (
+                            <>
+                              <div
+                                className="fixed inset-0 z-20"
+                                onClick={() => setOpenMenuTopic(null)}
+                              />
+                              <div className="absolute right-0 top-full z-30 mt-1 w-44 rounded-xl border border-border-secondary bg-bg-card py-1 shadow-lg">
+                                <button
+                                  onClick={() => setOpenMenuTopic(null)}
+                                  className="flex w-full items-center px-3 py-2 text-left text-xs text-text-secondary hover:bg-bg-hover transition-colors"
+                                >
+                                  Mark all as read
+                                </button>
+                                <button
+                                  onClick={() => hideTopic(topic)}
+                                  className="flex w-full items-center px-3 py-2 text-left text-xs text-text-secondary hover:bg-bg-hover transition-colors"
+                                >
+                                  Hide topic
+                                </button>
+                                <button
+                                  onClick={() => setOpenMenuTopic(null)}
+                                  className="flex w-full items-center px-3 py-2 text-left text-xs text-text-secondary hover:bg-bg-hover transition-colors"
+                                >
+                                  Set priority
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Grid layout — replaces horizontal carousel */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {visibleArticles.map((article, i) => (
+                        <div
+                          key={article.id}
+                          className={isExpanded && i >= 3 ? "section-enter" : ""}
+                        >
+                          <SwimlaneCard
+                            article={article as ArticleWithIntelligence}
+                            onSave={onSave}
+                            onOpenReader={onOpenReader}
+                          />
+                        </div>
+                      ))}
+                    </div>
                   </div>
+                );
+              })}
 
-                  {/* Horizontal scrollable row with arrows */}
-                  <ScrollableRow gap="gap-3">
-                    {displayArticles.map((article) => (
-                      <SwimlaneCard
-                        key={article.id}
-                        article={article as ArticleWithIntelligence}
-                        onSave={onSave}
-                        onOpenReader={onOpenReader}
-                      />
-                    ))}
-                  </ScrollableRow>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Something Different — after topics */}
-          <SurpriseMe
-            articles={everythingElse as ArticleWithIntelligence[]}
-            onSave={onSave}
-            onOpenReader={onOpenReader}
-            onRequestSummary={onRequestSummary}
-            onExpand={onExpand}
-          />
-        </section>
-      )}
+              {/* Fallback: if fewer than 3 visible groups, show SurpriseMe at the end */}
+              {visibleGroups.length < 3 && (
+                <SurpriseMe
+                  articles={everythingElse as ArticleWithIntelligence[]}
+                  onSave={onSave}
+                  onOpenReader={onOpenReader}
+                  onRequestSummary={onRequestSummary}
+                  onExpand={onExpand}
+                  subtitle="Outside your usual reading"
+                />
+              )}
+            </div>
+          </section>
+        );
+      })()}
 
       {/* ═══ EVERYTHING ELSE ═══ */}
       {everythingElse.length > 0 && (

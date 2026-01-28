@@ -22,7 +22,7 @@ export function SwimlaneCard({
 
   return (
     <div
-      className="card-interactive group relative w-[260px] shrink-0 snap-start cursor-pointer overflow-hidden rounded-2xl border border-border-secondary bg-bg-card"
+      className="card-interactive group relative w-full cursor-pointer overflow-hidden rounded-2xl border border-border-secondary bg-bg-card"
       onClick={() => onOpenReader?.(article)}
     >
       {/* Thumbnail or topic gradient fallback */}

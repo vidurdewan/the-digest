@@ -76,7 +76,7 @@ function BriefContent({ content }: { content: string }) {
   const { tldr, sections } = parseBrief(content);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* TL;DR — highlighted one-liner */}
       {tldr && (
         <div className="border-l-3 border-accent-primary pl-4 py-1">
@@ -153,10 +153,10 @@ export function TodaysBrief() {
     : "";
 
   return (
-    <section className="rounded-2xl border border-border-secondary bg-bg-card shadow-sm overflow-hidden">
+    <section className="rounded-2xl border border-border-secondary bg-bg-card shadow-sm overflow-hidden" style={{ borderLeft: "4px solid var(--accent-primary)" }}>
       {/* Header — clickable to expand/collapse */}
       <div
-        className="flex items-center justify-between px-6 py-4 cursor-pointer hover:bg-bg-hover/50 transition-colors"
+        className="flex items-center justify-between px-6 py-8 cursor-pointer hover:bg-bg-hover/50 transition-colors"
         onClick={() => brief && setIsExpanded(!isExpanded)}
       >
         <div className="flex-1 min-w-0">
@@ -164,13 +164,15 @@ export function TodaysBrief() {
             <h3 className="text-base font-bold text-text-primary">
               Today&apos;s Brief
             </h3>
+            <span className="inline-flex items-center rounded-md bg-accent-primary/10 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-accent-primary">
+              AI
+            </span>
             <span className="text-xs text-text-tertiary">{today}</span>
           </div>
-          {/* Preview line when collapsed */}
+          {/* Preview — 2-3 sentences when collapsed */}
           {!isExpanded && previewLine && (
-            <p className="mt-1 text-sm text-text-secondary truncate">
-              {previewLine.replace(/\*\*/g, "").slice(0, 120)}
-              {previewLine.length > 120 ? "..." : ""}
+            <p className="mt-2 text-sm leading-relaxed text-text-secondary line-clamp-3">
+              {previewLine.replace(/\*\*/g, "")}
             </p>
           )}
         </div>

@@ -23,6 +23,7 @@ interface SurpriseMeProps {
     article: Article & { summary?: Summary }
   ) => Promise<Summary | null>;
   onExpand?: (articleId: string) => void;
+  subtitle?: string;
 }
 
 function getTodayKey(): string {
@@ -67,6 +68,7 @@ export function SurpriseMe({
   onOpenReader,
   onRequestSummary,
   onExpand,
+  subtitle,
 }: SurpriseMeProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isDismissed, setIsDismissed] = useState(getDismissedToday);
@@ -150,8 +152,8 @@ export function SurpriseMe({
             Something Different
           </span>
         </div>
-        <p className="mt-0.5 ml-5 text-[11px] text-text-tertiary">
-          A story outside your usual topics, picked daily to broaden your lens.
+        <p className="mt-0.5 ml-5 text-[11px]" style={{ color: "var(--text-tertiary)" }}>
+          {subtitle || "A story outside your usual topics, picked daily to broaden your lens."}
         </p>
       </div>
 
