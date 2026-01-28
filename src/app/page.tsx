@@ -236,6 +236,23 @@ export default function Home() {
     }
   };
 
+  const handleMarkAllRead = useCallback((articleIds: string[]) => {
+    const unreadIds = articleIds.filter(
+      (id) => articlesWithMatches.find((a) => a.id === id && !a.isRead)
+    );
+    if (unreadIds.length === 0) return;
+    articleData.markAsRead(unreadIds);
+    for (const id of unreadIds) {
+      engagement.trackEvent(id, "read");
+    }
+    // Trigger unread dot fade via DOM
+    for (const id of unreadIds) {
+      const dots = document.querySelectorAll(`[data-unread-dot="${id}"]`);
+      dots.forEach((dot) => dot.classList.add("unread-dot-fade"));
+    }
+    addToast(`Marked ${unreadIds.length} article${unreadIds.length === 1 ? "" : "s"} as read`, "success");
+  }, [articlesWithMatches, articleData, engagement, addToast]);
+
   const handleForceRefresh = async () => {
     const result = await articleData.ingest();
     if (result) {
@@ -282,6 +299,15 @@ export default function Home() {
     setReaderArticle(null);
   }, []);
 
+  const handleMarkReadFocused = useCallback(() => {
+    const idx = useFeedNavigationStore.getState().focusedIndex;
+    if (idx < 0 || idx >= rankedArticles.length) return;
+    const article = rankedArticles[idx];
+    if (!article.isRead) {
+      handleMarkAllRead([article.id]);
+    }
+  }, [rankedArticles, handleMarkAllRead]);
+
   const renderSection = () => {
     if (isLoading) return <PageSkeleton />;
 
@@ -299,6 +325,7 @@ export default function Home() {
             lastUpdated={autoRefresh.lastUpdated}
             onForceRefresh={handleForceRefresh}
             isRefreshing={articleData.isIngesting}
+            onMarkAllRead={handleMarkAllRead}
           />
         );
       case "newsletters":
@@ -387,13 +414,28 @@ export default function Home() {
             lastUpdated={autoRefresh.lastUpdated}
             onForceRefresh={handleForceRefresh}
             isRefreshing={articleData.isIngesting}
+            onMarkAllRead={handleMarkAllRead}
           />
         );
     }
   };
 
+  const handleNavigateToArticle = useCallback(
+    (articleId: string) => {
+      const article = articlesWithMatches.find((a) => a.id === articleId);
+      if (article) handleOpenReader(article);
+    },
+    [articlesWithMatches]
+  );
+
   return (
-    <MainLayout>
+    <MainLayout
+      headerProps={{
+        articles: articlesWithMatches,
+        newsletters: newsletterData.newsletters,
+        onNavigateToArticle: handleNavigateToArticle,
+      }}
+    >
       <div key={activeSection} className="section-enter mx-auto max-w-5xl pb-20 lg:pb-0">
         {renderSection()}
       </div>
@@ -424,6 +466,7 @@ export default function Home() {
         onExpandFocused={handleExpandFocused}
         onOpenReaderFocused={handleOpenReaderFocused}
         onCloseReader={handleCloseReader}
+        onMarkReadFocused={handleMarkReadFocused}
       />
       {showOnboarding && (
         <OnboardingWizard

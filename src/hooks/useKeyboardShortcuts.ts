@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useCallback, useRef } from "react";
-import { useFeedNavigationStore } from "@/lib/store";
 
 export interface KeyboardAction {
   key: string;
@@ -21,6 +20,8 @@ interface UseKeyboardShortcutsOptions {
   onShowHelp: () => void;
   onOpenSearch?: () => void;
   onOpenChat?: () => void;
+  onMarkRead?: () => void;
+  onJumpToSection?: (index: number) => void;
   enabled?: boolean;
 }
 
@@ -34,6 +35,8 @@ export function useKeyboardShortcuts({
   onShowHelp,
   onOpenSearch,
   onOpenChat,
+  onMarkRead,
+  onJumpToSection,
   enabled = true,
 }: UseKeyboardShortcutsOptions) {
   const handlerRef = useRef<(e: KeyboardEvent) => void>(undefined);
@@ -53,6 +56,11 @@ export function useKeyboardShortcuts({
           (target as HTMLInputElement).blur();
         }
         return;
+      }
+
+      // Cmd/Ctrl+K — command palette (let CommandPalette handle it, but don't block)
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        return; // CommandPalette has its own listener
       }
 
       switch (e.key) {
@@ -97,9 +105,22 @@ export function useKeyboardShortcuts({
           e.preventDefault();
           onOpenChat?.();
           break;
+        case "m":
+        case "M":
+          e.preventDefault();
+          onMarkRead?.();
+          break;
+        case "1":
+        case "2":
+        case "3":
+        case "4":
+        case "5":
+          e.preventDefault();
+          onJumpToSection?.(parseInt(e.key));
+          break;
       }
     },
-    [onNavigateNext, onNavigatePrev, onSave, onExpand, onOpenReader, onCloseReader, onShowHelp, onOpenSearch, onOpenChat]
+    [onNavigateNext, onNavigatePrev, onSave, onExpand, onOpenReader, onCloseReader, onShowHelp, onOpenSearch, onOpenChat, onMarkRead, onJumpToSection]
   );
 
   handlerRef.current = handleKeyDown;
@@ -113,15 +134,40 @@ export function useKeyboardShortcuts({
   }, [enabled]);
 }
 
-export const SHORTCUT_LIST = [
-  { key: "J", description: "Next article" },
-  { key: "K", description: "Previous article" },
-  { key: "S", description: "Save / unsave article" },
-  { key: "Enter", description: "Expand / collapse article" },
-  { key: "O", description: "Open in reader view" },
-  { key: "Esc", description: "Close reader view" },
-  { key: "⌘K", description: "Command palette" },
-  { key: "/", description: "Search" },
-  { key: "C", description: "AI Chat" },
-  { key: "?", description: "Show keyboard shortcuts" },
+export interface ShortcutSection {
+  title: string;
+  shortcuts: { key: string; description: string }[];
+}
+
+export const SHORTCUT_SECTIONS: ShortcutSection[] = [
+  {
+    title: "Navigation",
+    shortcuts: [
+      { key: "J", description: "Next article" },
+      { key: "K", description: "Previous article" },
+      { key: "1–5", description: "Jump to sidebar section" },
+      { key: "/", description: "Search" },
+      { key: "⌘K", description: "Command palette" },
+    ],
+  },
+  {
+    title: "Reading",
+    shortcuts: [
+      { key: "Enter", description: "Expand / collapse article" },
+      { key: "O", description: "Open in reader view" },
+      { key: "Esc", description: "Close reader view" },
+      { key: "S", description: "Save / unsave article" },
+      { key: "M", description: "Mark article as read" },
+    ],
+  },
+  {
+    title: "Tools",
+    shortcuts: [
+      { key: "C", description: "AI Chat" },
+      { key: "?", description: "Keyboard shortcuts" },
+    ],
+  },
 ];
+
+// Flat list for backward compat
+export const SHORTCUT_LIST = SHORTCUT_SECTIONS.flatMap((s) => s.shortcuts);

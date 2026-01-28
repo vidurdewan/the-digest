@@ -11,6 +11,7 @@ import {
   ArrowUp,
   Loader2,
   MoreHorizontal,
+  CheckCheck,
 } from "lucide-react";
 import type { Article, Summary, ArticleIntelligence, ArticleWithIntelligence } from "@/types";
 import { topicLabels } from "@/lib/mock-data";
@@ -132,6 +133,7 @@ interface IntelligenceFeedProps {
   lastUpdated?: Date | null;
   onForceRefresh?: () => void;
   isRefreshing?: boolean;
+  onMarkAllRead?: (articleIds: string[]) => void;
 }
 
 export function IntelligenceFeed({
@@ -145,6 +147,7 @@ export function IntelligenceFeed({
   lastUpdated,
   onForceRefresh,
   isRefreshing,
+  onMarkAllRead,
 }: IntelligenceFeedProps) {
   const [everythingElseOpen, setEverythingElseOpen] = useState(false);
   const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set());
@@ -227,21 +230,41 @@ export function IntelligenceFeed({
             </p>
           )}
         </div>
-        {onForceRefresh && (
-          <button
-            onClick={onForceRefresh}
-            disabled={isRefreshing}
-            className="flex items-center gap-1.5 rounded-xl border border-border-primary px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-bg-hover disabled:opacity-50"
-            title="Refresh articles"
-          >
-            {isRefreshing ? (
-              <Loader2 size={14} className="animate-spin" />
-            ) : (
-              <RefreshCw size={14} />
-            )}
-            {isRefreshing ? "Refreshing..." : "Refresh"}
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {onMarkAllRead && (
+            <button
+              onClick={() => {
+                const allVisibleIds = [
+                  ...topStories.map((a) => a.id),
+                  ...topicGroups.flatMap(({ articles: ta }) =>
+                    ta.slice(0, SWIMLANE_MAX_PER_TOPIC).map((a) => a.id)
+                  ),
+                ];
+                onMarkAllRead(allVisibleIds);
+              }}
+              className="flex items-center gap-1.5 rounded-xl border border-border-primary px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-bg-hover"
+              title="Mark all as read"
+            >
+              <CheckCheck size={14} />
+              Mark all read
+            </button>
+          )}
+          {onForceRefresh && (
+            <button
+              onClick={onForceRefresh}
+              disabled={isRefreshing}
+              className="flex items-center gap-1.5 rounded-xl border border-border-primary px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-bg-hover disabled:opacity-50"
+              title="Refresh articles"
+            >
+              {isRefreshing ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <RefreshCw size={14} />
+              )}
+              {isRefreshing ? "Refreshing..." : "Refresh"}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Reading Progress */}
@@ -365,9 +388,14 @@ export function IntelligenceFeed({
                               />
                               <div className="absolute right-0 top-full z-30 mt-1 w-44 rounded-xl border border-border-secondary bg-bg-card py-1 shadow-lg">
                                 <button
-                                  onClick={() => setOpenMenuTopic(null)}
-                                  className="flex w-full items-center px-3 py-2 text-left text-xs text-text-secondary hover:bg-bg-hover transition-colors"
+                                  onClick={() => {
+                                    const ids = topicArticles.slice(0, SWIMLANE_MAX_PER_TOPIC).map((a) => a.id);
+                                    onMarkAllRead?.(ids);
+                                    setOpenMenuTopic(null);
+                                  }}
+                                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-text-secondary hover:bg-bg-hover transition-colors"
                                 >
+                                  <CheckCheck size={12} />
                                   Mark all as read
                                 </button>
                                 <button

@@ -16,6 +16,7 @@ interface UseArticlesReturn {
     article: Article & { summary?: Summary }
   ) => Promise<Summary | null>;
   isSummarizing: boolean;
+  markAsRead: (articleIds: string[]) => void;
 }
 
 // Map Supabase summary row to Summary type
@@ -262,6 +263,13 @@ export function useArticles(): UseArticlesReturn {
     []
   );
 
+  const markAsRead = useCallback((articleIds: string[]) => {
+    const idSet = new Set(articleIds);
+    setArticles((prev) =>
+      prev.map((a) => (idSet.has(a.id) ? { ...a, isRead: true } : a))
+    );
+  }, []);
+
   useEffect(() => {
     fetchArticles();
   }, [fetchArticles]);
@@ -275,6 +283,7 @@ export function useArticles(): UseArticlesReturn {
     isIngesting,
     requestFullSummary,
     isSummarizing,
+    markAsRead,
   };
 }
 
