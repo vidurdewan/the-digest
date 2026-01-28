@@ -11,6 +11,7 @@ import {
 import type { Article, Summary, ArticleWithIntelligence } from "@/types";
 import { getRelativeTime } from "@/lib/mock-data";
 import { ExpandedArticleView } from "@/components/articles/ExpandedArticleView";
+import { SignalBadges } from "@/components/intelligence/SignalBadge";
 
 interface CompactListItemProps {
   article: ArticleWithIntelligence;
@@ -84,6 +85,13 @@ export function CompactListItem({
         <h4 className="flex-1 truncate text-sm font-medium text-text-primary group-hover:text-accent-primary transition-colors">
           {article.title}
         </h4>
+
+        {/* Signal badges — inline, desktop only */}
+        {article.signals && article.signals.length > 0 && (
+          <div className="hidden shrink-0 sm:flex items-center gap-1">
+            <SignalBadges signals={article.signals} compact max={1} />
+          </div>
+        )}
 
         {/* Source */}
         <span className="hidden shrink-0 text-xs text-text-tertiary sm:inline">

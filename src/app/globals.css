@@ -509,3 +509,27 @@ h1, h2, h3, h4, h5, h6 {
     transform: translateY(0);
   }
 }
+
+/* ===== Significance Glow — high-importance cards get ambient glow ===== */
+.significance-glow-high {
+  box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.12),
+              0 2px 12px rgba(220, 38, 38, 0.08);
+}
+.significance-glow-medium {
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.1),
+              0 2px 8px rgba(245, 158, 11, 0.06);
+}
+
+[data-theme="dark"] .significance-glow-high {
+  box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.2),
+              0 2px 16px rgba(239, 68, 68, 0.12);
+}
+[data-theme="dark"] .significance-glow-medium {
+  box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.15),
+              0 2px 12px rgba(251, 191, 36, 0.08);
+}
+
+/* ===== Image card hover — enhanced lift for cards with images ===== */
+.card-interactive:has(img):hover {
+  transform: translateY(-3px);
+}

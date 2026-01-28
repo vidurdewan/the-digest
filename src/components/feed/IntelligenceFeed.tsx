@@ -15,6 +15,7 @@ import type { Article, Summary, ArticleIntelligence, ArticleWithIntelligence } f
 import { topicLabels } from "@/lib/mock-data";
 import { selectDiverseTopStories, groupByTopic } from "@/lib/feed-layout";
 import { TodaysBrief } from "./TodaysBrief";
+import { HeroStoryCard } from "./HeroStoryCard";
 import { TopStoryCard } from "./TopStoryCard";
 import { SwimlaneCard } from "./SwimlaneCard";
 import { CompactListItem } from "./CompactListItem";
@@ -182,7 +183,7 @@ export function IntelligenceFeed({
       {/* ═══ TODAY'S BRIEF ═══ */}
       <TodaysBrief />
 
-      {/* ═══ TOP STORIES — 5 equal horizontal scroll cards ═══ */}
+      {/* ═══ TOP STORIES — Hero #1 + horizontal scroll ═══ */}
       {topStories.length > 0 && (
         <section>
           <div className="mb-4 flex items-center justify-between">
@@ -194,19 +195,32 @@ export function IntelligenceFeed({
             </span>
           </div>
 
-          {/* Horizontal scroll — equal cards with arrows */}
-          <ScrollableRow>
-            {topStories.map((article) => (
-              <TopStoryCard
-                key={article.id}
-                article={article as ArticleWithIntelligence}
-                onSave={onSave}
-                onOpenReader={onOpenReader}
-                onRequestSummary={onRequestSummary}
-                onExpand={onExpand}
-              />
-            ))}
-          </ScrollableRow>
+          {/* Hero card for #1 story — full width with image */}
+          <div className="mb-4">
+            <HeroStoryCard
+              article={topStories[0] as ArticleWithIntelligence}
+              onSave={onSave}
+              onOpenReader={onOpenReader}
+              onRequestSummary={onRequestSummary}
+              onExpand={onExpand}
+            />
+          </div>
+
+          {/* Remaining top stories — horizontal scroll */}
+          {topStories.length > 1 && (
+            <ScrollableRow>
+              {topStories.slice(1).map((article) => (
+                <TopStoryCard
+                  key={article.id}
+                  article={article as ArticleWithIntelligence}
+                  onSave={onSave}
+                  onOpenReader={onOpenReader}
+                  onRequestSummary={onRequestSummary}
+                  onExpand={onExpand}
+                />
+              ))}
+            </ScrollableRow>
+          )}
         </section>
       )}
 
