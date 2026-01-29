@@ -132,9 +132,9 @@ export function Sidebar() {
         </div>
       )}
 
-      {/* Desktop sidebar */}
+      {/* Desktop sidebar — hidden in editorial layout (Phase 1) */}
       <aside
-        className={`fixed top-0 left-0 z-30 hidden h-full flex-col border-r border-border-secondary bg-bg-sidebar transition-all duration-300 lg:relative lg:z-auto lg:flex ${
+        className={`fixed top-0 left-0 z-30 hidden h-full flex-col border-r border-border-secondary bg-bg-sidebar transition-all duration-300 ${
           isOpen ? "w-60" : "w-16"
         } overflow-hidden`}
       >

@@ -436,6 +436,7 @@ export default function Home() {
         articles: articlesWithMatches,
         newsletters: newsletterData.newsletters,
         onNavigateToArticle: handleNavigateToArticle,
+        unreadNewsletterCount: newsletterData.newsletters.filter((n) => !n.isRead).length,
       }}
     >
       <div key={activeSection} className="section-enter mx-auto max-w-5xl pb-20 lg:pb-0">
