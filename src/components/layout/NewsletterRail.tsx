@@ -42,7 +42,7 @@ export function NewsletterRail({
 
   return (
     <div
-      className="sticky top-[calc(3.5rem+1.5rem)] max-h-[calc(100vh-3.5rem-3rem)] overflow-y-auto scrollbar-rail"
+      className="sticky top-[calc(3.5rem+2rem)] max-h-[calc(100vh-3.5rem-3rem)] overflow-y-auto scrollbar-rail"
     >
       {/* Inbox Intelligence Header */}
       <div className="mb-0 pb-6 border-b border-border-primary">

@@ -228,7 +228,7 @@ export function IntelligenceFeed({
                 <img
                   src={heroArticle.imageUrl}
                   alt=""
-                  className="w-full h-56 object-cover"
+                  className="w-full max-h-[250px] object-cover"
                 />
               </div>
             )}
@@ -241,7 +241,7 @@ export function IntelligenceFeed({
                 />
                 Top Story For You
               </p>
-              <h1 className="typo-hero text-4xl md:text-5xl lg:text-[3.5rem] xl:text-[4rem] text-text-primary mb-4 group-hover:opacity-80 transition-opacity">
+              <h1 className="typo-hero text-3xl md:text-4xl lg:text-[3.5rem] xl:text-[4rem] text-text-primary mb-4 group-hover:opacity-80 transition-opacity">
                 {heroArticle.title}
               </h1>
               {heroArticle.summary?.brief && (
@@ -323,10 +323,11 @@ export function IntelligenceFeed({
         {visibleFeedArticles.map((article) => {
           const curation = getCurationReason(article);
           return (
-            <div key={article.id} className="border-b border-border-primary">
+            <div key={article.id} className="border-b border-border-primary feed-item-row rounded-sm">
               <div
-                className="flex items-start gap-4 py-6 md:py-8 cursor-pointer group"
+                className="flex items-start gap-4 py-4 px-4 md:py-8 md:px-0 cursor-pointer group"
                 onClick={() => onOpenReader(article)}
+                data-feed-index={feedArticles.indexOf(article)}
               >
                 {/* Left side */}
                 <div className="flex-1 min-w-0">
@@ -348,7 +349,7 @@ export function IntelligenceFeed({
                   </div>
                   {/* Line 2: headline */}
                   <h3
-                    className={`typo-feed-headline text-xl md:text-2xl text-text-primary mb-1.5 group-hover:opacity-80 transition-opacity ${
+                    className={`typo-feed-headline feed-headline text-xl md:text-2xl text-text-primary mb-1.5 transition-colors ${
                       article.isRead ? "opacity-60" : ""
                     }`}
                   >
@@ -378,7 +379,7 @@ export function IntelligenceFeed({
                     e.stopPropagation();
                     onSave(article.id);
                   }}
-                  className="flex-shrink-0 mt-2 p-1.5 text-text-secondary hover:text-text-primary transition-colors"
+                  className={`flex-shrink-0 mt-2 p-1.5 text-text-secondary hover:text-text-primary transition-colors feed-save-icon ${article.isSaved ? "!opacity-100" : ""}`}
                   title={article.isSaved ? "Unsave" : "Save"}
                 >
                   <Bookmark

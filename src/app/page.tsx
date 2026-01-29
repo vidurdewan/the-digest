@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
-import { MobileNav } from "@/components/layout/MobileNav";
+import { BackToTop } from "@/components/ui/BackToTop";
 import { useSidebarStore } from "@/lib/store";
 import { useToastStore } from "@/components/ui/Toast";
 import {
@@ -439,7 +439,7 @@ export default function Home() {
       }}
       newsletters={newsletterData.newsletters}
     >
-      <div key={activeSection} className="section-enter mx-auto max-w-5xl pb-20 lg:pb-0">
+      <div key={activeSection} className="section-enter mx-auto max-w-5xl pb-8">
         {renderSection()}
       </div>
       {/* Reading pane — slides in as drawer from right */}
@@ -451,7 +451,7 @@ export default function Home() {
           onRequestSummary={articleData.requestFullSummary}
         />
       )}
-      <MobileNav />
+      <BackToTop />
       <CommandPalette
         articles={rankedArticles}
         onOpenReader={handleOpenReader}

@@ -783,3 +783,49 @@ h1, h2, h3, h4, h5, h6 {
 .toast-exit {
   animation: toastSlideDown 200ms ease-in forwards;
 }
+
+/* ===== MOBILE MENU OVERLAY ===== */
+@keyframes mobileMenuFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.mobile-menu-enter {
+  animation: mobileMenuFadeIn 200ms ease-out;
+}
+
+/* ===== BACK TO TOP BUTTON ===== */
+.back-to-top {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+}
+.back-to-top.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ===== FEED ITEM HOVER STATES ===== */
+.feed-item-row {
+  transition: background-color 150ms ease;
+}
+.feed-item-row:hover {
+  background-color: color-mix(in srgb, var(--bg-secondary) 50%, transparent);
+}
+.feed-item-row .feed-save-icon {
+  opacity: 0.3;
+  transition: opacity 150ms ease;
+}
+.feed-item-row:hover .feed-save-icon {
+  opacity: 1;
+}
+.feed-item-row .feed-headline {
+  transition: color 150ms ease;
+}
+.feed-item-row:hover .feed-headline {
+  color: var(--text-primary);
+}

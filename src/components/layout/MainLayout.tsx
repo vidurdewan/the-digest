@@ -56,7 +56,7 @@ export function MainLayout({
       <EditorialHeader {...headerProps} />
       <div
         className={`editorial-content mx-auto max-w-7xl px-4 md:px-6 lg:px-8 py-0 ${
-          showAside ? "lg:grid lg:grid-cols-[1fr_340px] lg:gap-12" : ""
+          showAside ? "lg:grid lg:grid-cols-[1fr_280px] xl:grid-cols-[1fr_340px] lg:gap-8 xl:gap-12" : ""
         }`}
       >
         <main>
