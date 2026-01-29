@@ -490,17 +490,24 @@ function DailyDigestSection({
 
   if (isGenerating) {
     return (
-      <div className="rounded-2xl border border-border-secondary bg-bg-card p-6">
-        <div className="flex items-center gap-3">
-          <Loader2 size={20} className="animate-spin text-accent-primary" />
-          <div>
-            <h3 className="font-bold text-text-primary">
-              Generating Intelligence Briefing...
-            </h3>
-            <p className="text-sm text-text-tertiary">
-              Analyzing {newsletterCount} newsletter
-              {newsletterCount !== 1 ? "s" : ""} with source-weighted analysis
-            </p>
+      <div className="space-y-3">
+        <DateStrip
+          selectedDate={selectedDigestDate}
+          onSelect={onSelectDigestDate}
+          digestDates={digestDates}
+        />
+        <div className="rounded-2xl border border-border-secondary bg-bg-card p-6">
+          <div className="flex items-center gap-3">
+            <Loader2 size={20} className="animate-spin text-accent-primary" />
+            <div>
+              <h3 className="font-bold text-text-primary">
+                Generating Intelligence Briefing...
+              </h3>
+              <p className="text-sm text-text-tertiary">
+                Analyzing {newsletterCount} newsletter
+                {newsletterCount !== 1 ? "s" : ""} with source-weighted analysis
+              </p>
+            </div>
           </div>
         </div>
       </div>
