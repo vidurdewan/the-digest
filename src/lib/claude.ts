@@ -577,15 +577,17 @@ export async function classifyArticleTopics(
           content: `Classify each article into exactly ONE topic category. Choose the BEST fit based on the article's actual content, not its source.
 
 Valid topics:
-- "vc-startups" — Venture capital deals, startup news, accelerators, VC firm activity
-- "fundraising-acquisitions" — Funding rounds, M&A, IPO filings, SPAC mergers, company acquisitions
+- "vc-startups" — ONLY for: VC firm activity, startup ecosystem news, accelerator programs, startup strategy/culture. NOT for product launches, feature updates, or general tech news from big companies (Apple, Google, Samsung, Meta, Amazon, Spotify, etc.)
+- "fundraising-acquisitions" — Funding rounds, M&A deals, IPO filings, SPAC mergers, company acquisitions, valuations
 - "executive-movements" — C-suite hires/departures, board appointments, leadership changes
-- "financial-markets" — Stock markets, economic data, interest rates, earnings, SEC filings, Fed policy
+- "financial-markets" — Stock markets, economic data, interest rates, earnings reports, SEC filings, Fed policy, personal finance
 - "geopolitics" — International relations, trade policy, sanctions, wars, diplomacy
 - "automotive" — EVs, autonomous driving, auto industry, transportation
-- "science-tech" — Scientific research, AI/ML, hardware, software, cybersecurity, space
+- "science-tech" — Product launches, feature updates, AI/ML research, hardware, software, cybersecurity, space, consumer tech. This is the DEFAULT for tech news about established companies (Apple, Google, Meta, Samsung, Microsoft, Amazon, Spotify, etc.)
 - "local-news" — City/regional news, local government, community events
 - "politics" — Domestic politics, legislation, elections, government policy
+
+IMPORTANT: Most tech news belongs in "science-tech", NOT "vc-startups". Only classify as "vc-startups" if the article is specifically about venture capital, startup founding/strategy, or the startup ecosystem. News about products, features, lawsuits, layoffs, or business operations of established tech companies should be "science-tech".
 
 ${articlesText}
 
