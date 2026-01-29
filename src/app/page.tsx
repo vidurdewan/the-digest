@@ -332,6 +332,8 @@ export default function Home() {
         return (
           <NewsletterView
             newsletters={newsletterData.newsletters}
+            newslettersForSelectedDate={newsletterData.newslettersForSelectedDate}
+            newsletterDates={newsletterData.newsletterDates}
             isLoading={newsletterData.isLoading}
             error={newsletterData.error}
             onRefresh={newsletterData.refresh}

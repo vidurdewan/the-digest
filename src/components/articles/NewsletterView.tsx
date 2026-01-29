@@ -39,6 +39,8 @@ interface StoredDigest {
 
 interface NewsletterViewProps {
   newsletters: Newsletter[];
+  newslettersForSelectedDate: Newsletter[];
+  newsletterDates: Set<string>;
   isLoading: boolean;
   error: string | null;
   onRefresh: () => Promise<void>;
@@ -432,6 +434,7 @@ function DailyDigestSection({
   digestHistory,
   selectedDigestDate,
   onSelectDigestDate,
+  newsletterDates,
 }: {
   digest: string | null;
   isGenerating: boolean;
@@ -440,8 +443,13 @@ function DailyDigestSection({
   digestHistory: StoredDigest[];
   selectedDigestDate: string | null;
   onSelectDigestDate: (date: string | null) => void;
+  newsletterDates: Set<string>;
 }) {
-  const digestDates = new Set(digestHistory.map((d) => d.date));
+  // Merge digest dates and newsletter dates for highlighting
+  const digestDates = new Set([
+    ...digestHistory.map((d) => d.date),
+    ...newsletterDates,
+  ]);
 
   if (!digest && !isGenerating) {
     return (
@@ -879,6 +887,8 @@ function NewsletterCard({
 // ─── Main View ───────────────────────────────────────────────
 export function NewsletterView({
   newsletters,
+  newslettersForSelectedDate,
+  newsletterDates,
   isLoading,
   error,
   onRefresh,
@@ -916,7 +926,10 @@ export function NewsletterView({
 
   const vipSet = new Set(vipNewsletters);
 
-  const filteredNewsletters = newsletters
+  // Use date-filtered newsletters for the card list
+  const dateNewsletters = newslettersForSelectedDate;
+
+  const filteredNewsletters = dateNewsletters
     .filter((nl) => {
       if (filterMode === "unread") return !nl.isRead;
       if (filterMode === "saved") return nl.isSaved;
@@ -928,8 +941,8 @@ export function NewsletterView({
       return aVip - bVip;
     });
 
-  const unreadCount = newsletters.filter((nl) => !nl.isRead).length;
-  const savedCount = newsletters.filter((nl) => nl.isSaved).length;
+  const unreadCount = dateNewsletters.filter((nl) => !nl.isRead).length;
+  const savedCount = dateNewsletters.filter((nl) => nl.isSaved).length;
 
   return (
     <div className="space-y-6">
@@ -939,8 +952,8 @@ export function NewsletterView({
             Newsletters
           </h2>
           <p className="mt-1 text-sm text-text-tertiary">
-            {newsletters.length} newsletter
-            {newsletters.length !== 1 ? "s" : ""}
+            {dateNewsletters.length} newsletter
+            {dateNewsletters.length !== 1 ? "s" : ""}
             {unreadCount > 0 && (
               <span className="text-accent-primary">
                 {" "}&middot; {unreadCount} unread
@@ -1031,19 +1044,20 @@ export function NewsletterView({
           digest={dailyDigest}
           isGenerating={isGeneratingDigest}
           onGenerate={onGenerateDigest}
-          newsletterCount={newsletters.length}
+          newsletterCount={dateNewsletters.length}
           digestHistory={digestHistory}
           selectedDigestDate={selectedDigestDate}
           onSelectDigestDate={onSelectDigestDate}
+          newsletterDates={newsletterDates}
         />
       )}
 
       {/* Filter tabs */}
-      {newsletters.length > 0 && (
+      {dateNewsletters.length > 0 && (
         <div className="flex items-center gap-1">
           {(
             [
-              { key: "all", label: "All", count: newsletters.length },
+              { key: "all", label: "All", count: dateNewsletters.length },
               { key: "unread", label: "Unread", count: unreadCount },
               { key: "saved", label: "Saved", count: savedCount },
             ] as const

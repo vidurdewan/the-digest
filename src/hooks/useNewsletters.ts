@@ -25,11 +25,14 @@ interface UseNewslettersReturn {
   isIngesting: boolean;
   dailyDigest: string | null;
   isGeneratingDigest: boolean;
-  generateDigest: () => Promise<void>;
+  generateDigest: (forDate?: string | null) => Promise<void>;
   // Historical digests
   digestHistory: StoredDigest[];
   selectedDigestDate: string | null;
   selectDigestDate: (date: string | null) => void;
+  // Date-scoped newsletters
+  newsletterDates: Set<string>;
+  newslettersForSelectedDate: Newsletter[];
   // Read/save
   toggleRead: (id: string) => void;
   toggleSave: (id: string) => void;
@@ -41,6 +44,11 @@ interface UseNewslettersReturn {
 function getDateKey(date?: Date): string {
   const d = date || new Date();
   return d.toISOString().slice(0, 10);
+}
+
+/** Extract YYYY-MM-DD from an ISO timestamp or date string */
+function getDateFromTimestamp(ts: string): string {
+  return new Date(ts).toISOString().slice(0, 10);
 }
 
 function estimateReadingTime(content: string): number {
@@ -178,20 +186,6 @@ export function useNewsletters(): UseNewslettersReturn {
       saveSavedState(next);
       return next;
     });
-  }, []);
-
-  const selectDigestDate = useCallback((date: string | null) => {
-    setSelectedDigestDate(date);
-    if (date) {
-      const history = loadDigestHistory();
-      const found = history.find((d) => d.date === date);
-      setDailyDigest(found ? found.digest : null);
-    } else {
-      // Show today's digest if available
-      const history = loadDigestHistory();
-      const today = history.find((d) => d.date === getDateKey());
-      setDailyDigest(today ? today.digest : null);
-    }
   }, []);
 
   // Map API newsletter response to Newsletter type
@@ -381,14 +375,21 @@ export function useNewsletters(): UseNewslettersReturn {
     }
   }, [enrichNewsletters, mapApiNewsletter]);
 
-  const generateDigest = useCallback(async () => {
+  const generateDigest = useCallback(async (forDate?: string | null) => {
+    const targetDate = forDate ?? selectedDigestDate ?? getDateKey();
+    // Filter newsletters to the target date
+    const dateNewsletters = newsletters.filter(
+      (nl) => getDateFromTimestamp(nl.receivedAt) === targetDate
+    );
+    if (dateNewsletters.length === 0) return;
+
     setIsGeneratingDigest(true);
     try {
       const res = await fetch("/api/digest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          newsletters: newsletters.map((nl) => ({
+          newsletters: dateNewsletters.map((nl) => ({
             publication: nl.publication,
             subject: nl.subject,
             content: nl.content,
@@ -399,11 +400,11 @@ export function useNewsletters(): UseNewslettersReturn {
       if (res.ok && data.digest) {
         setDailyDigest(data.digest);
 
-        // Store in history
+        // Store in history keyed to the target date
         const stored: StoredDigest = {
-          date: getDateKey(),
+          date: targetDate,
           digest: data.digest,
-          newsletterCount: newsletters.length,
+          newsletterCount: dateNewsletters.length,
           generatedAt: new Date().toISOString(),
         };
         saveDigestToHistory(stored);
@@ -418,7 +419,28 @@ export function useNewsletters(): UseNewslettersReturn {
     } finally {
       setIsGeneratingDigest(false);
     }
-  }, [newsletters]);
+  }, [newsletters, selectedDigestDate]);
+
+  const selectDigestDate = useCallback((date: string | null) => {
+    setSelectedDigestDate(date);
+    const targetDate = date || getDateKey();
+    const history = loadDigestHistory();
+    const found = history.find((d) => d.date === targetDate);
+
+    if (found) {
+      setDailyDigest(found.digest);
+    } else {
+      setDailyDigest(null);
+      // Auto-generate if newsletters exist for this date
+      const hasNewsletters = newsletters.some(
+        (nl) => getDateFromTimestamp(nl.receivedAt) === targetDate
+      );
+      if (hasNewsletters) {
+        // Defer to avoid state update conflicts
+        setTimeout(() => generateDigest(targetDate), 0);
+      }
+    }
+  }, [newsletters, generateDigest]);
 
   // Load today's digest from history on mount
   useEffect(() => {
@@ -434,6 +456,16 @@ export function useNewsletters(): UseNewslettersReturn {
     fetchNewsletters();
   }, [fetchNewsletters]);
 
+  // Compute date-related derived state
+  const newsletterDates = new Set(
+    newsletters.map((nl) => getDateFromTimestamp(nl.receivedAt))
+  );
+
+  const activeDate = selectedDigestDate || getDateKey();
+  const newslettersForSelectedDate = newsletters.filter(
+    (nl) => getDateFromTimestamp(nl.receivedAt) === activeDate
+  );
+
   return {
     newsletters,
     isLoading,
@@ -447,6 +479,8 @@ export function useNewsletters(): UseNewslettersReturn {
     digestHistory,
     selectedDigestDate,
     selectDigestDate,
+    newsletterDates,
+    newslettersForSelectedDate,
     toggleRead,
     toggleSave,
     isBackgroundRefreshing,
