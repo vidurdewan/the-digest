@@ -528,6 +528,91 @@ Respond in EXACTLY this JSON format (no markdown code fences):
   }
 }
 
+// ─── Topic Classification ────────────────────────────────────
+
+const VALID_TOPICS = [
+  "vc-startups",
+  "fundraising-acquisitions",
+  "executive-movements",
+  "financial-markets",
+  "geopolitics",
+  "automotive",
+  "science-tech",
+  "local-news",
+  "politics",
+] as const;
+
+export interface TopicClassificationResult {
+  id: string;
+  topic: string;
+}
+
+/**
+ * Classify a batch of articles into the correct topic category using AI.
+ * Uses Haiku for speed/cost — only needs title + first 300 chars of content.
+ * Up to 20 articles per call.
+ */
+export async function classifyArticleTopics(
+  articles: Array<{ id: string; title: string; content: string; currentTopic: string }>
+): Promise<TopicClassificationResult[] | null> {
+  const anthropic = getClient();
+  if (!anthropic || articles.length === 0) return null;
+
+  const batch = articles.slice(0, 20);
+
+  const articlesText = batch
+    .map(
+      (a, i) =>
+        `[${i + 1}] ID: ${a.id}\nTitle: ${a.title}\nContent preview: ${a.content.slice(0, 300)}`
+    )
+    .join("\n\n---\n\n");
+
+  try {
+    const response = await anthropic.messages.create({
+      model: BRIEF_MODEL,
+      max_tokens: 50 * batch.length,
+      messages: [
+        {
+          role: "user",
+          content: `Classify each article into exactly ONE topic category. Choose the BEST fit based on the article's actual content, not its source.
+
+Valid topics:
+- "vc-startups" — Venture capital deals, startup news, accelerators, VC firm activity
+- "fundraising-acquisitions" — Funding rounds, M&A, IPO filings, SPAC mergers, company acquisitions
+- "executive-movements" — C-suite hires/departures, board appointments, leadership changes
+- "financial-markets" — Stock markets, economic data, interest rates, earnings, SEC filings, Fed policy
+- "geopolitics" — International relations, trade policy, sanctions, wars, diplomacy
+- "automotive" — EVs, autonomous driving, auto industry, transportation
+- "science-tech" — Scientific research, AI/ML, hardware, software, cybersecurity, space
+- "local-news" — City/regional news, local government, community events
+- "politics" — Domestic politics, legislation, elections, government policy
+
+${articlesText}
+
+Respond in EXACTLY this JSON format (no markdown, no code fences):
+[{"id": "article-id", "topic": "topic-slug"}, ...]`,
+        },
+      ],
+    });
+
+    const text =
+      response.content[0].type === "text" ? response.content[0].text : "";
+    const parsed = JSON.parse(text.trim());
+
+    if (!Array.isArray(parsed)) return null;
+
+    const validTopicSet = new Set<string>(VALID_TOPICS);
+    return parsed
+      .map((r: { id: string; topic: string }, idx: number) => ({
+        id: batch[idx]?.id || r.id,
+        topic: validTopicSet.has(r.topic) ? r.topic : (batch[idx]?.currentTopic || r.topic),
+      }));
+  } catch (error) {
+    console.error("[Claude] Topic classification error:", error);
+    return null;
+  }
+}
+
 // ─── Batch Brief Summaries ───────────────────────────────────
 export interface BatchArticle {
   id: string;

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ingestAllNews, getStoredArticles } from "@/lib/article-ingestion";
 import { summarizeBatchBrief } from "@/lib/summarization";
 import { processIntelligenceBatch } from "@/lib/intelligence";
-import { isClaudeConfigured } from "@/lib/claude";
+import { isClaudeConfigured, classifyArticleTopics } from "@/lib/claude";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 export const maxDuration = 300;
@@ -46,8 +46,60 @@ async function runPostIngestionWork(
       }
     }
 
-    // Intelligence processing and ranking in parallel
+    // Topic classification, intelligence processing, and ranking in parallel
     const work: Promise<unknown>[] = [];
+
+    // AI topic classification — reclassify recent articles based on content
+    if (isClaudeConfigured() && isSupabaseConfigured() && supabase) {
+      work.push(
+        (async () => {
+          try {
+            const { data: recentArticles } = await supabase
+              .from("articles")
+              .select("id, title, content, topic")
+              .order("published_at", { ascending: false })
+              .limit(50);
+
+            if (!recentArticles || recentArticles.length === 0) return;
+
+            const toClassify = recentArticles
+              .filter((a: { content: string | null }) => a.content && a.content.length > 50)
+              .map((a: { id: string; title: string; content: string; topic: string }) => ({
+                id: a.id,
+                title: a.title,
+                content: a.content,
+                currentTopic: a.topic,
+              }));
+
+            // Classify in batches of 20
+            for (let i = 0; i < toClassify.length; i += 20) {
+              const batch = toClassify.slice(i, i + 20);
+              const results = await classifyArticleTopics(batch);
+              if (!results) continue;
+
+              // Update articles whose topic changed
+              const updates = results.filter(
+                (r, idx) => r.topic !== batch[idx].currentTopic
+              );
+
+              if (updates.length > 0) {
+                await Promise.allSettled(
+                  updates.map((u) =>
+                    supabase!
+                      .from("articles")
+                      .update({ topic: u.topic })
+                      .eq("id", u.id)
+                  )
+                );
+                console.log(`[Ingest] Reclassified ${updates.length} articles`);
+              }
+            }
+          } catch (err) {
+            console.error("[Ingest] Topic classification error:", err);
+          }
+        })()
+      );
+    }
 
     if (isClaudeConfigured() && articles.length > 0) {
       work.push(
