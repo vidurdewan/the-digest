@@ -106,7 +106,7 @@ async function storeSummary(
       the_context: summary.theContext,
       key_entities: summary.keyEntities || [],
       tokens_used: summary.tokensUsed || 0,
-      model_used: "claude-sonnet-4-20250514",
+      model_used: summary.theNews ? "claude-sonnet-4-20250514" : "claude-3-5-haiku-20241022",
       generated_at: new Date().toISOString(),
     };
 
@@ -185,36 +185,33 @@ export async function summarizeBatchBrief(
     return stats;
   }
 
-  // Process in batches of 10
+  // Process in batches of 10, all batches concurrently
   const batchSize = 10;
+  const batches: BatchArticle[][] = [];
   for (let i = 0; i < needsSummary.length; i += batchSize) {
-    // Re-check budget before each batch
-    const budgetCheck = await checkBudget();
-    if (!budgetCheck.allowed) {
-      stats.skipped += needsSummary.length - i;
-      break;
-    }
-
-    const batch: BatchArticle[] = needsSummary
-      .slice(i, i + batchSize)
-      .map((a) => ({
+    batches.push(
+      needsSummary.slice(i, i + batchSize).map((a) => ({
         id: a.id,
         title: a.title,
         content: a.content || a.title,
-      }));
+      }))
+    );
+  }
 
-    const result = await generateBatchBriefSummaries(batch);
+  const batchResults = await Promise.allSettled(
+    batches.map((batch) => generateBatchBriefSummaries(batch))
+  );
 
-    if (result) {
+  for (const r of batchResults) {
+    if (r.status === "fulfilled" && r.value) {
+      const result = r.value;
       stats.totalInputTokens += result.inputTokens;
       stats.totalOutputTokens += result.outputTokens;
 
-      // Record usage
       await recordUsage(result.inputTokens, result.outputTokens);
 
-      // Store each brief summary
-      for (const r of result.results) {
-        const stored = await storeSummary(r.articleId, { brief: r.brief });
+      for (const item of result.results) {
+        const stored = await storeSummary(item.articleId, { brief: item.brief });
         if (stored) {
           stats.summarized++;
         } else {
@@ -222,7 +219,7 @@ export async function summarizeBatchBrief(
         }
       }
     } else {
-      stats.errors += batch.length;
+      stats.errors += batchSize;
     }
   }
 

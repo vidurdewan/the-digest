@@ -3,8 +3,10 @@ import { parseNewsletter, isNewsletter } from "@/lib/newsletter-parser";
 import { getStoredTokens, storeTokens } from "@/lib/token-store";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import {
-  generateNewsletterSummary,
   generateVIPNewsletterSummary,
+  generateBatchNewsletterSummaries,
+  getSourceWeight,
+  type NewsletterSummaryResult,
 } from "@/lib/claude";
 import { getNewsletterSourceTier, type SourceTier } from "@/lib/source-tiers";
 
@@ -123,52 +125,78 @@ export async function ingestNewsletters(
     return false;
   }
 
-  // Generate AI summaries in parallel (max 10 concurrent)
-  const newslettersWithSummaries: NewsletterIngestionResult["newsletters"] = [];
-  const batchSize = 10;
-  for (let i = 0; i < parsed.length; i += batchSize) {
-    const batch = parsed.slice(i, i + batchSize);
-    const summaries = await Promise.all(
-      batch.map((nl) => {
-        const isVip = isVipPublication(nl.publication);
-        if (isVip) {
-          return generateVIPNewsletterSummary(
-            nl.publication,
-            nl.subject,
-            nl.contentText
-          );
+  // Split into VIP (individual calls) and non-VIP (batched calls)
+  const vipItems: typeof parsed = [];
+  const nonVipItems: typeof parsed = [];
+  for (const nl of parsed) {
+    if (isVipPublication(nl.publication)) {
+      vipItems.push(nl);
+    } else {
+      nonVipItems.push(nl);
+    }
+  }
+
+  // Build all summary work concurrently
+  const summaryMap = new Map<string, NewsletterSummaryResult | null>();
+
+  const work: Promise<void>[] = [];
+
+  // VIP newsletters — individual calls, all concurrent
+  for (const nl of vipItems) {
+    work.push(
+      generateVIPNewsletterSummary(nl.publication, nl.subject, nl.contentText)
+        .then((result) => { summaryMap.set(nl.gmailMessageId, result); })
+    );
+  }
+
+  // Non-VIP newsletters — batch 5 per API call, all batches concurrent
+  const nonVipBatchSize = 5;
+  for (let i = 0; i < nonVipItems.length; i += nonVipBatchSize) {
+    const batch = nonVipItems.slice(i, i + nonVipBatchSize);
+    work.push(
+      generateBatchNewsletterSummaries(
+        batch.map((nl) => ({
+          publication: nl.publication,
+          subject: nl.subject,
+          content: nl.contentText,
+          weight: getSourceWeight(nl.publication),
+        }))
+      ).then((result) => {
+        for (let j = 0; j < batch.length; j++) {
+          summaryMap.set(batch[j].gmailMessageId, result?.results[j] ?? null);
         }
-        return generateNewsletterSummary(
-          nl.publication,
-          nl.subject,
-          nl.contentText
-        );
       })
     );
-    for (let j = 0; j < batch.length; j++) {
-      const isVip = isVipPublication(batch[j].publication);
-      const sourceTier = getNewsletterSourceTier(batch[j].publication, batch[j].senderEmail);
-      newslettersWithSummaries.push({
-        id: batch[j].gmailMessageId,
-        publication: batch[j].publication,
-        subject: batch[j].subject,
-        senderEmail: batch[j].senderEmail,
-        receivedAt: batch[j].receivedAt,
-        content: batch[j].contentText,
-        isVip,
-        sourceTier,
-        summary: summaries[j]
-          ? {
-              theNews: summaries[j]!.theNews,
-              whyItMatters: summaries[j]!.whyItMatters,
-              theContext: summaries[j]!.theContext,
-              soWhat: summaries[j]!.soWhat,
-              watchNext: summaries[j]!.watchNext,
-              recruiterRelevance: summaries[j]!.recruiterRelevance,
-            }
-          : null,
-      });
-    }
+  }
+
+  await Promise.allSettled(work);
+
+  // Assemble results
+  const newslettersWithSummaries: NewsletterIngestionResult["newsletters"] = [];
+  for (const nl of parsed) {
+    const isVip = isVipPublication(nl.publication);
+    const sourceTier = getNewsletterSourceTier(nl.publication, nl.senderEmail);
+    const summary = summaryMap.get(nl.gmailMessageId) ?? null;
+    newslettersWithSummaries.push({
+      id: nl.gmailMessageId,
+      publication: nl.publication,
+      subject: nl.subject,
+      senderEmail: nl.senderEmail,
+      receivedAt: nl.receivedAt,
+      content: nl.contentText,
+      isVip,
+      sourceTier,
+      summary: summary
+        ? {
+            theNews: summary.theNews,
+            whyItMatters: summary.whyItMatters,
+            theContext: summary.theContext,
+            soWhat: summary.soWhat,
+            watchNext: summary.watchNext,
+            recruiterRelevance: summary.recruiterRelevance,
+          }
+        : null,
+    });
   }
 
   // Store in Supabase — batch upserts for performance

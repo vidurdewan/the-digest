@@ -16,12 +16,13 @@ export function isClaudeConfigured(): boolean {
   return !!process.env.ANTHROPIC_API_KEY;
 }
 
-// Model for summarization (balance of quality and cost)
-const SUMMARIZATION_MODEL = "claude-sonnet-4-20250514";
+// Models — Haiku for fast/cheap briefs, Sonnet for deep analysis
+const BRIEF_MODEL = "claude-3-5-haiku-20241022";
+const FULL_MODEL = "claude-sonnet-4-20250514";
 
-// Token pricing (per million tokens, as of 2025)
+// Token pricing (per million tokens, as of 2025) — weighted average
 export const TOKEN_PRICING = {
-  input: 3.0, // $3 per million input tokens
+  input: 3.0, // $3 per million input tokens (Sonnet rate, conservative)
   output: 15.0, // $15 per million output tokens
 };
 
@@ -58,7 +59,7 @@ export async function generateBriefSummary(
 
   try {
     const response = await anthropic.messages.create({
-      model: SUMMARIZATION_MODEL,
+      model: BRIEF_MODEL,
       max_tokens: 150,
       messages: [
         {
@@ -119,7 +120,7 @@ export async function generateFullSummary(
 
   try {
     const response = await anthropic.messages.create({
-      model: SUMMARIZATION_MODEL,
+      model: FULL_MODEL,
       max_tokens: 800,
       messages: [
         {
@@ -208,11 +209,11 @@ export async function generateNewsletterSummary(
   if (!anthropic) return null;
 
   const weight = getSourceWeight(publication);
-  const truncated = content.slice(0, weight >= 2 ? 10000 : 6000);
+  const truncated = content.slice(0, weight >= 3 ? 10000 : weight >= 2 ? 6000 : 4000);
 
   try {
     const response = await anthropic.messages.create({
-      model: SUMMARIZATION_MODEL,
+      model: FULL_MODEL,
       max_tokens: 1000,
       messages: [
         {
@@ -281,7 +282,7 @@ export async function generateVIPNewsletterSummary(
 
   try {
     const response = await anthropic.messages.create({
-      model: SUMMARIZATION_MODEL,
+      model: FULL_MODEL,
       max_tokens: 2000,
       messages: [
         {
@@ -334,6 +335,85 @@ Respond in EXACTLY this JSON format (no markdown, no code fences):
   }
 }
 
+// ─── Batch Newsletter Summaries ──────────────────────────────
+/**
+ * Summarize multiple non-VIP newsletters in a single API call.
+ * Much faster than individual calls. Up to 5 newsletters per batch.
+ */
+export async function generateBatchNewsletterSummaries(
+  newsletters: Array<{ publication: string; subject: string; content: string; weight: number }>
+): Promise<{
+  results: NewsletterSummaryResult[];
+  inputTokens: number;
+  outputTokens: number;
+} | null> {
+  const anthropic = getClient();
+  if (!anthropic || newsletters.length === 0) return null;
+
+  const batch = newsletters.slice(0, 5);
+
+  const blocks = batch
+    .map(
+      (nl, i) =>
+        `[${i + 1}] Source: ${nl.publication} (${nl.weight >= 3 ? "Premium" : nl.weight >= 2 ? "Strong" : "Standard"})\nSubject: ${nl.subject}\nContent:\n${nl.content.slice(0, nl.weight >= 3 ? 6000 : nl.weight >= 2 ? 4000 : 2500)}`
+    )
+    .join("\n\n---\n\n");
+
+  try {
+    const response = await anthropic.messages.create({
+      model: FULL_MODEL,
+      max_tokens: 800 * batch.length,
+      messages: [
+        {
+          role: "user",
+          content: `You are a senior intelligence briefing analyst. Summarize each of the following ${batch.length} newsletters individually. Bold all **company names** and **people names**.
+
+${blocks}
+
+Respond in EXACTLY this JSON format (no markdown, no code fences):
+[
+  {
+    "theNews": "2-4 most important items as bullets, 1-2 sentences each. Bold names.",
+    "whyItMatters": "Second-order implications, who wins/loses. 3-4 sentences.",
+    "theContext": "Broader market trends. 2-3 sentences.",
+    "soWhat": "Single bold takeaway.",
+    "watchNext": "What to monitor next. 1 sentence.",
+    "recruiterRelevance": "Leadership changes, scaling signals, or 'No direct signals.' 1 sentence."
+  },
+  ...
+]`,
+        },
+      ],
+    });
+
+    const text =
+      response.content[0].type === "text" ? response.content[0].text : "";
+    const parsed = JSON.parse(text.trim());
+
+    const results: NewsletterSummaryResult[] = Array.isArray(parsed)
+      ? parsed.map((r: Record<string, string>) => ({
+          theNews: r.theNews || "",
+          whyItMatters: r.whyItMatters || "",
+          theContext: r.theContext || "",
+          soWhat: r.soWhat || "",
+          watchNext: r.watchNext || "",
+          recruiterRelevance: r.recruiterRelevance || "",
+          inputTokens: 0,
+          outputTokens: 0,
+        }))
+      : [];
+
+    return {
+      results,
+      inputTokens: response.usage.input_tokens,
+      outputTokens: response.usage.output_tokens,
+    };
+  } catch (error) {
+    console.error("[Claude] Batch newsletter summary error:", error);
+    return null;
+  }
+}
+
 // ─── Daily Digest ────────────────────────────────────────────
 export interface DailyDigestResult {
   digest: string;
@@ -369,13 +449,13 @@ export async function generateDailyDigest(
   const newsletterBlocks = weighted
     .map(
       (nl, i) =>
-        `[${i + 1}] ${nl.publication} (Quality: ${nl.weight >= 3 ? "Premium" : nl.weight >= 2 ? "Strong" : "Standard"}) — "${nl.subject}"\n${nl.content.slice(0, nl.weight >= 3 ? 5000 : nl.weight >= 2 ? 3500 : 2000)}`
+        `[${i + 1}] ${nl.publication} (Quality: ${nl.weight >= 3 ? "Premium" : nl.weight >= 2 ? "Strong" : "Standard"}) — "${nl.subject}"\n${nl.content.slice(0, nl.weight >= 3 ? 4000 : nl.weight >= 2 ? 2500 : 1500)}`
     )
     .join("\n\n---\n\n");
 
   try {
     const response = await anthropic.messages.create({
-      model: SUMMARIZATION_MODEL,
+      model: FULL_MODEL,
       max_tokens: 3000,
       messages: [
         {
@@ -487,7 +567,7 @@ export async function generateBatchBriefSummaries(
 
   try {
     const response = await anthropic.messages.create({
-      model: SUMMARIZATION_MODEL,
+      model: BRIEF_MODEL,
       max_tokens: 200 * batch.length,
       messages: [
         {
