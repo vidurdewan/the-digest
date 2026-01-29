@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import type { Newsletter } from "@/types";
 
 interface IngestResult {
@@ -144,24 +144,6 @@ export function useNewsletters(): UseNewslettersReturn {
     setSavedIds(loadSavedState());
   }, []);
 
-  // Apply reading time + read/save state to newsletters
-  const enrichNewsletters = useCallback(
-    (nls: Newsletter[]): Newsletter[] => {
-      return nls.map((nl) => ({
-        ...nl,
-        readingTimeMinutes: estimateReadingTime(nl.content),
-        isRead: readIds.has(nl.id),
-        isSaved: savedIds.has(nl.id),
-      }));
-    },
-    [readIds, savedIds]
-  );
-
-  // Re-enrich when read/save state changes
-  useEffect(() => {
-    setNewsletters((prev) => enrichNewsletters(prev));
-  }, [readIds, savedIds, enrichNewsletters]);
-
   const toggleRead = useCallback((id: string) => {
     setReadIds((prev) => {
       const next = new Set(prev);
@@ -255,7 +237,7 @@ export function useNewsletters(): UseNewslettersReturn {
 
       if (data.newsletters && data.newsletters.length > 0) {
         const mapped: Newsletter[] = data.newsletters.map(mapApiNewsletter);
-        setNewsletters(enrichNewsletters(mapped));
+        setNewsletters(mapped);
       }
     } catch {
       // API unavailable — keep current state
@@ -263,7 +245,7 @@ export function useNewsletters(): UseNewslettersReturn {
       setIsLoading(false);
       hasFetched.current = true;
     }
-  }, [enrichNewsletters, mapApiNewsletter]);
+  }, [mapApiNewsletter]);
 
   // Background refresh: silently re-fetches without clearing existing UI
   const backgroundRefresh = useCallback(async () => {
@@ -276,14 +258,14 @@ export function useNewsletters(): UseNewslettersReturn {
 
       if (data.newsletters && data.newsletters.length > 0) {
         const mapped: Newsletter[] = data.newsletters.map(mapApiNewsletter);
-        setNewsletters(enrichNewsletters(mapped));
+        setNewsletters(mapped);
       }
     } catch {
       // Silent failure — don't disrupt existing UI
     } finally {
       setIsBackgroundRefreshing(false);
     }
-  }, [isBackgroundRefreshing, enrichNewsletters, mapApiNewsletter]);
+  }, [isBackgroundRefreshing, mapApiNewsletter]);
 
   // Manual ingest (force refresh) — kept for user-initiated refresh
   const ingest = useCallback(async () => {
@@ -305,7 +287,7 @@ export function useNewsletters(): UseNewslettersReturn {
 
       if (listData.newsletters && listData.newsletters.length > 0) {
         const mapped: Newsletter[] = listData.newsletters.map(mapApiNewsletter);
-        setNewsletters(enrichNewsletters(mapped));
+        setNewsletters(mapped);
       } else if (data.newsletters && data.newsletters.length > 0) {
         // Use newsletters directly from the ingest response (includes summaries)
         const mapped: Newsletter[] = data.newsletters.map(
@@ -357,7 +339,7 @@ export function useNewsletters(): UseNewslettersReturn {
               : undefined,
           })
         );
-        setNewsletters(enrichNewsletters(mapped));
+        setNewsletters(mapped);
       }
 
       return {
@@ -373,7 +355,7 @@ export function useNewsletters(): UseNewslettersReturn {
     } finally {
       setIsIngesting(false);
     }
-  }, [enrichNewsletters, mapApiNewsletter]);
+  }, [mapApiNewsletter]);
 
   const generateDigest = useCallback(async (forDate?: string | null) => {
     const targetDate = forDate ?? selectedDigestDate ?? getDateKey();
@@ -456,18 +438,35 @@ export function useNewsletters(): UseNewslettersReturn {
     fetchNewsletters();
   }, [fetchNewsletters]);
 
+  // Apply read/save state at render time via useMemo — avoids cascading re-renders
+  const enrichedNewsletters = useMemo(
+    () =>
+      newsletters.map((nl) => ({
+        ...nl,
+        readingTimeMinutes: nl.readingTimeMinutes || estimateReadingTime(nl.content),
+        isRead: readIds.has(nl.id),
+        isSaved: savedIds.has(nl.id),
+      })),
+    [newsletters, readIds, savedIds]
+  );
+
   // Compute date-related derived state
-  const newsletterDates = new Set(
-    newsletters.map((nl) => getDateFromTimestamp(nl.receivedAt))
+  const newsletterDates = useMemo(
+    () => new Set(newsletters.map((nl) => getDateFromTimestamp(nl.receivedAt))),
+    [newsletters]
   );
 
   const activeDate = selectedDigestDate || getDateKey();
-  const newslettersForSelectedDate = newsletters.filter(
-    (nl) => getDateFromTimestamp(nl.receivedAt) === activeDate
+  const newslettersForSelectedDate = useMemo(
+    () =>
+      enrichedNewsletters.filter(
+        (nl) => getDateFromTimestamp(nl.receivedAt) === activeDate
+      ),
+    [enrichedNewsletters, activeDate]
   );
 
   return {
-    newsletters,
+    newsletters: enrichedNewsletters,
     isLoading,
     error,
     refresh: fetchNewsletters,
