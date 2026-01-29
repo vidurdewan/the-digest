@@ -34,19 +34,17 @@ export async function ingestAllNews(options?: {
     articles: [],
   };
 
-  // Fetch from RSS feeds
+  // Fetch from RSS feeds and NewsAPI in parallel
   const rssSources = getActiveSources("rss");
-  const rssArticles = await fetchAllRssFeeds(rssSources);
-  result.totalFetched += rssArticles.length;
-
-  // Fetch from NewsAPI
   const apiSources = getActiveSources("api");
-  const apiArticles: RawArticle[] = [];
-  for (const source of apiSources) {
-    const articles = await fetchNewsApi(source);
-    apiArticles.push(...articles);
-  }
-  result.totalFetched += apiArticles.length;
+
+  const [rssArticles, ...apiResults] = await Promise.all([
+    fetchAllRssFeeds(rssSources),
+    ...apiSources.map((source) => fetchNewsApi(source)),
+  ]);
+
+  const apiArticles = apiResults.flat();
+  result.totalFetched += rssArticles.length + apiArticles.length;
 
   // Filter SEC filings to only relevant companies
   const filteredRssArticles = await filterSECFilings(rssArticles);
@@ -72,9 +70,10 @@ export async function ingestAllNews(options?: {
       (a) => !a.content || a.content.length < 200
     );
 
-    // Scrape in batches of 3 to be respectful
-    const scrapeBatch = 3;
-    for (let i = 0; i < Math.min(articlesToScrape.length, 15); i += scrapeBatch) {
+    // Scrape in batches of 5, up to 30 articles
+    const scrapeBatch = 5;
+    const scrapeLimit = Math.min(articlesToScrape.length, 30);
+    for (let i = 0; i < scrapeLimit; i += scrapeBatch) {
       const batch = articlesToScrape.slice(i, i + scrapeBatch);
       const results = await Promise.allSettled(
         batch.map((a) => scrapeArticle(a.url))
@@ -97,7 +96,7 @@ export async function ingestAllNews(options?: {
       (result.bySource[article.sourceName] || 0) + 1;
   }
 
-  // Store in Supabase — batch upsert for performance (avoids Vercel function timeout)
+  // Store in Supabase — parallel batch upserts
   if (isSupabaseConfigured() && supabase) {
     const rows = uniqueArticles.map((article) => ({
       title: article.title,
@@ -113,23 +112,29 @@ export async function ingestAllNews(options?: {
       document_type: article.documentType || null,
     }));
 
-    // Batch in groups of 50 to stay within Supabase payload limits
+    // Batch in groups of 50, run all batches in parallel
     const BATCH_SIZE = 50;
+    const batches: (typeof rows)[] = [];
     for (let i = 0; i < rows.length; i += BATCH_SIZE) {
-      const batch = rows.slice(i, i + BATCH_SIZE);
-      try {
-        const { error, count } = await supabase
+      batches.push(rows.slice(i, i + BATCH_SIZE));
+    }
+
+    const batchResults = await Promise.allSettled(
+      batches.map(async (batch) => {
+        const { error, count } = await supabase!
           .from("articles")
           .upsert(batch, { onConflict: "content_hash", count: "exact" });
+        if (error) throw error;
+        return count ?? batch.length;
+      })
+    );
 
-        if (!error) {
-          result.totalStored += count ?? batch.length;
-        } else {
-          result.totalErrors += batch.length;
-          console.error(`Batch upsert error:`, error.message);
-        }
-      } catch {
-        result.totalErrors += batch.length;
+    for (const r of batchResults) {
+      if (r.status === "fulfilled") {
+        result.totalStored += r.value;
+      } else {
+        result.totalErrors += BATCH_SIZE;
+        console.error("Batch upsert error:", r.reason);
       }
     }
   }

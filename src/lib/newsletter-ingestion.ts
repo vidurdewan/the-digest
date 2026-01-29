@@ -123,9 +123,9 @@ export async function ingestNewsletters(
     return false;
   }
 
-  // Generate AI summaries in parallel (max 5 concurrent)
+  // Generate AI summaries in parallel (max 10 concurrent)
   const newslettersWithSummaries: NewsletterIngestionResult["newsletters"] = [];
-  const batchSize = 5;
+  const batchSize = 10;
   for (let i = 0; i < parsed.length; i += batchSize) {
     const batch = parsed.slice(i, i + batchSize);
     const summaries = await Promise.all(
@@ -193,20 +193,26 @@ export async function ingestNewsletters(
     }));
 
     const BATCH_SIZE = 20;
+    const batches: (typeof rows)[] = [];
     for (let i = 0; i < rows.length; i += BATCH_SIZE) {
-      const batch = rows.slice(i, i + BATCH_SIZE);
-      try {
-        const { error, count } = await supabase
+      batches.push(rows.slice(i, i + BATCH_SIZE));
+    }
+
+    const batchResults = await Promise.allSettled(
+      batches.map(async (batch) => {
+        const { error, count } = await supabase!
           .from("newsletters")
           .upsert(batch, { onConflict: "gmail_message_id", count: "exact" });
+        if (error) throw error;
+        return count ?? batch.length;
+      })
+    );
 
-        if (!error) {
-          storedCount += count ?? batch.length;
-        } else {
-          console.error("[Newsletter Ingestion] Batch upsert error:", error.message);
-        }
-      } catch {
-        console.error("[Newsletter Ingestion] Batch upsert exception");
+    for (const r of batchResults) {
+      if (r.status === "fulfilled") {
+        storedCount += r.value;
+      } else {
+        console.error("[Newsletter Ingestion] Batch upsert error:", r.reason);
       }
     }
 

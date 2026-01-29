@@ -120,33 +120,24 @@ export async function fetchEmails(
   const messageIds = listResponse.data.messages || [];
   if (messageIds.length === 0) return [];
 
-  // Fetch full messages in parallel (batch of 10 at a time to avoid rate limits)
-  const messages: GmailMessage[] = [];
-  const batchSize = 10;
+  // Fetch all messages in parallel
+  const results = await Promise.all(
+    messageIds.map(async (msg) => {
+      try {
+        const fullMsg = await gmail.users.messages.get({
+          userId: "me",
+          id: msg.id!,
+          format: "full",
+        });
+        return parseGmailMessage(fullMsg.data);
+      } catch (err) {
+        console.error(`Failed to fetch message ${msg.id}:`, err);
+        return null;
+      }
+    })
+  );
 
-  for (let i = 0; i < messageIds.length; i += batchSize) {
-    const batch = messageIds.slice(i, i + batchSize);
-    const batchResults = await Promise.all(
-      batch.map(async (msg) => {
-        try {
-          const fullMsg = await gmail.users.messages.get({
-            userId: "me",
-            id: msg.id!,
-            format: "full",
-          });
-          return parseGmailMessage(fullMsg.data);
-        } catch (err) {
-          console.error(`Failed to fetch message ${msg.id}:`, err);
-          return null;
-        }
-      })
-    );
-    messages.push(
-      ...batchResults.filter((m): m is GmailMessage => m !== null)
-    );
-  }
-
-  return messages;
+  return results.filter((m): m is GmailMessage => m !== null);
 }
 
 /**

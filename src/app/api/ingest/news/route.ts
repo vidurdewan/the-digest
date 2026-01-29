@@ -9,25 +9,17 @@ export const maxDuration = 300;
 import { rankRecentArticles } from "@/lib/story-ranker";
 
 /**
- * GET /api/ingest/news
- * Fetches news from all active RSS feeds and NewsAPI sources.
- * Query params:
- *   - scrape: "true" to also scrape full article content (slower)
- *   - summarize: "true" to generate brief AI summaries after ingestion
+ * Run post-ingestion background work (summarization, intelligence, ranking).
+ * Fire-and-forget — errors are logged but don't block the response.
  */
-export async function GET(request: NextRequest) {
+async function runPostIngestionWork(
+  articles: { contentHash: string; content?: string | null; title: string }[],
+  shouldSummarize: boolean
+) {
   try {
-    const searchParams = request.nextUrl.searchParams;
-    const scrapeContent = searchParams.get("scrape") === "true";
-    const shouldSummarize = searchParams.get("summarize") === "true";
-
-    const result = await ingestAllNews({ scrapeContent });
-
-    // Optionally generate brief summaries for newly ingested articles
-    // Look up actual database UUIDs via content_hash (contentHash is a SHA, not a UUID)
-    let summaryStats = null;
-    if (shouldSummarize && isClaudeConfigured() && result.articles.length > 0) {
-      const candidateArticles = result.articles
+    // Summarization
+    if (shouldSummarize && isClaudeConfigured() && articles.length > 0) {
+      const candidateArticles = articles
         .filter((a) => a.content && a.content.length > 50)
         .slice(0, 50);
 
@@ -42,47 +34,75 @@ export async function GET(request: NextRequest) {
           const articlesToSummarize = storedForSummary
             .filter((s: { content: string | null }) => s.content && s.content.length > 50)
             .map((s: { id: string; title: string; content: string }) => ({
-              id: s.id,       // ← actual database UUID
+              id: s.id,
               title: s.title,
               content: s.content || s.title,
             }));
 
           if (articlesToSummarize.length > 0) {
-            summaryStats = await summarizeBatchBrief(articlesToSummarize);
+            await summarizeBatchBrief(articlesToSummarize);
           }
         }
       }
     }
 
-    // After summarization, process intelligence for top articles
-    let intelligenceStats = null;
-    if (isClaudeConfigured() && result.articles.length > 0) {
-      // Get stored articles with their DB IDs for intelligence processing
-      const { articles: storedArticles } = await getStoredArticles({ limit: 20 });
-      const typedArticles = storedArticles as { id: string; title: string; content?: string | null; url?: string | null; topic?: string | null }[];
-      const intelligenceArticles = typedArticles
-        .filter((a) => a.content && a.content.length > 50)
-        .slice(0, 20)
-        .map((a) => ({
-          id: a.id,
-          title: a.title,
-          content: a.content || a.title,
-          source: a.url || "",
-          topic: a.topic || "",
-        }));
+    // Intelligence processing and ranking in parallel
+    const work: Promise<unknown>[] = [];
 
-      if (intelligenceArticles.length > 0) {
-        intelligenceStats = await processIntelligenceBatch(intelligenceArticles);
-      }
+    if (isClaudeConfigured() && articles.length > 0) {
+      work.push(
+        getStoredArticles({ limit: 20 }).then(async ({ articles: storedArticles }) => {
+          const typedArticles = storedArticles as { id: string; title: string; content?: string | null; url?: string | null; topic?: string | null }[];
+          const intelligenceArticles = typedArticles
+            .filter((a) => a.content && a.content.length > 50)
+            .slice(0, 20)
+            .map((a) => ({
+              id: a.id,
+              title: a.title,
+              content: a.content || a.title,
+              source: a.url || "",
+              topic: a.topic || "",
+            }));
+
+          if (intelligenceArticles.length > 0) {
+            await processIntelligenceBatch(intelligenceArticles);
+          }
+        })
+      );
     }
 
-    // Compute ranking scores for recent articles
-    let rankingStats = null;
-    try {
-      rankingStats = await rankRecentArticles();
-    } catch (err) {
+    work.push(rankRecentArticles().catch((err) => {
       console.error("[Ingest] Ranking error:", err);
-    }
+    }));
+
+    await Promise.allSettled(work);
+  } catch (err) {
+    console.error("[Ingest] Post-ingestion background error:", err);
+  }
+}
+
+/**
+ * GET /api/ingest/news
+ * Fetches news from all active RSS feeds and NewsAPI sources.
+ * Returns immediately after ingestion; summarization/intelligence/ranking
+ * run in the background without blocking the response.
+ * Query params:
+ *   - scrape: "true" to also scrape full article content (slower)
+ *   - summarize: "true" to generate brief AI summaries after ingestion
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const searchParams = request.nextUrl.searchParams;
+    const scrapeContent = searchParams.get("scrape") === "true";
+    const shouldSummarize = searchParams.get("summarize") === "true";
+
+    const result = await ingestAllNews({ scrapeContent });
+
+    // Fire-and-forget: run summarization, intelligence, ranking in background
+    // Don't await — let the response return immediately
+    runPostIngestionWork(result.articles, shouldSummarize).catch((err) => {
+      console.error("[Ingest] Background work failed:", err);
+    });
 
     return NextResponse.json({
       success: true,
@@ -92,9 +112,6 @@ export async function GET(request: NextRequest) {
       totalErrors: result.totalErrors,
       bySource: result.bySource,
       articleCount: result.articles.length,
-      summaryStats,
-      intelligenceStats,
-      rankingStats,
       // Return lightweight article previews
       articles: result.articles.slice(0, 50).map((a) => ({
         title: a.title,
