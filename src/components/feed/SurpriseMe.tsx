@@ -74,6 +74,7 @@ export function SurpriseMe({
   const [isDismissed, setIsDismissed] = useState(getDismissedToday);
   const [isSaved, setIsSaved] = useState(false);
   const [isLoadingSummary, setIsLoadingSummary] = useState(false);
+  const [localSummary, setLocalSummary] = useState<Summary | null>(null);
 
   // Select today's surprise article
   const surpriseArticle = useMemo(() => {
@@ -114,6 +115,8 @@ export function SurpriseMe({
     onSave?.(surpriseArticle.id);
   };
 
+  const effectiveSummary = localSummary || surpriseArticle.summary;
+
   const handleExpand = async () => {
     const willExpand = !isExpanded;
     setIsExpanded(willExpand);
@@ -121,9 +124,10 @@ export function SurpriseMe({
     if (willExpand) {
       onExpand?.(surpriseArticle.id);
 
-      if (!surpriseArticle.summary?.theNews && onRequestSummary) {
+      if (!effectiveSummary?.theNews && onRequestSummary) {
         setIsLoadingSummary(true);
-        await onRequestSummary(surpriseArticle);
+        const result = await onRequestSummary(surpriseArticle);
+        if (result) setLocalSummary(result);
         setIsLoadingSummary(false);
       }
     }
@@ -219,10 +223,10 @@ export function SurpriseMe({
           </div>
         </div>
       )}
-      {isExpanded && !isLoadingSummary && surpriseArticle.summary && (
+      {isExpanded && !isLoadingSummary && effectiveSummary && (
         <div className="mt-3 border-t border-border-secondary">
           <ExpandedArticleView
-            summary={surpriseArticle.summary}
+            summary={effectiveSummary}
             onOpenFull={handleOpenReader}
             sourceUrl={surpriseArticle.sourceUrl}
             articleId={surpriseArticle.id}
