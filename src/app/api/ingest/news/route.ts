@@ -4,6 +4,7 @@ import { summarizeBatchBrief } from "@/lib/summarization";
 import { processIntelligenceBatch } from "@/lib/intelligence";
 import { isClaudeConfigured, classifyArticleTopics } from "@/lib/claude";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { scrapeImageUrl } from "@/lib/article-scraper";
 
 export const maxDuration = 300;
 import { rankRecentArticles } from "@/lib/story-ranker";
@@ -120,6 +121,59 @@ async function runPostIngestionWork(
             await processIntelligenceBatch(intelligenceArticles);
           }
         })
+      );
+    }
+
+    // Background image backfill — scrape og:image for articles missing images
+    if (isSupabaseConfigured() && supabase) {
+      work.push(
+        (async () => {
+          try {
+            const { data: noImageArticles } = await supabase
+              .from("articles")
+              .select("id, url")
+              .is("image_url", null)
+              .order("published_at", { ascending: false })
+              .limit(30);
+
+            if (!noImageArticles || noImageArticles.length === 0) return;
+
+            // Scrape in batches of 5 to avoid overwhelming sites
+            for (let i = 0; i < noImageArticles.length; i += 5) {
+              const batch = noImageArticles.slice(i, i + 5);
+              const results = await Promise.allSettled(
+                batch.map((a: { id: string; url: string }) =>
+                  scrapeImageUrl(a.url).then((imgUrl) => ({
+                    id: a.id,
+                    imageUrl: imgUrl,
+                  }))
+                )
+              );
+
+              const updates = results
+                .filter(
+                  (r): r is PromiseFulfilledResult<{ id: string; imageUrl: string | null }> =>
+                    r.status === "fulfilled" && !!r.value.imageUrl
+                )
+                .map((r) => r.value);
+
+              if (updates.length > 0) {
+                await Promise.allSettled(
+                  updates.map((u) =>
+                    supabase!
+                      .from("articles")
+                      .update({ image_url: u.imageUrl })
+                      .eq("id", u.id)
+                  )
+                );
+              }
+            }
+
+            console.log(`[Ingest] Scraped images for ${noImageArticles.length} articles`);
+          } catch (err) {
+            console.error("[Ingest] Image backfill error:", err);
+          }
+        })()
       );
     }
 

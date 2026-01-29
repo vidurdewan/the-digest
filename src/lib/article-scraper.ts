@@ -2,6 +2,51 @@ import * as cheerio from "cheerio";
 import { convert } from "html-to-text";
 
 /**
+ * Lightweight image-only scraper — fetches just the og:image/twitter:image
+ * from a URL without parsing the full article content.
+ */
+export async function scrapeImageUrl(url: string): Promise<string | null> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (compatible; TheDigest/1.0; +https://thedigest.app)",
+        Accept: "text/html",
+      },
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeout);
+
+    if (!response.ok) return null;
+
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.includes("html")) return null;
+
+    const html = await response.text();
+    const $ = cheerio.load(html);
+
+    const ogImage = $('meta[property="og:image"]').attr("content");
+    if (ogImage) return ogImage;
+
+    const twitterImage = $('meta[name="twitter:image"]').attr("content");
+    if (twitterImage) return twitterImage;
+
+    const firstImg = $("article img, main img, .article img")
+      .first()
+      .attr("src");
+    if (firstImg) return firstImg;
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Scrape the full article content from a URL.
  * Uses a best-effort approach to extract the main article body.
  * Does NOT bypass paywalls — only extracts freely available content.

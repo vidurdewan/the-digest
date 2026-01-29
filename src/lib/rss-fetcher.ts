@@ -148,11 +148,31 @@ function cleanHtml(html: string | undefined): string | null {
 }
 
 function extractImageUrl(item: Record<string, unknown>): string | null {
-  // Try media:content
+  // Try media:content (most common in RSS)
   const media = item["media:content"] as
     | { $?: { url?: string } }
     | undefined;
   if (media?.$?.url) return media.$.url;
+
+  // Try media:thumbnail
+  const mediaThumbnail = item["media:thumbnail"] as
+    | { $?: { url?: string } }
+    | undefined;
+  if (mediaThumbnail?.$?.url) return mediaThumbnail.$.url;
+
+  // Try media:group > media:content (used by some feeds)
+  const mediaGroup = item["media:group"] as
+    | { "media:content"?: { $?: { url?: string } } }
+    | undefined;
+  if (mediaGroup?.["media:content"]?.$?.url) return mediaGroup["media:content"].$.url;
+
+  // Try top-level image field (used by some Atom feeds)
+  const image = item.image as
+    | { url?: string }
+    | string
+    | undefined;
+  if (typeof image === "string" && image.startsWith("http")) return image;
+  if (typeof image === "object" && image?.url) return image.url;
 
   // Try enclosure
   const enclosure = item.enclosure as
@@ -162,7 +182,13 @@ function extractImageUrl(item: Record<string, unknown>): string | null {
     return enclosure.url;
   }
 
-  // Try to find image in content
+  // Try itunes:image (some feeds use this)
+  const itunesImage = item["itunes:image"] as
+    | { $?: { href?: string } }
+    | undefined;
+  if (itunesImage?.$?.href) return itunesImage.$.href;
+
+  // Try to find image in content HTML
   const content = (item["content:encoded"] || item.content) as
     | string
     | undefined;
