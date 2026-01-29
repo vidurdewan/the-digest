@@ -1,6 +1,5 @@
 "use client";
 
-import { Bookmark } from "lucide-react";
 import type { Article, Summary } from "@/types";
 import { ArticleCard } from "./ArticleCard";
 import { useSidebarStore } from "@/lib/store";
@@ -20,37 +19,32 @@ export function SavedView({ articles, onSave, onOpenReader, onRequestSummary, on
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Bookmark size={24} className="text-accent-primary" />
-        <div>
-          <h2 className="text-2xl font-bold text-text-primary">
-            Saved Articles
-          </h2>
-          <p className="text-sm text-text-tertiary">
-            {savedArticles.length} article{savedArticles.length !== 1 ? "s" : ""}{" "}
-            in your reading queue
-          </p>
-        </div>
+      <div>
+        <h2 className="font-serif text-2xl font-bold text-text-primary">
+          Saved Articles
+        </h2>
+        <p className="text-sm text-text-tertiary mt-1">
+          {savedArticles.length} article{savedArticles.length !== 1 ? "s" : ""}{" "}
+          in your reading queue
+        </p>
       </div>
 
       {savedArticles.length > 0 ? (
-        <div className="space-y-3">
+        <div className="divide-y divide-border-secondary">
           {savedArticles.map((article) => (
-            <ArticleCard
-              key={article.id}
-              article={article}
-              onSave={onSave}
-              onOpenReader={onOpenReader}
-              onRequestSummary={onRequestSummary}
-              onExpand={onExpand}
-            />
+            <div key={article.id} className="py-3 first:pt-0 last:pb-0">
+              <ArticleCard
+                article={article}
+                onSave={onSave}
+                onOpenReader={onOpenReader}
+                onRequestSummary={onRequestSummary}
+                onExpand={onExpand}
+              />
+            </div>
           ))}
         </div>
       ) : (
-        <div className="rounded-2xl border border-border-secondary bg-bg-card p-12 text-center">
-          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-bg-secondary">
-            <Bookmark size={28} className="text-text-tertiary opacity-50" />
-          </div>
+        <div className="py-16 text-center">
           <h3 className="text-lg font-semibold text-text-primary mb-1.5">
             No saved articles yet
           </h3>

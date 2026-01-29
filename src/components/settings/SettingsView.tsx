@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Settings, Palette, Bell, Database, User, Loader2, Brain, DollarSign, SlidersHorizontal, Save, Star, X, Plus } from "lucide-react";
+import { Palette, Bell, Database, User, Loader2, Brain, DollarSign, SlidersHorizontal, Save, Star, X, Plus } from "lucide-react";
 import { useThemeStore } from "@/lib/store";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { isSupabaseConfigured } from "@/lib/supabase";
@@ -29,18 +29,12 @@ export function SettingsView() {
   const { addToast } = useToastStore();
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Settings size={24} className="text-accent-primary" />
-        <h2 className="text-2xl font-bold text-text-primary">Settings</h2>
-      </div>
+    <div>
+      <h2 className="text-3xl font-serif font-bold text-text-primary mb-2">Settings</h2>
 
       {/* Theme */}
-      <section className="rounded-xl border border-border-primary bg-bg-card p-5">
-        <div className="mb-4 flex items-center gap-2">
-          <Palette size={18} className="text-text-secondary" />
-          <h3 className="font-semibold text-text-primary">Appearance</h3>
-        </div>
+      <section className="border-b border-border-primary py-8">
+        <h3 className="font-serif text-2xl font-bold text-text-primary mb-4">Appearance</h3>
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div>
@@ -55,14 +49,11 @@ export function SettingsView() {
       </section>
 
       {/* Topic Preferences */}
-      <section className="rounded-xl border border-border-primary bg-bg-card p-5">
+      <section className="border-b border-border-primary py-8">
         <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <SlidersHorizontal size={18} className="text-text-secondary" />
-            <h3 className="font-semibold text-text-primary">
-              Topic Preferences
-            </h3>
-          </div>
+          <h3 className="font-serif text-2xl font-bold text-text-primary">
+            Topic Preferences
+          </h3>
           {prefs.isDirty && (
             <button
               onClick={async () => {
@@ -116,11 +107,8 @@ export function SettingsView() {
       <VipNewslettersSection prefs={prefs} addToast={addToast} />
 
       {/* Notifications */}
-      <section className="rounded-xl border border-border-primary bg-bg-card p-5">
-        <div className="mb-4 flex items-center gap-2">
-          <Bell size={18} className="text-text-secondary" />
-          <h3 className="font-semibold text-text-primary">Notifications</h3>
-        </div>
+      <section className="border-b border-border-primary py-8">
+        <h3 className="font-serif text-2xl font-bold text-text-primary mb-4">Notifications</h3>
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div>
@@ -181,13 +169,10 @@ export function SettingsView() {
       </section>
 
       {/* Connected accounts */}
-      <section className="rounded-xl border border-border-primary bg-bg-card p-5">
-        <div className="mb-4 flex items-center gap-2">
-          <User size={18} className="text-text-secondary" />
-          <h3 className="font-semibold text-text-primary">
-            Connected Accounts
-          </h3>
-        </div>
+      <section className="border-b border-border-primary py-8">
+        <h3 className="font-serif text-2xl font-bold text-text-primary mb-4">
+          Connected Accounts
+        </h3>
         <div className="space-y-3">
           <div className="flex items-center justify-between rounded-lg border border-border-secondary bg-bg-secondary p-3">
             <div className="flex items-center gap-3">
@@ -227,13 +212,10 @@ export function SettingsView() {
       </section>
 
       {/* AI Usage & Cost Tracking */}
-      <section className="rounded-xl border border-border-primary bg-bg-card p-5">
-        <div className="mb-4 flex items-center gap-2">
-          <Brain size={18} className="text-text-secondary" />
-          <h3 className="font-semibold text-text-primary">
-            AI Summarization
-          </h3>
-        </div>
+      <section className="border-b border-border-primary py-8">
+        <h3 className="font-serif text-2xl font-bold text-text-primary mb-4">
+          AI Summarization
+        </h3>
         {ai.isLoading ? (
           <div className="flex items-center gap-2 text-text-tertiary">
             <Loader2 size={14} className="animate-spin" />
@@ -324,11 +306,8 @@ export function SettingsView() {
       </section>
 
       {/* System Status */}
-      <section className="rounded-xl border border-border-primary bg-bg-card p-5">
-        <div className="mb-4 flex items-center gap-2">
-          <Database size={18} className="text-text-secondary" />
-          <h3 className="font-semibold text-text-primary">System Status</h3>
-        </div>
+      <section className="border-b border-border-primary py-8">
+        <h3 className="font-serif text-2xl font-bold text-text-primary mb-4">System Status</h3>
         <div className="space-y-2">
           <StatusRow
             label="Database (Supabase)"
@@ -359,8 +338,8 @@ export function SettingsView() {
       </section>
 
       {/* Setup Instructions */}
-      <section className="rounded-xl border border-border-primary bg-bg-card p-5">
-        <h3 className="mb-3 font-semibold text-text-primary">
+      <section className="py-8">
+        <h3 className="font-serif text-2xl font-bold text-text-primary mb-4">
           Setup Instructions
         </h3>
         <div className="space-y-2 text-sm text-text-secondary">
@@ -408,12 +387,9 @@ function VipNewslettersSection({
   };
 
   return (
-    <section className="rounded-xl border border-border-primary bg-bg-card p-5">
+    <section className="border-b border-border-primary py-8">
       <div className="mb-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Star size={18} className="text-accent-warning" />
-          <h3 className="font-semibold text-text-primary">VIP Newsletters</h3>
-        </div>
+        <h3 className="font-serif text-2xl font-bold text-text-primary">VIP Newsletters</h3>
         {prefs.isDirty && (
           <button
             onClick={async () => {

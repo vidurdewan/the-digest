@@ -3,8 +3,6 @@
 import { useState, useRef, useEffect } from "react";
 import {
   Mail,
-  ChevronDown,
-  ChevronUp,
   Clock,
   RefreshCw,
   AlertCircle,
@@ -40,7 +38,6 @@ interface StoredDigest {
 interface NewsletterViewProps {
   newsletters: Newsletter[];
   newslettersForSelectedDate: Newsletter[];
-  newsletterDates: Set<string>;
   isLoading: boolean;
   error: string | null;
   onRefresh: () => Promise<void>;
@@ -62,43 +59,6 @@ interface NewsletterViewProps {
   onToggleSave: (id: string) => void;
   vipNewsletters: string[];
   onToggleVip: (publication: string) => void;
-}
-
-function publicationInitials(name: string): string {
-  return name
-    .split(" ")
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
-
-const publicationColors: Record<string, string> = {
-  StrictlyVC: "#2563eb",
-  Finimize: "#059669",
-  "The Hustle": "#d97706",
-  "Morning Brew": "#1e40af",
-  "The Information": "#7c3aed",
-  Axios: "#3b82f6",
-  Bloomberg: "#0d0d0d",
-  "Financial Times": "#c0392b",
-  "CB Insights": "#059669",
-  Politico: "#dc2626",
-  Semafor: "#f59e0b",
-  Stratechery: "#4f46e5",
-  "The Economist": "#e11d48",
-  Reuters: "#f97316",
-  TechCrunch: "#22c55e",
-};
-
-function getPublicationColor(name: string): string {
-  if (publicationColors[name]) return publicationColors[name];
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const hue = Math.abs(hash) % 360;
-  return `hsl(${hue}, 55%, 45%)`;
 }
 
 function formatDateLabel(dateStr: string): string {
@@ -186,15 +146,13 @@ function RichText({ text }: { text: string }) {
   );
 }
 
-// ─── 7-Day Date Strip ────────────────────────────────────────
+// ─── 7-Day Date Strip (Restyled: plain text tabs, active underlined) ─
 function DateStrip({
   selectedDate,
   onSelect,
-  digestDates,
 }: {
   selectedDate: string | null;
   onSelect: (date: string | null) => void;
-  digestDates: Set<string>;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const selectedRef = useRef<HTMLButtonElement>(null);
@@ -205,7 +163,7 @@ function DateStrip({
     d.setDate(d.getDate() - (6 - i));
     return {
       dateStr: d.toISOString().slice(0, 10),
-      dayAbbr: d.toLocaleDateString("en-US", { weekday: "short" }),
+      dayAbbr: d.toLocaleDateString("en-US", { weekday: "short" }).toUpperCase(),
       dayNum: d.getDate(),
       isToday: i === 6,
     };
@@ -228,11 +186,10 @@ function DateStrip({
   return (
     <div
       ref={scrollRef}
-      className="scrollbar-hide flex items-center gap-2 overflow-x-auto pb-1"
+      className="scrollbar-hide flex items-center gap-1 overflow-x-auto border-b border-border-primary pb-0"
     >
       {days.map((day) => {
         const isActive = activeDate === day.dateStr;
-        const hasDigest = digestDates.has(day.dateStr);
         return (
           <button
             key={day.dateStr}
@@ -240,20 +197,16 @@ function DateStrip({
             onClick={() =>
               onSelect(day.dateStr === todayStr ? null : day.dateStr)
             }
-            className={`relative flex shrink-0 flex-col items-center rounded-xl px-3 py-2 text-xs font-medium transition-colors ${
+            className={`relative shrink-0 px-3 py-2 text-xs font-medium transition-colors ${
               isActive
-                ? "bg-bg-active text-accent-primary"
-                : hasDigest
-                  ? "bg-bg-secondary text-text-secondary hover:bg-bg-hover"
-                  : "text-text-tertiary hover:bg-bg-secondary hover:text-text-secondary"
+                ? "text-text-primary"
+                : "text-text-tertiary hover:text-text-secondary"
             }`}
           >
-            <span className="text-[10px] uppercase tracking-wider">
-              {day.dayAbbr}
-            </span>
-            <span className="text-sm font-semibold">{day.dayNum}</span>
-            {day.isToday && (
-              <span className="mt-0.5 h-1 w-1 rounded-full bg-accent-primary" />
+            <span className="tracking-wider">{day.dayAbbr}</span>
+            <span className="ml-1.5 font-semibold">{day.dayNum}</span>
+            {isActive && (
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-text-primary" />
             )}
           </button>
         );
@@ -348,7 +301,7 @@ function DigestContent({ content }: { content: string }) {
           return (
             <div
               key={i}
-              className="mt-3 mb-2 rounded-lg bg-bg-secondary px-4 py-2.5"
+              className="mt-3 mb-2 border-l-2 border-accent-primary px-4 py-2.5"
             >
               <p className="text-xs font-semibold text-text-primary">
                 <span className="text-accent-primary">Bottom line: </span>
@@ -358,8 +311,7 @@ function DigestContent({ content }: { content: string }) {
           );
         }
 
-        // Bullet points — each bullet gets more spacing
-        // Also handle inline "→ So What:" by splitting it out
+        // Bullet points
         if (trimmed.startsWith("- ") || trimmed.startsWith("• ")) {
           const bulletText = trimmed.replace(/^[-•]\s*/, "");
 
@@ -400,8 +352,7 @@ function DigestContent({ content }: { content: string }) {
           );
         }
 
-        // One-liner (first non-header text after "Today's One-Liner")
-        // Check if previous line was the one-liner header
+        // One-liner
         const prevLine = i > 0 ? lines[i - 1]?.trim() : "";
         if (prevLine === "## Today's One-Liner") {
           return (
@@ -425,7 +376,7 @@ function DigestContent({ content }: { content: string }) {
   );
 }
 
-// ─── Daily Digest Section ────────────────────────────────────
+// ─── Daily Digest Section (Restyled: no card bg, ruled section) ──
 function DailyDigestSection({
   digest,
   isGenerating,
@@ -434,7 +385,6 @@ function DailyDigestSection({
   digestHistory,
   selectedDigestDate,
   onSelectDigestDate,
-  newsletterDates,
 }: {
   digest: string | null;
   isGenerating: boolean;
@@ -443,30 +393,21 @@ function DailyDigestSection({
   digestHistory: StoredDigest[];
   selectedDigestDate: string | null;
   onSelectDigestDate: (date: string | null) => void;
-  newsletterDates: Set<string>;
 }) {
-  // Merge digest dates and newsletter dates for highlighting
-  const digestDates = new Set([
-    ...digestHistory.map((d) => d.date),
-    ...newsletterDates,
-  ]);
-
-  if (!digest && !isGenerating) {
+if (!digest && !isGenerating) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-4">
         <DateStrip
           selectedDate={selectedDigestDate}
           onSelect={onSelectDigestDate}
-          digestDates={digestDates}
+
         />
-        <div className="rounded-2xl border border-border-secondary bg-bg-card p-6">
+        <div className="border-b border-border-primary pb-6">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent-secondary">
-                <Sparkles size={20} className="text-accent-primary" />
-              </div>
+              <Sparkles size={18} className="mt-0.5 text-accent-primary" />
               <div>
-                <h3 className="font-bold text-text-primary">
+                <h3 className="font-serif text-lg font-bold text-text-primary">
                   Intelligence Briefing
                 </h3>
                 <p className="mt-0.5 text-sm text-text-secondary">
@@ -478,7 +419,7 @@ function DailyDigestSection({
             <button
               onClick={onGenerate}
               disabled={newsletterCount === 0}
-              className="shrink-0 rounded-xl border border-border-primary px-5 py-2 text-sm font-medium text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary disabled:opacity-50"
+              className="shrink-0 border-b border-text-primary pb-0.5 text-sm font-medium text-text-primary transition-colors hover:text-accent-primary hover:border-accent-primary disabled:opacity-50"
             >
               Generate
             </button>
@@ -490,17 +431,17 @@ function DailyDigestSection({
 
   if (isGenerating) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-4">
         <DateStrip
           selectedDate={selectedDigestDate}
           onSelect={onSelectDigestDate}
-          digestDates={digestDates}
+
         />
-        <div className="rounded-2xl border border-border-secondary bg-bg-card p-6">
+        <div className="border-b border-border-primary pb-6">
           <div className="flex items-center gap-3">
             <Loader2 size={20} className="animate-spin text-accent-primary" />
             <div>
-              <h3 className="font-bold text-text-primary">
+              <h3 className="font-serif text-lg font-bold text-text-primary">
                 Generating Intelligence Briefing...
               </h3>
               <p className="text-sm text-text-tertiary">
@@ -518,81 +459,76 @@ function DailyDigestSection({
   const displayDate = selectedDigestDate || new Date().toISOString().slice(0, 10);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {/* Date strip */}
       <DateStrip
         selectedDate={selectedDigestDate}
         onSelect={onSelectDigestDate}
-        digestDates={digestDates}
       />
 
-      {/* Digest card */}
-      <div className="rounded-2xl border border-border-secondary bg-bg-card shadow-sm">
+      {/* Digest section — no card, ruled */}
+      <div className="border-b border-border-primary pb-6">
         {/* Header with date */}
-        <div className="border-b border-border-primary px-5 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-2">
-                <Sparkles size={16} className="text-accent-primary" />
-                <h3 className="text-sm font-bold text-text-primary">
-                  Intelligence Briefing
-                </h3>
-                <span className="rounded-full bg-accent-primary/10 px-2 py-0.5 text-[10px] font-medium text-accent-primary">
-                  {newsletterCount} sources
-                </span>
-              </div>
-              <p className="mt-0.5 text-xs text-text-tertiary">
-                {formatFullDate(displayDate)}
-              </p>
-            </div>
+        <div className="mb-4 flex items-center justify-between">
+          <div>
             <div className="flex items-center gap-2">
-              {digestHistory.length > 1 && (
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => {
-                      const currentIdx = digestHistory.findIndex(
-                        (d) => d.date === displayDate
-                      );
-                      const prev = currentIdx + 1;
-                      if (prev < digestHistory.length)
-                        onSelectDigestDate(digestHistory[prev].date);
-                    }}
-                    className="rounded-lg p-2 text-text-tertiary hover:bg-bg-secondary hover:text-text-primary transition-colors"
-                    aria-label="Previous day"
-                  >
-                    <ChevronLeft size={18} />
-                  </button>
-                  <button
-                    onClick={() => {
-                      const currentIdx = digestHistory.findIndex(
-                        (d) => d.date === displayDate
-                      );
-                      const next = currentIdx - 1;
-                      if (next >= 0) onSelectDigestDate(digestHistory[next].date);
-                      if (next < 0) onSelectDigestDate(null);
-                    }}
-                    className="rounded-lg p-2 text-text-tertiary hover:bg-bg-secondary hover:text-text-primary transition-colors"
-                    aria-label="Next day"
-                  >
-                    <ChevronRight size={18} />
-                  </button>
-                </div>
-              )}
-              <button
-                onClick={onGenerate}
-                className="flex items-center gap-1.5 rounded-xl border border-border-primary px-3 py-1.5 text-xs font-medium text-text-secondary hover:bg-bg-hover transition-colors"
-              >
-                <RefreshCw size={14} />
-                Regenerate
-              </button>
+              <Sparkles size={16} className="text-accent-primary" />
+              <h3 className="font-serif text-lg font-bold text-text-primary">
+                Intelligence Briefing
+              </h3>
+              <span className="text-xs text-text-tertiary">
+                {newsletterCount} sources
+              </span>
             </div>
+            <p className="mt-0.5 text-xs text-text-tertiary">
+              {formatFullDate(displayDate)}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {digestHistory.length > 1 && (
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => {
+                    const currentIdx = digestHistory.findIndex(
+                      (d) => d.date === displayDate
+                    );
+                    const prev = currentIdx + 1;
+                    if (prev < digestHistory.length)
+                      onSelectDigestDate(digestHistory[prev].date);
+                  }}
+                  className="p-1.5 text-text-tertiary hover:text-text-primary transition-colors"
+                  aria-label="Previous day"
+                >
+                  <ChevronLeft size={18} />
+                </button>
+                <button
+                  onClick={() => {
+                    const currentIdx = digestHistory.findIndex(
+                      (d) => d.date === displayDate
+                    );
+                    const next = currentIdx - 1;
+                    if (next >= 0) onSelectDigestDate(digestHistory[next].date);
+                    if (next < 0) onSelectDigestDate(null);
+                  }}
+                  className="p-1.5 text-text-tertiary hover:text-text-primary transition-colors"
+                  aria-label="Next day"
+                >
+                  <ChevronRight size={18} />
+                </button>
+              </div>
+            )}
+            <button
+              onClick={onGenerate}
+              className="flex items-center gap-1.5 text-xs font-medium text-text-tertiary hover:text-text-primary transition-colors"
+            >
+              <RefreshCw size={14} />
+              Regenerate
+            </button>
           </div>
         </div>
 
         {/* Digest content */}
-        <div className="px-5 py-5">
-          <DigestContent content={digest!} />
-        </div>
+        <DigestContent content={digest!} />
       </div>
     </div>
   );
@@ -605,8 +541,8 @@ function firstSentence(text: string): string {
   return match ? match[1] : plain.slice(0, 120);
 }
 
-// ─── Newsletter Card ─────────────────────────────────────────
-function NewsletterCard({
+// ─── Newsletter Item (Restyled: no card, flat ruled list) ─────
+function NewsletterItem({
   newsletter,
   onToggleRead,
   onToggleSave,
@@ -621,21 +557,16 @@ function NewsletterCard({
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showRawContent, setShowRawContent] = useState(false);
-  const color = getPublicationColor(newsletter.publication);
   const summary = newsletter.newsletterSummary || newsletter.summary;
 
   return (
     <div
-      className={`newsletter-card rounded-2xl border bg-bg-card transition-all duration-200 ${
-        isExpanded
-          ? "border-border-primary shadow-md"
-          : newsletter.isRead
-            ? "border-border-secondary opacity-75 hover:opacity-100 hover:shadow-sm"
-            : "border-border-secondary hover:border-border-primary hover:shadow-sm"
+      className={`border-b border-border-primary py-5 transition-opacity ${
+        newsletter.isRead && !isExpanded ? "opacity-60" : ""
       }`}
     >
       <div
-        className="flex cursor-pointer items-start gap-3 p-4 sm:p-5"
+        className="cursor-pointer"
         onClick={() => {
           setIsExpanded(!isExpanded);
           if (!isExpanded && !newsletter.isRead) {
@@ -643,113 +574,103 @@ function NewsletterCard({
           }
         }}
       >
-        <div
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-          style={{ backgroundColor: color }}
-        >
-          {publicationInitials(newsletter.publication)}
+        {/* Source name (bold) */}
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-sm font-bold text-text-primary">
+            {newsletter.publication}
+          </span>
+          {isVip && (
+            <Star size={12} className="fill-accent-warning text-accent-warning" />
+          )}
+          {!newsletter.isRead && (
+            <span className="h-1.5 w-1.5 rounded-full bg-accent-primary" />
+          )}
         </div>
 
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-semibold text-text-primary">
-                {newsletter.publication}
-              </h3>
-              {isVip && (
-                <Star size={12} className="fill-accent-warning text-accent-warning" />
-              )}
-              {!newsletter.isRead && (
-                <span className="h-2 w-2 rounded-full bg-accent-primary" />
-              )}
-            </div>
-            <div className="flex shrink-0 items-center gap-3">
-              {newsletter.readingTimeMinutes && (
-                <span className="flex items-center gap-1 rounded-md bg-bg-secondary px-1.5 py-0.5 text-xs font-medium text-text-secondary">
-                  <Clock size={12} className="text-accent-primary" />
-                  {newsletter.readingTimeMinutes} min
-                </span>
-              )}
-              <span className="text-xs text-text-tertiary">
-                {getRelativeTime(newsletter.receivedAt)}
-              </span>
-            </div>
-          </div>
-          <p className="mt-0.5 truncate text-sm text-text-secondary">
-            {newsletter.subject}
-          </p>
-          {summary && "theNews" in summary && (
-            <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-text-tertiary">
-              {firstSentence((summary as { theNews: string }).theNews)}
-            </p>
-          )}
+        {/* Subject line (serif headline) */}
+        <h3 className="font-serif text-lg font-semibold leading-snug text-text-primary mb-1">
+          {newsletter.subject}
+        </h3>
 
-          {/* Action buttons — visible on hover */}
-          <div className="newsletter-actions mt-2 flex items-center gap-2">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleRead(newsletter.id);
-              }}
-              className={`flex items-center gap-1 rounded-md px-2 py-1 text-xs transition-colors ${
-                newsletter.isRead
-                  ? "bg-accent-success/10 text-accent-success"
-                  : "bg-bg-secondary text-text-tertiary hover:text-text-secondary"
-              }`}
-            >
-              {newsletter.isRead ? (
-                <CheckCheck size={12} />
-              ) : (
-                <Check size={12} />
-              )}
-              {newsletter.isRead ? "Read" : "Mark read"}
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleSave(newsletter.id);
-              }}
-              className={`flex items-center gap-1 rounded-md px-2 py-1 text-xs transition-colors ${
-                newsletter.isSaved
-                  ? "bg-accent-primary/10 text-accent-primary"
-                  : "bg-bg-secondary text-text-tertiary hover:text-text-secondary"
-              }`}
-            >
-              {newsletter.isSaved ? (
-                <BookmarkCheck size={12} />
-              ) : (
-                <Bookmark size={12} />
-              )}
-              {newsletter.isSaved ? "Saved" : "Save"}
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleVip(newsletter.publication);
-              }}
-              className={`flex items-center gap-1 rounded-md px-2 py-1 text-xs transition-colors ${
-                isVip
-                  ? "bg-accent-warning/10 text-accent-warning"
-                  : "bg-bg-secondary text-text-tertiary hover:text-text-secondary"
-              }`}
-            >
+        {/* Preview text */}
+        {summary && "theNews" in summary && (
+          <p className="text-sm leading-relaxed text-text-secondary line-clamp-2 mb-2">
+            {firstSentence((summary as { theNews: string }).theNews)}
+          </p>
+        )}
+
+        {/* Read time + timestamp */}
+        <div className="flex items-center gap-3 text-xs text-text-tertiary">
+          {newsletter.readingTimeMinutes && (
+            <span className="flex items-center gap-1">
+              <Clock size={12} />
+              {newsletter.readingTimeMinutes} min
+            </span>
+          )}
+          <span>{getRelativeTime(newsletter.receivedAt)}</span>
+        </div>
+
+        {/* Action buttons */}
+        <div className="newsletter-actions mt-2 flex items-center gap-3">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleRead(newsletter.id);
+            }}
+            className={`text-xs transition-colors ${
+              newsletter.isRead
+                ? "text-accent-success"
+                : "text-text-tertiary hover:text-text-secondary"
+            }`}
+          >
+            {newsletter.isRead ? (
+              <span className="flex items-center gap-1"><CheckCheck size={12} /> Read</span>
+            ) : (
+              <span className="flex items-center gap-1"><Check size={12} /> Mark read</span>
+            )}
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleSave(newsletter.id);
+            }}
+            className={`text-xs transition-colors ${
+              newsletter.isSaved
+                ? "text-accent-primary"
+                : "text-text-tertiary hover:text-text-secondary"
+            }`}
+          >
+            {newsletter.isSaved ? (
+              <span className="flex items-center gap-1"><BookmarkCheck size={12} /> Saved</span>
+            ) : (
+              <span className="flex items-center gap-1"><Bookmark size={12} /> Save</span>
+            )}
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleVip(newsletter.publication);
+            }}
+            className={`text-xs transition-colors ${
+              isVip
+                ? "text-accent-warning"
+                : "text-text-tertiary hover:text-text-secondary"
+            }`}
+          >
+            <span className="flex items-center gap-1">
               <Star size={12} className={isVip ? "fill-accent-warning" : ""} />
               {isVip ? "VIP" : "Pin"}
-            </button>
-          </div>
+            </span>
+          </button>
         </div>
-
-        <button className="shrink-0 rounded-md p-1 text-text-tertiary transition-colors hover:text-text-primary">
-          {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-        </button>
       </div>
 
       {isExpanded && (
-        <div className="border-t border-border-secondary px-4 py-4 sm:px-5">
+        <div className="mt-4 pl-0">
           {summary && "theNews" in summary ? (
             <div className="space-y-4">
               {/* The News */}
-              <div className="rounded-lg bg-bg-secondary p-3.5">
+              <div>
                 <div className="mb-2 flex items-center gap-1.5">
                   <Newspaper size={14} className="text-accent-primary" />
                   <span className="text-xs font-semibold uppercase tracking-wide text-accent-primary">
@@ -764,7 +685,7 @@ function NewsletterCard({
               </div>
 
               {/* Why It Matters */}
-              <div className="rounded-lg bg-bg-secondary p-3.5">
+              <div>
                 <div className="mb-2 flex items-center gap-1.5">
                   <Lightbulb size={14} className="text-accent-warning" />
                   <span className="text-xs font-semibold uppercase tracking-wide text-accent-warning">
@@ -781,7 +702,7 @@ function NewsletterCard({
               </div>
 
               {/* The Context */}
-              <div className="rounded-lg bg-bg-secondary p-3.5">
+              <div>
                 <div className="mb-2 flex items-center gap-1.5">
                   <Globe size={14} className="text-accent-success" />
                   <span className="text-xs font-semibold uppercase tracking-wide text-accent-success">
@@ -798,7 +719,7 @@ function NewsletterCard({
               {/* So What? */}
               {"soWhat" in summary &&
                 (summary as { soWhat?: string }).soWhat && (
-                  <div className="rounded-lg border-l-2 border-accent-primary/40 bg-accent-primary/5 px-4 py-3">
+                  <div className="border-l-2 border-accent-primary/40 pl-4 py-2">
                     <div className="mb-1 flex items-center gap-1.5">
                       <Zap size={13} className="text-accent-primary" />
                       <span className="text-xs font-semibold text-accent-primary">
@@ -816,7 +737,7 @@ function NewsletterCard({
               {/* Watch Next */}
               {"watchNext" in summary &&
                 (summary as { watchNext?: string }).watchNext && (
-                  <div className="rounded-lg bg-bg-secondary p-3.5">
+                  <div>
                     <div className="mb-2 flex items-center gap-1.5">
                       <Eye size={14} className="text-text-tertiary" />
                       <span className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">
@@ -833,7 +754,7 @@ function NewsletterCard({
                   </div>
                 )}
 
-              {/* Recruiter Relevance — small callout at bottom if present */}
+              {/* Recruiter Relevance */}
               {"recruiterRelevance" in summary &&
                 (summary as { recruiterRelevance?: string })
                   .recruiterRelevance &&
@@ -841,7 +762,7 @@ function NewsletterCard({
                   summary as { recruiterRelevance: string }
                 ).recruiterRelevance.toLowerCase() !==
                   "no direct signals." && (
-                  <div className="rounded-lg border border-border-secondary bg-bg-secondary/50 p-3">
+                  <div className="border-l border-border-primary pl-4 py-2">
                     <div className="mb-1 flex items-center gap-1.5">
                       <Briefcase size={12} className="text-text-tertiary" />
                       <span className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">
@@ -873,7 +794,7 @@ function NewsletterCard({
               </button>
 
               {showRawContent && (
-                <div className="max-h-96 overflow-y-auto rounded-lg border border-border-secondary bg-bg-secondary p-3">
+                <div className="max-h-96 overflow-y-auto border-t border-border-primary pt-3">
                   <div className="whitespace-pre-wrap text-xs leading-relaxed text-text-tertiary">
                     {newsletter.content}
                   </div>
@@ -881,7 +802,7 @@ function NewsletterCard({
               )}
             </div>
           ) : (
-            <div className="prose-sm max-w-none whitespace-pre-wrap text-sm leading-relaxed text-text-secondary">
+            <div className="whitespace-pre-wrap text-sm leading-relaxed text-text-secondary">
               {newsletter.content}
             </div>
           )}
@@ -895,7 +816,6 @@ function NewsletterCard({
 export function NewsletterView({
   newsletters,
   newslettersForSelectedDate,
-  newsletterDates,
   isLoading,
   error,
   onRefresh,
@@ -955,7 +875,7 @@ export function NewsletterView({
     <div className="space-y-6">
       <div className="flex items-end justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-text-primary tracking-tight">
+          <h2 className="font-serif text-3xl font-bold text-text-primary tracking-tight">
             Newsletters
           </h2>
           <p className="mt-1 text-sm text-text-tertiary">
@@ -978,7 +898,7 @@ export function NewsletterView({
             <button
               onClick={handleIngest}
               disabled={isIngesting}
-              className="flex items-center gap-1.5 rounded-xl border border-border-primary px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-bg-hover disabled:opacity-50"
+              className="flex items-center gap-1.5 text-xs font-medium text-text-secondary transition-colors hover:text-text-primary disabled:opacity-50"
             >
               <Download
                 size={14}
@@ -990,7 +910,7 @@ export function NewsletterView({
           <button
             onClick={onRefresh}
             disabled={isLoading}
-            className="rounded-lg p-2 text-text-tertiary hover:text-text-secondary hover:bg-bg-secondary transition-colors disabled:opacity-50"
+            className="p-2 text-text-tertiary hover:text-text-secondary transition-colors disabled:opacity-50"
           >
             <RefreshCw
               size={14}
@@ -1002,22 +922,20 @@ export function NewsletterView({
 
       {/* Gmail connection prompt */}
       {!isGmailConnected && (
-        <div className="rounded-2xl border border-border-secondary bg-bg-card p-6">
+        <div className="border-b border-border-primary pb-6">
           <div className="flex items-start gap-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent-secondary">
-              <Mail size={20} className="text-accent-primary" />
-            </div>
+            <Mail size={20} className="mt-0.5 text-accent-primary" />
             <div className="flex-1">
-              <h3 className="text-sm font-bold text-text-primary">
+              <h3 className="font-serif text-lg font-bold text-text-primary">
                 Connect Gmail to see your newsletters
               </h3>
-              <p className="mt-1 text-xs text-text-secondary leading-relaxed">
+              <p className="mt-1 text-sm text-text-secondary leading-relaxed">
                 Connect a Gmail account dedicated to newsletters. The app will
                 automatically fetch and parse your subscriptions.
               </p>
               <button
                 onClick={onConnectGmail}
-                className="mt-4 rounded-xl bg-accent-primary px-5 py-2 text-sm font-medium text-text-inverse transition-colors hover:bg-accent-primary-hover"
+                className="mt-4 border-b border-accent-primary pb-0.5 text-sm font-medium text-accent-primary transition-colors hover:text-accent-primary-hover"
               >
                 Connect Gmail
               </button>
@@ -1028,7 +946,7 @@ export function NewsletterView({
 
       {/* Ingest result message */}
       {ingestResult && (
-        <div className="rounded-lg border border-accent-success/30 bg-accent-success/10 px-4 py-3 text-sm text-accent-success">
+        <div className="border-l-2 border-accent-success pl-4 py-2 text-sm text-accent-success">
           Scanned {ingestResult.totalEmails} emails — found{" "}
           {ingestResult.fetched} newsletter
           {ingestResult.fetched !== 1 ? "s" : ""}, filtered out{" "}
@@ -1039,7 +957,7 @@ export function NewsletterView({
 
       {/* Error message */}
       {error && (
-        <div className="flex items-center gap-2 rounded-lg border border-accent-danger/30 bg-accent-danger/10 px-4 py-3 text-sm text-accent-danger">
+        <div className="flex items-center gap-2 border-l-2 border-accent-danger pl-4 py-2 text-sm text-accent-danger">
           <AlertCircle size={16} />
           {error}
         </div>
@@ -1055,13 +973,13 @@ export function NewsletterView({
           digestHistory={digestHistory}
           selectedDigestDate={selectedDigestDate}
           onSelectDigestDate={onSelectDigestDate}
-          newsletterDates={newsletterDates}
+
         />
       )}
 
-      {/* Filter tabs */}
+      {/* Filter tabs — plain text, active underlined */}
       {dateNewsletters.length > 0 && (
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 border-b border-border-primary">
           {(
             [
               { key: "all", label: "All", count: dateNewsletters.length },
@@ -1072,10 +990,10 @@ export function NewsletterView({
             <button
               key={tab.key}
               onClick={() => setFilterMode(tab.key)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+              className={`relative px-3 py-2 text-xs font-medium transition-colors ${
                 filterMode === tab.key
-                  ? "bg-accent-secondary text-accent-primary"
-                  : "text-text-tertiary hover:text-text-secondary hover:bg-bg-secondary"
+                  ? "text-text-primary"
+                  : "text-text-tertiary hover:text-text-secondary"
               }`}
             >
               {tab.label}
@@ -1084,12 +1002,15 @@ export function NewsletterView({
                   {tab.count}
                 </span>
               )}
+              {filterMode === tab.key && (
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-text-primary" />
+              )}
             </button>
           ))}
         </div>
       )}
 
-      {/* Individual newsletter cards */}
+      {/* Individual newsletter items — flat ruled list */}
       {isLoading ? (
         <div className="space-y-3">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -1097,9 +1018,9 @@ export function NewsletterView({
           ))}
         </div>
       ) : (
-        <div className="space-y-3">
+        <div>
           {filteredNewsletters.length === 0 && filterMode !== "all" && (
-            <div className="rounded-lg border border-border-primary bg-bg-card p-8 text-center">
+            <div className="py-12 text-center">
               <p className="text-sm text-text-tertiary">
                 {filterMode === "unread"
                   ? "All caught up! No unread newsletters."
@@ -1108,7 +1029,7 @@ export function NewsletterView({
             </div>
           )}
           {filteredNewsletters.map((nl) => (
-            <NewsletterCard
+            <NewsletterItem
               key={nl.id}
               newsletter={nl}
               onToggleRead={onToggleRead}

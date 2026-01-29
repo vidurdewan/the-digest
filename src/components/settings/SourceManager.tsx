@@ -2,10 +2,8 @@
 
 import { useState } from "react";
 import {
-  Rss,
   Plus,
   Trash2,
-  Globe,
   Zap,
   X,
   Loader2,
@@ -59,18 +57,15 @@ export function SourceManager() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Rss size={24} className="text-accent-primary" />
-          <div>
-            <h2 className="text-2xl font-bold text-text-primary">
-              News Sources
-            </h2>
-            <p className="text-sm text-text-tertiary">
-              {sources.length} sources configured
-            </p>
-          </div>
+        <div>
+          <h2 className="font-serif text-3xl font-bold text-text-primary">
+            News Sources
+          </h2>
+          <p className="mt-1 text-sm text-text-tertiary">
+            {sources.length} sources configured
+          </p>
         </div>
         <button
           onClick={() => setShowAdd(!showAdd)}
@@ -83,7 +78,7 @@ export function SourceManager() {
 
       {/* Add source form */}
       {showAdd && (
-        <div className="rounded-xl border border-accent-primary/30 bg-bg-card p-4 space-y-3">
+        <div className="border-b border-border-primary pb-6 space-y-3">
           <div className="grid gap-3 sm:grid-cols-2">
             <input
               type="text"
@@ -92,7 +87,7 @@ export function SourceManager() {
                 setNewSource({ ...newSource, name: e.target.value })
               }
               placeholder="Source name"
-              className="rounded-lg border border-border-primary bg-bg-secondary px-3 py-2 text-sm text-text-primary placeholder-text-tertiary outline-none focus:border-accent-primary"
+              className="border-b border-border-primary bg-transparent px-1 py-2 text-sm text-text-primary placeholder-text-tertiary outline-none focus:border-accent-primary"
             />
             <input
               type="text"
@@ -101,7 +96,7 @@ export function SourceManager() {
                 setNewSource({ ...newSource, url: e.target.value })
               }
               placeholder="RSS feed URL or search query"
-              className="rounded-lg border border-border-primary bg-bg-secondary px-3 py-2 text-sm text-text-primary placeholder-text-tertiary outline-none focus:border-accent-primary"
+              className="border-b border-border-primary bg-transparent px-1 py-2 text-sm text-text-primary placeholder-text-tertiary outline-none focus:border-accent-primary"
             />
             <select
               value={newSource.type}
@@ -111,7 +106,7 @@ export function SourceManager() {
                   type: e.target.value as "rss" | "api",
                 })
               }
-              className="rounded-lg border border-border-primary bg-bg-secondary px-3 py-2 text-sm text-text-primary outline-none focus:border-accent-primary"
+              className="border-b border-border-primary bg-transparent px-1 py-2 text-sm text-text-primary outline-none focus:border-accent-primary"
             >
               <option value="rss">RSS Feed</option>
               <option value="api">NewsAPI Search</option>
@@ -124,7 +119,7 @@ export function SourceManager() {
                   topic: e.target.value as TopicCategory,
                 })
               }
-              className="rounded-lg border border-border-primary bg-bg-secondary px-3 py-2 text-sm text-text-primary outline-none focus:border-accent-primary"
+              className="border-b border-border-primary bg-transparent px-1 py-2 text-sm text-text-primary outline-none focus:border-accent-primary"
             >
               {Object.entries(topicLabels).map(([key, label]) => (
                 <option key={key} value={key}>
@@ -157,30 +152,29 @@ export function SourceManager() {
           Loading sources...
         </div>
       ) : (
-        <div className="space-y-4">
+        <div>
           {Object.entries(grouped).map(([topic, topicSources]) => (
             <div
               key={topic}
-              className="rounded-xl border border-border-primary bg-bg-card p-4"
+              className="border-b border-border-primary py-6 first:pt-0 last:border-b-0"
             >
-              <h3 className="mb-3 text-sm font-semibold text-text-primary">
+              <h3 className="font-serif text-lg font-bold text-text-primary mb-3">
                 {topicLabels[topic as TopicCategory] || topic}
-                <span className="ml-2 text-text-tertiary font-normal">
+                <span className="ml-2 text-text-tertiary font-normal text-sm">
                   ({topicSources.length})
                 </span>
               </h3>
-              <div className="space-y-2">
-                {topicSources.map((source) => (
+              <div>
+                {topicSources.map((source, idx) => (
                   <div
                     key={source.id}
-                    className="flex items-center justify-between rounded-lg bg-bg-secondary px-3 py-2"
+                    className={`flex items-center justify-between py-2 ${
+                      idx < topicSources.length - 1
+                        ? "border-b border-border-primary/50"
+                        : ""
+                    }`}
                   >
                     <div className="flex items-center gap-2">
-                      {source.type === "rss" ? (
-                        <Rss size={14} className="text-accent-primary" />
-                      ) : (
-                        <Zap size={14} className="text-accent-warning" />
-                      )}
                       <span className="text-sm text-text-primary">
                         {source.name}
                       </span>

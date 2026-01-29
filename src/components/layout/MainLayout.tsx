@@ -17,6 +17,7 @@ const FULL_WIDTH_SECTIONS = new Set([
   "brief",
   "weekly-synthesis",
   "newsletters",
+  "news",
 ]);
 
 export function MainLayout({

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import type { Article, Summary, TopicCategory } from "@/types";
-import { topicLabels } from "@/lib/mock-data";
+import { topicLabels, topicDotColors } from "@/lib/mock-data";
 import { ArticleCard } from "./ArticleCard";
 
 interface TopicSectionProps {
@@ -32,26 +32,32 @@ export function TopicSection({
   if (articles.length === 0) return null;
 
   return (
-    <div className="space-y-3">
+    <div className="border-b border-border-primary pb-2">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex w-full items-center gap-2 py-1 text-left"
+        className="flex w-full items-center gap-3 py-4 text-left"
       >
-        {isOpen ? (
-          <ChevronDown size={18} className="text-text-tertiary" />
-        ) : (
-          <ChevronRight size={18} className="text-text-tertiary" />
-        )}
-        <h3 className="text-lg font-semibold text-text-primary">
+        <span
+          className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0"
+          style={{ backgroundColor: topicDotColors[topic] }}
+        />
+        <h3 className="font-serif text-xl font-bold text-text-primary">
           {topicLabels[topic]}
         </h3>
-        <span className="rounded-full bg-bg-tertiary px-2 py-0.5 text-xs font-medium text-text-tertiary">
+        <span className="text-sm text-text-tertiary">
           {articles.length}
+        </span>
+        <span className="ml-auto">
+          {isOpen ? (
+            <ChevronDown size={16} className="text-text-tertiary" />
+          ) : (
+            <ChevronRight size={16} className="text-text-tertiary" />
+          )}
         </span>
       </button>
 
       {isOpen && (
-        <div className="space-y-3 pl-1">
+        <div className="space-y-3 pb-2">
           {articles.map((article) => (
             <ArticleCard
               key={article.id}

@@ -90,10 +90,10 @@ function NewsByTopicSection({
   );
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-0">
+      <div className="flex items-end justify-between pb-8">
         <div>
-          <h2 className="text-2xl font-bold text-text-primary">
+          <h2 className="font-serif text-3xl font-bold text-text-primary">
             News by Topic
           </h2>
           <p className="mt-1 text-sm text-text-tertiary">
@@ -104,7 +104,7 @@ function NewsByTopicSection({
           <button
             onClick={onIngest}
             disabled={isIngesting}
-            className="flex items-center gap-1.5 rounded-xl border border-border-primary px-4 py-2 text-sm font-medium text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-colors disabled:opacity-50"
+            className="pill-outlined flex items-center gap-1.5 transition-colors hover:bg-bg-hover disabled:opacity-50"
           >
             <RefreshCw
               size={14}
@@ -116,18 +116,18 @@ function NewsByTopicSection({
       </div>
 
       {/* Search filter */}
-      <div className="relative">
+      <div className="relative border-b border-border-primary pb-6">
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
         <input
           type="text"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           placeholder="Filter articles by title, source, or author..."
-          className="w-full rounded-xl border border-border-secondary bg-bg-secondary pl-9 pr-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent-primary focus:outline-none transition-colors"
+          className="w-full border-b border-border-secondary bg-transparent pl-9 pr-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent-primary focus:outline-none transition-colors"
         />
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-0">
         {topics
           .filter((t) => grouped[t].length > 0)
           .map((topic) => (
@@ -333,7 +333,6 @@ export default function Home() {
           <NewsletterView
             newsletters={newsletterData.newsletters}
             newslettersForSelectedDate={newsletterData.newslettersForSelectedDate}
-            newsletterDates={newsletterData.newsletterDates}
             isLoading={newsletterData.isLoading}
             error={newsletterData.error}
             onRefresh={newsletterData.refresh}

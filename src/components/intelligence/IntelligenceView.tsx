@@ -60,7 +60,7 @@ export function IntelligenceView({
     <div className="space-y-6">
       {/* Page header */}
       <div>
-        <h2 className="text-2xl font-bold text-text-primary">Intelligence</h2>
+        <h2 className="font-serif text-3xl font-bold text-text-primary">Intelligence</h2>
         <p className="text-sm text-text-tertiary">
           {watchlist.length} watched &middot; {matchCount} match
           {matchCount !== 1 ? "es" : ""} &middot; {moveCount} move
@@ -70,17 +70,17 @@ export function IntelligenceView({
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-2">
+      <div className="flex gap-6 border-b border-border-primary">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           return (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+              className={`flex items-center gap-2 pb-3 text-sm font-medium transition-colors relative ${
                 activeTab === tab.id
-                  ? "bg-bg-active text-accent-primary"
-                  : "text-text-secondary hover:bg-bg-hover hover:text-text-primary"
+                  ? "text-text-primary after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-text-primary"
+                  : "text-text-tertiary hover:text-text-primary"
               }`}
             >
               <Icon size={16} />
