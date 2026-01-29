@@ -1,28 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useReadingProgress } from "@/hooks/useReadingProgress";
+import { useMemo, useState } from "react";
 import {
-  ChevronDown,
-  ChevronUp,
-  ChevronLeft,
-  ChevronRight,
   RefreshCw,
   ArrowUp,
   Loader2,
-  MoreHorizontal,
   CheckCheck,
+  Bookmark,
 } from "lucide-react";
-import type { Article, Summary, ArticleIntelligence, ArticleWithIntelligence } from "@/types";
-import { topicLabels } from "@/lib/mock-data";
-import { selectDiverseTopStories, groupByTopic } from "@/lib/feed-layout";
-import { TodaysBrief } from "./TodaysBrief";
-import { HeroStoryCard } from "./HeroStoryCard";
-import { TopStoryCard } from "./TopStoryCard";
-import { SwimlaneCard } from "./SwimlaneCard";
-import { CompactListItem } from "./CompactListItem";
-import { ReadingProgress } from "./ReadingProgress";
-import { SurpriseMe } from "./SurpriseMe";
+import type {
+  Article,
+  Summary,
+  ArticleIntelligence,
+  ArticleWithIntelligence,
+  TopicCategory,
+} from "@/types";
+import { topicLabels, topicDotColors } from "@/lib/mock-data";
 
 function getRelativeTimeShort(date: Date): string {
   const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
@@ -34,94 +27,42 @@ function getRelativeTimeShort(date: Date): string {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-function ScrollableRow({ children, gap = "gap-4" }: { children: React.ReactNode; gap?: string }) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [childCount, setChildCount] = useState(0);
+function formatArticleTime(dateString: string): string {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffHours = diffMs / 3600000;
 
-  const scroll = (direction: "left" | "right") => {
-    if (!scrollRef.current) return;
-    const amount = scrollRef.current.clientWidth * 0.6;
-    scrollRef.current.scrollBy({
-      left: direction === "left" ? -amount : amount,
-      behavior: "smooth",
-    });
-  };
+  if (diffHours < 24) {
+    return date.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    }).toUpperCase();
+  }
+  if (diffHours < 48) return "YESTERDAY";
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" }).toUpperCase();
+}
 
-  const updateScrollPosition = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const count = el.children.length;
-    setChildCount(count);
-    if (count === 0) return;
-    const firstChild = el.children[0] as HTMLElement;
-    const cardWidth = firstChild.offsetWidth;
-    const gapSize = parseInt(gap.replace("gap-", "")) * 4; // Tailwind gap units
-    const idx = Math.round(el.scrollLeft / (cardWidth + gapSize));
-    setActiveIndex(Math.min(idx, count - 1));
-  }, [gap]);
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    updateScrollPosition();
-    el.addEventListener("scroll", updateScrollPosition, { passive: true });
-    return () => el.removeEventListener("scroll", updateScrollPosition);
-  }, [updateScrollPosition, children]);
-
-  const maxDots = 8;
-  const showDots = childCount > 1;
-
-  return (
-    <div className="carousel-container">
-      <button
-        onClick={() => scroll("left")}
-        className="carousel-arrow carousel-arrow-left"
-        aria-label="Scroll left"
-      >
-        <ChevronLeft size={16} />
-      </button>
-      <div
-        ref={scrollRef}
-        className={`flex ${gap} overflow-x-auto pb-2 pr-8 snap-x snap-mandatory scrollbar-hide`}
-      >
-        {children}
-      </div>
-      <button
-        onClick={() => scroll("right")}
-        className="carousel-arrow carousel-arrow-right"
-        aria-label="Scroll right"
-      >
-        <ChevronRight size={16} />
-      </button>
-      {/* Right-edge fade */}
-      <div className="pointer-events-none absolute right-0 top-0 bottom-2 w-12 bg-gradient-to-l from-[var(--bg-primary)] to-transparent" />
-      {/* Scroll indicators */}
-      {showDots && (
-        <div className="mt-2 flex items-center justify-center gap-1">
-          {Array.from({ length: Math.min(childCount, maxDots) }).map((_, i) => (
-            <span
-              key={i}
-              className={`h-1 rounded-full transition-all duration-200 ${
-                i === activeIndex
-                  ? "w-4 bg-accent-primary"
-                  : "w-1 bg-border-primary"
-              }`}
-            />
-          ))}
-          {childCount > maxDots && (
-            <span className="text-[10px] text-text-tertiary ml-1">
-              +{childCount - maxDots}
-            </span>
-          )}
-        </div>
-      )}
-    </div>
-  );
+function getCurationReason(
+  article: Article & { summary?: Summary; intelligence?: ArticleIntelligence }
+): string | null {
+  if (article.watchlistMatches && article.watchlistMatches.length > 0) {
+    return `Matches '${article.watchlistMatches[0]}' interest`;
+  }
+  const intel = (article as ArticleWithIntelligence).intelligence;
+  if (intel) {
+    if (intel.significanceScore >= 8) return "High importance";
+    if (intel.storyType === "breaking") return "Breaking story";
+  }
+  return null;
 }
 
 interface IntelligenceFeedProps {
-  articles: (Article & { summary?: Summary; intelligence?: ArticleIntelligence })[];
+  articles: (Article & {
+    summary?: Summary;
+    intelligence?: ArticleIntelligence;
+  })[];
   onSave: (id: string) => void;
   onOpenReader: (article: Article & { summary?: Summary }) => void;
   onRequestSummary?: (
@@ -136,12 +77,12 @@ interface IntelligenceFeedProps {
   onMarkAllRead?: (articleIds: string[]) => void;
 }
 
+const ITEMS_PER_PAGE = 20;
+
 export function IntelligenceFeed({
   articles,
   onSave,
   onOpenReader,
-  onRequestSummary,
-  onExpand,
   newCount = 0,
   onShowNew,
   lastUpdated,
@@ -149,51 +90,64 @@ export function IntelligenceFeed({
   isRefreshing,
   onMarkAllRead,
 }: IntelligenceFeedProps) {
-  const [everythingElseOpen, setEverythingElseOpen] = useState(false);
-  const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set());
-  const [hiddenTopics, setHiddenTopics] = useState<Set<string>>(new Set());
-  const [openMenuTopic, setOpenMenuTopic] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"all" | TopicCategory>("all");
+  const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
 
-  const toggleTopicExpanded = (topic: string) => {
-    setExpandedTopics((prev) => {
-      const next = new Set(prev);
-      if (next.has(topic)) next.delete(topic);
-      else next.add(topic);
-      return next;
-    });
-  };
-
-  const hideTopic = (topic: string) => {
-    setHiddenTopics((prev) => new Set(prev).add(topic));
-    setOpenMenuTopic(null);
-  };
-
-  // Split articles into top stories (diverse) and remaining
-  const { topStories, remaining } = useMemo(
-    () => selectDiverseTopStories(articles as ArticleWithIntelligence[], 5),
+  // Sort all articles by publishedAt descending
+  const sortedArticles = useMemo(
+    () =>
+      [...articles].sort(
+        (a, b) =>
+          new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+      ),
     [articles]
   );
 
-  // Group remaining articles by topic for swimlanes
-  const topicGroups = useMemo(() => groupByTopic(remaining), [remaining]);
-
-  // Split remaining into swimlane articles and everything else
-  const swimlaneArticleIds = new Set<string>();
-  const SWIMLANE_MAX_PER_TOPIC = 12;
-  for (const group of topicGroups) {
-    for (const a of group.articles.slice(0, SWIMLANE_MAX_PER_TOPIC)) {
-      swimlaneArticleIds.add(a.id);
+  // Hero story: highest significance or first article
+  const heroArticle = useMemo(() => {
+    if (sortedArticles.length === 0) return null;
+    // Pick article with highest significance score
+    let best = sortedArticles[0];
+    let bestScore = 0;
+    for (const a of sortedArticles) {
+      const score =
+        (a as ArticleWithIntelligence).intelligence?.significanceScore ?? 0;
+      if (score > bestScore) {
+        bestScore = score;
+        best = a;
+      }
     }
-  }
-  const everythingElse = remaining.filter((a) => !swimlaneArticleIds.has(a.id));
+    return best;
+  }, [sortedArticles]);
 
-  // Reading progress
-  const priorityItems = topStories.length + swimlaneArticleIds.size;
-  const readPriorityItems = [...topStories, ...remaining.filter((a) => swimlaneArticleIds.has(a.id))].filter(
-    (a) => a.isRead || (a as ArticleWithIntelligence).summary?.theNews
-  ).length;
+  // Feed articles (all except hero), filtered by topic tab
+  const feedArticles = useMemo(() => {
+    const withoutHero = heroArticle
+      ? sortedArticles.filter((a) => a.id !== heroArticle.id)
+      : sortedArticles;
+    if (activeTab === "all") return withoutHero;
+    return withoutHero.filter((a) => a.topic === activeTab);
+  }, [sortedArticles, heroArticle, activeTab]);
 
-  useReadingProgress({ totalPriorityItems: priorityItems, itemsRead: readPriorityItems });
+  const visibleFeedArticles = feedArticles.slice(0, visibleCount);
+  const hasMore = visibleCount < feedArticles.length;
+
+  // Get unique topics for tab bar
+  const availableTopics = useMemo(() => {
+    const topics = new Set<TopicCategory>();
+    for (const a of articles) topics.add(a.topic);
+    return Array.from(topics);
+  }, [articles]);
+
+  // Hero personalization topics
+  const heroTopics = useMemo(() => {
+    if (!heroArticle) return [];
+    const matches = heroArticle.watchlistMatches ?? [];
+    if (matches.length >= 2) return matches.slice(0, 2);
+    const label = topicLabels[heroArticle.topic];
+    if (matches.length === 1) return [matches[0], label];
+    return [label];
+  }, [heroArticle]);
 
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -202,7 +156,7 @@ export function IntelligenceFeed({
   });
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-0">
       {/* "New stories" pill */}
       {newCount > 0 && onShowNew && (
         <button
@@ -210,15 +164,15 @@ export function IntelligenceFeed({
             onShowNew();
             window.scrollTo({ top: 0, behavior: "smooth" });
           }}
-          className="sticky top-2 z-30 mx-auto flex items-center gap-2 rounded-full bg-accent-primary px-4 py-2 text-sm font-medium text-text-inverse shadow-lg hover:bg-accent-primary-hover transition-all hover:scale-105"
+          className="sticky top-2 z-30 mx-auto mb-6 flex items-center gap-2 rounded-full bg-accent-primary px-4 py-2 text-sm font-medium text-text-inverse shadow-lg hover:bg-accent-primary-hover transition-all hover:scale-105"
         >
           <ArrowUp size={14} />
           {newCount} new {newCount === 1 ? "story" : "stories"}
         </button>
       )}
 
-      {/* Header — clean, spacious */}
-      <div className="flex items-end justify-between">
+      {/* Header */}
+      <div className="flex items-end justify-between pb-8">
         <div>
           <p className="mb-1 text-sm font-medium text-text-tertiary">{today}</p>
           <h2 className="text-2xl font-bold text-text-primary tracking-tight">
@@ -234,13 +188,7 @@ export function IntelligenceFeed({
           {onMarkAllRead && (
             <button
               onClick={() => {
-                const allVisibleIds = [
-                  ...topStories.map((a) => a.id),
-                  ...topicGroups.flatMap(({ articles: ta }) =>
-                    ta.slice(0, SWIMLANE_MAX_PER_TOPIC).map((a) => a.id)
-                  ),
-                ];
-                onMarkAllRead(allVisibleIds);
+                onMarkAllRead(articles.map((a) => a.id));
               }}
               className="flex items-center gap-1.5 rounded-xl border border-border-primary px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-bg-hover"
               title="Mark all as read"
@@ -267,226 +215,197 @@ export function IntelligenceFeed({
         </div>
       </div>
 
-      {/* Reading Progress */}
-      <ReadingProgress totalItems={priorityItems} readItems={readPriorityItems} />
-
-      {/* ═══ TODAY'S BRIEF ═══ */}
-      <TodaysBrief />
-
-      {/* ═══ TOP STORIES — Hero #1 + horizontal scroll ═══ */}
-      {topStories.length > 0 && (
-        <section>
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-lg font-bold text-text-primary">
-              Top Stories
-            </h3>
-            <span className="text-xs font-medium text-text-tertiary">
-              {topStories.length} stories
-            </span>
-          </div>
-
-          {/* Hero card for #1 story — full width with image */}
-          <div className="mb-4">
-            <HeroStoryCard
-              article={topStories[0] as ArticleWithIntelligence}
-              onSave={onSave}
-              onOpenReader={onOpenReader}
-              onRequestSummary={onRequestSummary}
-              onExpand={onExpand}
-            />
-          </div>
-
-          {/* Remaining top stories — horizontal scroll */}
-          {topStories.length > 1 && (
-            <ScrollableRow>
-              {topStories.slice(1).map((article) => (
-                <TopStoryCard
-                  key={article.id}
-                  article={article as ArticleWithIntelligence}
-                  onSave={onSave}
-                  onOpenReader={onOpenReader}
-                  onRequestSummary={onRequestSummary}
-                  onExpand={onExpand}
-                />
-              ))}
-            </ScrollableRow>
-          )}
-        </section>
-      )}
-
-      {/* ═══ TOPIC GRIDS ═══ */}
-      {topicGroups.length > 0 && (() => {
-        const visibleGroups = topicGroups.filter(
-          ({ topic, articles: ta }) =>
-            !hiddenTopics.has(topic) && ta.slice(0, SWIMLANE_MAX_PER_TOPIC).length > 0
-        );
-
-        return (
-          <section>
-            <div className="mb-6 flex items-center gap-3">
-              <h3 className="text-lg font-bold text-text-primary">
-                By Topic
-              </h3>
-            </div>
-
-            <div className="space-y-6">
-              {visibleGroups.map(({ topic, articles: topicArticles }, visibleIndex) => {
-                const displayArticles = topicArticles.slice(0, SWIMLANE_MAX_PER_TOPIC);
-                const isExpanded = expandedTopics.has(topic);
-                const visibleArticles = isExpanded ? displayArticles : displayArticles.slice(0, 3);
-                const hasMore = displayArticles.length > 3;
-
-                return (
-                  <div key={topic}>
-                    {/* Insert "Something Different" between 2nd and 3rd topic rows */}
-                    {visibleIndex === 2 && (
-                      <div className="mb-6">
-                        <SurpriseMe
-                          articles={everythingElse as ArticleWithIntelligence[]}
-                          onSave={onSave}
-                          onOpenReader={onOpenReader}
-                          onRequestSummary={onRequestSummary}
-                          onExpand={onExpand}
-                          subtitle="Outside your usual reading"
-                        />
-                      </div>
-                    )}
-
-                    {/* Topic header — grid toggle + menu */}
-                    <div className="mb-3 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <h4 className="text-sm font-semibold text-text-primary">
-                          {topicLabels[topic]}
-                        </h4>
-                        <span className="rounded-full bg-bg-secondary px-2 py-0.5 text-[11px] font-medium text-text-tertiary">
-                          {displayArticles.length}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {hasMore && (
-                          <button
-                            onClick={() => toggleTopicExpanded(topic)}
-                            className="text-xs font-medium text-accent-primary hover:text-accent-primary-hover transition-colors"
-                          >
-                            {isExpanded ? "Show less" : `Show all ${displayArticles.length}`}
-                          </button>
-                        )}
-                        {/* ⋯ menu */}
-                        <div className="relative">
-                          <button
-                            onClick={() => setOpenMenuTopic(openMenuTopic === topic ? null : topic)}
-                            className="rounded-md p-1 text-text-tertiary hover:text-text-secondary hover:bg-bg-secondary transition-colors"
-                            aria-label="Topic options"
-                          >
-                            <MoreHorizontal size={14} />
-                          </button>
-                          {openMenuTopic === topic && (
-                            <>
-                              <div
-                                className="fixed inset-0 z-20"
-                                onClick={() => setOpenMenuTopic(null)}
-                              />
-                              <div className="absolute right-0 top-full z-30 mt-1 w-44 rounded-xl border border-border-secondary bg-bg-card py-1 shadow-lg">
-                                <button
-                                  onClick={() => {
-                                    const ids = topicArticles.slice(0, SWIMLANE_MAX_PER_TOPIC).map((a) => a.id);
-                                    onMarkAllRead?.(ids);
-                                    setOpenMenuTopic(null);
-                                  }}
-                                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-text-secondary hover:bg-bg-hover transition-colors"
-                                >
-                                  <CheckCheck size={12} />
-                                  Mark all as read
-                                </button>
-                                <button
-                                  onClick={() => hideTopic(topic)}
-                                  className="flex w-full items-center px-3 py-2 text-left text-xs text-text-secondary hover:bg-bg-hover transition-colors"
-                                >
-                                  Hide topic
-                                </button>
-                                <button
-                                  onClick={() => setOpenMenuTopic(null)}
-                                  className="flex w-full items-center px-3 py-2 text-left text-xs text-text-secondary hover:bg-bg-hover transition-colors"
-                                >
-                                  Set priority
-                                </button>
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Grid layout — replaces horizontal carousel */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {visibleArticles.map((article, i) => (
-                        <div
-                          key={article.id}
-                          className={isExpanded && i >= 3 ? "section-enter" : ""}
-                        >
-                          <SwimlaneCard
-                            article={article as ArticleWithIntelligence}
-                            onSave={onSave}
-                            onOpenReader={onOpenReader}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-
-              {/* Fallback: if fewer than 3 visible groups, show SurpriseMe at the end */}
-              {visibleGroups.length < 3 && (
-                <SurpriseMe
-                  articles={everythingElse as ArticleWithIntelligence[]}
-                  onSave={onSave}
-                  onOpenReader={onOpenReader}
-                  onRequestSummary={onRequestSummary}
-                  onExpand={onExpand}
-                  subtitle="Outside your usual reading"
-                />
-              )}
-            </div>
-          </section>
-        );
-      })()}
-
-      {/* ═══ EVERYTHING ELSE ═══ */}
-      {everythingElse.length > 0 && (
-        <section>
-          <button
-            onClick={() => setEverythingElseOpen(!everythingElseOpen)}
-            className="mb-3 flex w-full items-center justify-between rounded-lg px-1 py-2 text-sm font-semibold text-text-tertiary hover:text-text-secondary transition-colors"
+      {/* ═══ HERO STORY ═══ */}
+      {heroArticle && (
+        <section className="pb-8">
+          <div
+            className="flex flex-col md:flex-row gap-6 md:gap-8 cursor-pointer group"
+            onClick={() => onOpenReader(heroArticle)}
           >
-            <span className="flex items-center gap-2">
-              {everythingElseOpen ? "Hide" : "Show"} Remaining Stories
-              <span className="rounded-full bg-bg-secondary px-2 py-0.5 text-[11px] font-medium">
-                {everythingElse.length}
-              </span>
-            </span>
-            {everythingElseOpen ? (
-              <ChevronUp size={16} />
-            ) : (
-              <ChevronDown size={16} />
-            )}
-          </button>
-          {everythingElseOpen && (
-            <div className="space-y-1.5">
-              {everythingElse.map((article) => (
-                <CompactListItem
-                  key={article.id}
-                  article={article as ArticleWithIntelligence}
-                  onSave={onSave}
-                  onOpenReader={onOpenReader}
-                  onRequestSummary={onRequestSummary}
-                  onExpand={onExpand}
+            {/* Mobile: image on top */}
+            {heroArticle.imageUrl && (
+              <div className="md:hidden w-full">
+                <img
+                  src={heroArticle.imageUrl}
+                  alt=""
+                  className="w-full h-56 object-cover"
                 />
-              ))}
+              </div>
+            )}
+            {/* Text side ~55% */}
+            <div className="flex-1 md:w-[55%] flex flex-col justify-center">
+              <p className="mb-3 flex items-center gap-2 text-xs tracking-widest uppercase text-text-secondary">
+                <span
+                  className="inline-block w-2 h-2 rounded-full"
+                  style={{ backgroundColor: "var(--accent-primary)" }}
+                />
+                Top Story For You
+              </p>
+              <h1 className="font-serif font-black text-4xl md:text-5xl lg:text-6xl leading-[1.05] text-text-primary mb-4 group-hover:opacity-80 transition-opacity">
+                {heroArticle.title}
+              </h1>
+              {heroArticle.summary?.brief && (
+                <p className="font-sans text-lg text-text-secondary mb-4 line-clamp-3">
+                  {heroArticle.summary.brief}
+                </p>
+              )}
+              {heroTopics.length > 0 && (
+                <p className="text-sm text-text-secondary mb-4">
+                  Based on your interest in{" "}
+                  {heroTopics.map((t, i) => (
+                    <span key={t}>
+                      {i > 0 && " and "}
+                      <span className="font-semibold">{t}</span>
+                    </span>
+                  ))}
+                </p>
+              )}
+              <div className="flex items-center gap-3">
+                <span className="bg-text-primary text-text-inverse uppercase text-xs font-medium px-3 py-1 tracking-wide">
+                  {topicLabels[heroArticle.topic]}
+                </span>
+                <span className="border border-text-primary uppercase text-xs font-medium px-3 py-1 tracking-wide text-text-primary">
+                  {heroArticle.readingTimeMinutes} MIN READ
+                </span>
+              </div>
             </div>
-          )}
+            {/* Image side ~45% — desktop only */}
+            {heroArticle.imageUrl && (
+              <div className="hidden md:block md:w-[45%]">
+                <img
+                  src={heroArticle.imageUrl}
+                  alt=""
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            )}
+          </div>
+          <hr className="mt-8 border-border-primary" />
         </section>
       )}
+
+      {/* ═══ TOPIC FILTER TABS ═══ */}
+      <section className="pb-2">
+        <div className="flex items-center gap-6 overflow-x-auto scrollbar-hide">
+          <button
+            onClick={() => {
+              setActiveTab("all");
+              setVisibleCount(ITEMS_PER_PAGE);
+            }}
+            className={`pb-3 text-sm font-sans whitespace-nowrap transition-colors ${
+              activeTab === "all"
+                ? "text-text-primary font-semibold underline underline-offset-8 decoration-2"
+                : "text-text-secondary hover:text-text-primary"
+            }`}
+          >
+            All
+          </button>
+          {availableTopics.map((topic) => (
+            <button
+              key={topic}
+              onClick={() => {
+                setActiveTab(topic);
+                setVisibleCount(ITEMS_PER_PAGE);
+              }}
+              className={`pb-3 text-sm font-sans whitespace-nowrap transition-colors ${
+                activeTab === topic
+                  ? "text-text-primary font-semibold underline underline-offset-8 decoration-2"
+                  : "text-text-secondary hover:text-text-primary"
+              }`}
+            >
+              {topicLabels[topic]}
+            </button>
+          ))}
+        </div>
+        <hr className="border-border-primary" />
+      </section>
+
+      {/* ═══ FEED LIST ═══ */}
+      <section>
+        {visibleFeedArticles.map((article) => {
+          const curation = getCurationReason(article);
+          return (
+            <div key={article.id}>
+              <div
+                className="flex items-start gap-4 py-6 md:py-8 cursor-pointer group"
+                onClick={() => onOpenReader(article)}
+              >
+                {/* Left side */}
+                <div className="flex-1 min-w-0">
+                  {/* Line 1: dot + topic + timestamp */}
+                  <div className="flex items-center gap-2 mb-2">
+                    <span
+                      className="inline-block w-2 h-2 rounded-full flex-shrink-0"
+                      style={{
+                        backgroundColor: topicDotColors[article.topic],
+                      }}
+                    />
+                    <span className="text-xs tracking-widest font-semibold uppercase text-text-secondary">
+                      {topicLabels[article.topic]}
+                    </span>
+                    <span className="text-xs text-text-tertiary">·</span>
+                    <span className="text-xs text-text-secondary">
+                      {formatArticleTime(article.publishedAt)}
+                    </span>
+                  </div>
+                  {/* Line 2: headline */}
+                  <h3
+                    className={`font-serif font-bold text-xl md:text-2xl text-text-primary mb-1.5 group-hover:opacity-80 transition-opacity ${
+                      article.isRead ? "opacity-60" : ""
+                    }`}
+                  >
+                    {article.title}
+                  </h3>
+                  {/* Line 3: summary */}
+                  {(article.summary?.brief || article.content) && (
+                    <p className="font-sans text-base text-text-secondary line-clamp-2 mb-2">
+                      {article.summary?.brief ||
+                        article.content?.slice(0, 200)}
+                    </p>
+                  )}
+                  {/* Line 4: source + curation reason */}
+                  <div className="flex items-center gap-1.5 text-sm text-text-secondary">
+                    <span>{article.source}</span>
+                    {curation && (
+                      <>
+                        <span>•</span>
+                        <span className="italic">{curation}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+                {/* Right side: save icon */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSave(article.id);
+                  }}
+                  className="flex-shrink-0 mt-2 p-1.5 text-text-secondary hover:text-text-primary transition-colors"
+                  title={article.isSaved ? "Unsave" : "Save"}
+                >
+                  <Bookmark
+                    size={18}
+                    className={article.isSaved ? "fill-current" : ""}
+                  />
+                </button>
+              </div>
+              <hr className="border-border-primary" />
+            </div>
+          );
+        })}
+
+        {/* Load more */}
+        {hasMore && (
+          <div className="py-8 text-center">
+            <button
+              onClick={() => setVisibleCount((c) => c + ITEMS_PER_PAGE)}
+              className="text-sm text-text-secondary underline hover:text-text-primary transition-colors"
+            >
+              Load more stories
+            </button>
+          </div>
+        )}
+      </section>
 
       {/* Empty state */}
       {articles.length === 0 && (

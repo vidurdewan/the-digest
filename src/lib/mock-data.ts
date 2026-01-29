@@ -24,6 +24,19 @@ export const topicColors: Record<TopicCategory, string> = {
   "politics": "bg-rose-100 text-rose-800",
 };
 
+// Dot colors for the flat feed list (using CSS custom properties)
+export const topicDotColors: Record<TopicCategory, string> = {
+  "vc-startups": "var(--topic-vc)",
+  "fundraising-acquisitions": "var(--topic-fundraising)",
+  "executive-movements": "var(--topic-executive)",
+  "financial-markets": "var(--topic-financial)",
+  "geopolitics": "var(--topic-geopolitics)",
+  "automotive": "var(--topic-automotive)",
+  "science-tech": "var(--topic-science)",
+  "local-news": "var(--topic-local)",
+  "politics": "var(--topic-politics)",
+};
+
 export function getRelativeTime(dateString: string): string {
   const now = Date.now();
   const date = new Date(dateString).getTime();
