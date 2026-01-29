@@ -174,8 +174,8 @@ export function IntelligenceFeed({
       {/* Header */}
       <div className="flex items-end justify-between pb-8">
         <div>
-          <p className="mb-1 text-sm font-medium text-text-tertiary">{today}</p>
-          <h2 className="text-2xl font-bold text-text-primary tracking-tight">
+          <p className="typo-section-label text-text-tertiary mb-1">{today}</p>
+          <h2 className="font-serif text-2xl font-bold text-text-primary tracking-tight">
             Your Briefing
           </h2>
           {lastUpdated && (
@@ -190,7 +190,7 @@ export function IntelligenceFeed({
               onClick={() => {
                 onMarkAllRead(articles.map((a) => a.id));
               }}
-              className="flex items-center gap-1.5 rounded-xl border border-border-primary px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-bg-hover"
+              className="pill-outlined flex items-center gap-1.5 transition-colors hover:bg-bg-hover"
               title="Mark all as read"
             >
               <CheckCheck size={14} />
@@ -201,7 +201,7 @@ export function IntelligenceFeed({
             <button
               onClick={onForceRefresh}
               disabled={isRefreshing}
-              className="flex items-center gap-1.5 rounded-xl border border-border-primary px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-bg-hover disabled:opacity-50"
+              className="pill-outlined flex items-center gap-1.5 transition-colors hover:bg-bg-hover disabled:opacity-50"
               title="Refresh articles"
             >
               {isRefreshing ? (
@@ -217,7 +217,7 @@ export function IntelligenceFeed({
 
       {/* ═══ HERO STORY ═══ */}
       {heroArticle && (
-        <section className="pb-8">
+        <section className="pb-8 border-b border-border-primary">
           <div
             className="flex flex-col md:flex-row gap-6 md:gap-8 cursor-pointer group"
             onClick={() => onOpenReader(heroArticle)}
@@ -234,14 +234,14 @@ export function IntelligenceFeed({
             )}
             {/* Text side ~55% */}
             <div className="flex-1 md:w-[55%] flex flex-col justify-center">
-              <p className="mb-3 flex items-center gap-2 text-xs tracking-widest uppercase text-text-secondary">
+              <p className="mb-3 flex items-center gap-2 typo-section-label text-text-secondary">
                 <span
                   className="inline-block w-2 h-2 rounded-full"
                   style={{ backgroundColor: "var(--accent-primary)" }}
                 />
                 Top Story For You
               </p>
-              <h1 className="font-serif font-black text-4xl md:text-5xl lg:text-6xl leading-[1.05] text-text-primary mb-4 group-hover:opacity-80 transition-opacity">
+              <h1 className="typo-hero text-4xl md:text-5xl lg:text-[3.5rem] xl:text-[4rem] text-text-primary mb-4 group-hover:opacity-80 transition-opacity">
                 {heroArticle.title}
               </h1>
               {heroArticle.summary?.brief && (
@@ -261,10 +261,10 @@ export function IntelligenceFeed({
                 </p>
               )}
               <div className="flex items-center gap-3">
-                <span className="bg-text-primary text-text-inverse uppercase text-xs font-medium px-3 py-1 tracking-wide">
+                <span className="pill-filled">
                   {topicLabels[heroArticle.topic]}
                 </span>
-                <span className="border border-text-primary uppercase text-xs font-medium px-3 py-1 tracking-wide text-text-primary">
+                <span className="pill-outlined">
                   {heroArticle.readingTimeMinutes} MIN READ
                 </span>
               </div>
@@ -280,12 +280,11 @@ export function IntelligenceFeed({
               </div>
             )}
           </div>
-          <hr className="mt-8 border-border-primary" />
         </section>
       )}
 
       {/* ═══ TOPIC FILTER TABS ═══ */}
-      <section className="pb-2">
+      <section className="py-4 border-b border-border-primary">
         <div className="flex items-center gap-6 overflow-x-auto scrollbar-hide">
           <button
             onClick={() => {
@@ -317,7 +316,6 @@ export function IntelligenceFeed({
             </button>
           ))}
         </div>
-        <hr className="border-border-primary" />
       </section>
 
       {/* ═══ FEED LIST ═══ */}
@@ -325,7 +323,7 @@ export function IntelligenceFeed({
         {visibleFeedArticles.map((article) => {
           const curation = getCurationReason(article);
           return (
-            <div key={article.id}>
+            <div key={article.id} className="border-b border-border-primary">
               <div
                 className="flex items-start gap-4 py-6 md:py-8 cursor-pointer group"
                 onClick={() => onOpenReader(article)}
@@ -335,12 +333,12 @@ export function IntelligenceFeed({
                   {/* Line 1: dot + topic + timestamp */}
                   <div className="flex items-center gap-2 mb-2">
                     <span
-                      className="inline-block w-2 h-2 rounded-full flex-shrink-0"
+                      className="topic-dot"
                       style={{
                         backgroundColor: topicDotColors[article.topic],
                       }}
                     />
-                    <span className="text-xs tracking-widest font-semibold uppercase text-text-secondary">
+                    <span className="typo-section-label text-text-secondary">
                       {topicLabels[article.topic]}
                     </span>
                     <span className="text-xs text-text-tertiary">·</span>
@@ -350,7 +348,7 @@ export function IntelligenceFeed({
                   </div>
                   {/* Line 2: headline */}
                   <h3
-                    className={`font-serif font-bold text-xl md:text-2xl text-text-primary mb-1.5 group-hover:opacity-80 transition-opacity ${
+                    className={`typo-feed-headline text-xl md:text-2xl text-text-primary mb-1.5 group-hover:opacity-80 transition-opacity ${
                       article.isRead ? "opacity-60" : ""
                     }`}
                   >
@@ -358,13 +356,13 @@ export function IntelligenceFeed({
                   </h3>
                   {/* Line 3: summary */}
                   {(article.summary?.brief || article.content) && (
-                    <p className="font-sans text-base text-text-secondary line-clamp-2 mb-2">
+                    <p className="typo-body text-text-secondary line-clamp-2 mb-2">
                       {article.summary?.brief ||
                         article.content?.slice(0, 200)}
                     </p>
                   )}
                   {/* Line 4: source + curation reason */}
-                  <div className="flex items-center gap-1.5 text-sm text-text-secondary">
+                  <div className="flex items-center gap-1.5 typo-metadata">
                     <span>{article.source}</span>
                     {curation && (
                       <>
@@ -389,7 +387,6 @@ export function IntelligenceFeed({
                   />
                 </button>
               </div>
-              <hr className="border-border-primary" />
             </div>
           );
         })}
@@ -409,7 +406,7 @@ export function IntelligenceFeed({
 
       {/* Empty state */}
       {articles.length === 0 && (
-        <div className="rounded-2xl border border-border-secondary bg-bg-card p-16 text-center">
+        <div className="p-16 text-center">
           <h3 className="text-xl font-bold text-text-primary mb-2">
             Setting up your feed
           </h3>

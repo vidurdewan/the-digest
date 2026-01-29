@@ -211,7 +211,7 @@ export function EditorialHeader({
 
   return (
     <header className="editorial-header sticky top-0 z-50 w-full border-b border-border-primary bg-bg-primary transition-theme">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 md:px-6 lg:px-8">
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-8 py-4">
         {/* Left: App name */}
         <h1 className="font-serif text-xl font-bold text-text-primary underline underline-offset-4 decoration-1">
           The Digest
@@ -232,7 +232,7 @@ export function EditorialHeader({
                 <button
                   key={link.id}
                   onClick={() => handleNavClick(link.section)}
-                  className={`text-sm uppercase tracking-wide transition-colors ${
+                  className={`typo-nav transition-colors ${
                     isActive
                       ? "font-semibold text-text-primary underline underline-offset-4"
                       : "text-text-secondary hover:text-text-primary"

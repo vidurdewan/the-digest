@@ -62,7 +62,7 @@ export function SignalBadge({ signal, compact = false }: SignalBadgeProps) {
   return (
     <span className="group/tooltip relative inline-flex">
       <span
-        className={`inline-flex items-center gap-${compact ? "1" : "1.5"} rounded-full border ${compact ? "px-1.5 py-0.5 text-[9px]" : "px-2.5 py-0.5 text-[10px]"} font-semibold uppercase tracking-wider ${config.bg} ${config.text} ${config.border} cursor-help`}
+        className={`pill-outlined inline-flex items-center gap-${compact ? "1" : "1.5"} ${compact ? "px-1.5 py-0.5 text-[9px]" : ""} cursor-help`}
       >
         <Icon size={compact ? 9 : 11} />
         {signal.signalLabel}

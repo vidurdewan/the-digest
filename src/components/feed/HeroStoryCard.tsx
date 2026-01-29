@@ -93,7 +93,7 @@ export function HeroStoryCard({
 
   return (
     <div
-      className="group relative rounded-xl border border-border-primary bg-bg-card shadow-sm overflow-hidden cursor-pointer hover:shadow-md transition-all duration-200"
+      className="group relative overflow-hidden cursor-pointer transition-all duration-200"
       onClick={() => onOpenReader?.(article)}
       data-feed-index={0}
     >
@@ -142,9 +142,7 @@ export function HeroStoryCard({
             {topicLabels[article.topic]}
           </span>
           {storyType && (
-            <span
-              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${STORY_TYPE_STYLES[storyType].bg} ${STORY_TYPE_STYLES[storyType].text}`}
-            >
+            <span className="pill-outlined">
               {STORY_TYPE_STYLES[storyType].label}
             </span>
           )}
@@ -204,7 +202,7 @@ export function HeroStoryCard({
             </p>
 
             {article.summary.whyItMatters && (
-              <div className="rounded-lg bg-bg-secondary p-3">
+              <div className="border-l-2 border-border-primary pl-3">
                 <h4 className="mb-1 flex items-center gap-2 text-xs font-semibold text-text-primary">
                   <span className="inline-block h-1.5 w-1.5 rounded-full bg-accent-warning" />
                   Why It Matters

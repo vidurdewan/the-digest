@@ -45,8 +45,8 @@ export function NewsletterRail({
       className="sticky top-[calc(3.5rem+1.5rem)] max-h-[calc(100vh-3.5rem-3rem)] overflow-y-auto scrollbar-rail"
     >
       {/* Inbox Intelligence Header */}
-      <div className="mb-6">
-        <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-text-secondary">
+      <div className="mb-0 pb-6 border-b border-border-primary">
+        <p className="flex items-center gap-1.5 typo-section-label text-text-secondary">
           <span className="text-accent-primary">●</span>
           Inbox Intelligence
         </p>
@@ -60,18 +60,16 @@ export function NewsletterRail({
         </p>
       </div>
 
-      <hr className="border-border-primary" />
-
       {/* Newsletter Cards */}
       {recentNewsletters.map((nl, idx) => {
         const bullets = extractBulletPoints(nl);
         return (
-          <div key={nl.id}>
+          <div key={nl.id} className="border-b border-border-primary">
             <div className="py-6">
-              <p className="text-xs font-semibold uppercase tracking-widest text-text-secondary">
+              <p className="typo-section-label text-text-secondary">
                 {nl.publication}
               </p>
-              <h3 className="mt-2 font-heading text-lg font-bold text-text-primary leading-snug">
+              <h3 className="mt-2 typo-rail-headline text-text-primary">
                 {nl.subject}
               </h3>
               {bullets.length > 0 && (
@@ -79,7 +77,7 @@ export function NewsletterRail({
                   {bullets.map((point, i) => (
                     <p
                       key={i}
-                      className="text-sm text-text-secondary leading-relaxed"
+                      className="typo-rail-bullet"
                     >
                       — {point}
                     </p>
@@ -89,15 +87,12 @@ export function NewsletterRail({
               <div className="mt-4 flex justify-end">
                 <button
                   onClick={() => handleReadFull(nl.id)}
-                  className="border border-text-primary bg-transparent px-4 py-1.5 text-xs font-medium uppercase tracking-wider text-text-primary rounded-full hover:bg-bg-hover transition-colors"
+                  className="pill-outlined hover:bg-bg-hover transition-colors"
                 >
                   Read Full
                 </button>
               </div>
             </div>
-            {idx < recentNewsletters.length - 1 && (
-              <hr className="border-border-primary" />
-            )}
           </div>
         );
       })}
