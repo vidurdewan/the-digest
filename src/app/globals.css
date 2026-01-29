@@ -253,6 +253,25 @@ h1, h2, h3, h4, h5, h6 {
   scrollbar-width: none;
 }
 
+/* Thin auto-hiding scrollbar for newsletter rail */
+.scrollbar-rail {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.scrollbar-rail:hover {
+  scrollbar-color: var(--border-primary) transparent;
+}
+.scrollbar-rail::-webkit-scrollbar {
+  width: 4px;
+}
+.scrollbar-rail::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 2px;
+}
+.scrollbar-rail:hover::-webkit-scrollbar-thumb {
+  background: var(--border-primary);
+}
+
 /* ===== UTILITY CLASSES ===== */
 .transition-theme {
   transition: background-color 0.2s ease, color 0.2s ease,

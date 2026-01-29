@@ -3,8 +3,10 @@
 import { Sidebar } from "./Sidebar";
 import { EditorialHeader, type EditorialHeaderProps } from "./Header";
 import { ToastContainer } from "@/components/ui/Toast";
+import { NewsletterRail } from "./NewsletterRail";
 import { useSidebarStore } from "@/lib/store";
 import { useRef, useEffect, useState } from "react";
+import type { Newsletter } from "@/types";
 
 // Sections where the aside rail should be hidden (full-width main)
 const FULL_WIDTH_SECTIONS = new Set([
@@ -14,14 +16,19 @@ const FULL_WIDTH_SECTIONS = new Set([
   "intelligence",
   "brief",
   "weekly-synthesis",
+  "newsletters",
 ]);
 
 export function MainLayout({
   children,
   headerProps,
+  newsletters,
+  onNavigateToNewsletter,
 }: {
   children: React.ReactNode;
   headerProps?: EditorialHeaderProps;
+  newsletters?: Newsletter[];
+  onNavigateToNewsletter?: (id: string) => void;
 }) {
   const activeSection = useSidebarStore((s) => s.activeSection);
   const [animKey, setAnimKey] = useState(activeSection);
@@ -63,11 +70,10 @@ export function MainLayout({
         </main>
         {showAside && (
           <aside className="hidden lg:block">
-            <div className="sticky top-[calc(3.5rem+1.5rem)]">
-              <div className="rounded-xl border border-border-secondary bg-bg-card p-6 text-sm text-text-tertiary">
-                Newsletter rail — Phase 3
-              </div>
-            </div>
+            <NewsletterRail
+              newsletters={newsletters ?? []}
+              onNavigateToNewsletter={onNavigateToNewsletter}
+            />
           </aside>
         )}
       </div>
