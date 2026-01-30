@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import type { Newsletter } from "@/types";
+import { ScannableSection, CalloutBlock, SectionBody } from "@/components/ui/ScannableText";
 
 interface NewsletterRailProps {
   newsletters: Newsletter[];
@@ -76,7 +77,6 @@ function extractFullContent(newsletter: Newsletter): { sections: { label: string
 /** Truncate digest to ~80-100 words for the rail preview */
 function truncateDigest(digest: string, maxWords: number = 90): string {
   const cleaned = stripMarkdown(digest);
-  // Get first few sentences up to maxWords
   const sentences = cleaned.split(/(?<=[.!?])\s+/);
   let result = "";
   let wordCount = 0;
@@ -88,6 +88,42 @@ function truncateDigest(digest: string, maxWords: number = 90): string {
     if (wordCount >= maxWords) break;
   }
   return result || cleaned.split(/\s+/).slice(0, maxWords).join(" ") + "...";
+}
+
+/** Parse daily digest into structured preview for the sidebar card */
+function parseDigestPreview(digest: string): {
+  oneLiner: string | null;
+  topStoriesSnippet: string | null;
+} {
+  const lines = digest.split("\n");
+  let oneLiner: string | null = null;
+  let topStoriesSnippet: string | null = null;
+  let currentSection = "";
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (/^#{1,3}\s+Today'?s One[- ]Liner/i.test(line)) {
+      currentSection = "oneliner";
+      continue;
+    }
+    if (/^#{1,3}\s+Top Stories/i.test(line)) {
+      currentSection = "topstories";
+      continue;
+    }
+    if (/^#{1,3}\s+/.test(line) && currentSection) {
+      // Next section — stop collecting
+      break;
+    }
+    if (currentSection === "oneliner" && line && !oneLiner) {
+      oneLiner = stripMarkdown(line);
+    }
+    if (currentSection === "topstories" && line && !topStoriesSnippet) {
+      // Grab text up to ~150 chars
+      const cleaned = stripMarkdown(line);
+      topStoriesSnippet = cleaned.length > 150 ? cleaned.slice(0, 150) + "..." : cleaned;
+    }
+  }
+  return { oneLiner, topStoriesSnippet };
 }
 
 // ─── Modal Component ───────────────────────────────────────
@@ -140,16 +176,9 @@ function NewsletterModal({
         </h2>
 
         {/* Content sections */}
-        <div className="space-y-5">
+        <div>
           {sections.map((section, i) => (
-            <div key={i}>
-              <h3 className="font-serif text-sm font-bold text-text-primary uppercase tracking-wide mb-1.5">
-                {section.label}
-              </h3>
-              <p className="text-sm text-text-secondary leading-relaxed">
-                {section.text}
-              </p>
-            </div>
+            <ScannableSection key={i} label={section.label} text={section.text} />
           ))}
         </div>
 
@@ -176,19 +205,29 @@ function DigestModal({
     return () => document.removeEventListener("keydown", handler);
   }, [onClose]);
 
-  // Parse raw markdown lines, detect headings before stripping
-  const rawLines = digest.split("\n").filter((l) => l.trim());
-  const parsed = rawLines.map((line) => {
+  // Parse digest into sections: { label, body }
+  const sections: { label: string; body: string }[] = [];
+  const rawLines = digest.split("\n");
+  let currentLabel = "";
+  let currentBody: string[] = [];
+
+  for (const line of rawLines) {
     const headingMatch = line.match(/^#{1,6}\s+(.*)/);
-    if (headingMatch) {
-      return { type: "heading" as const, text: stripMarkdown(headingMatch[1]) };
+    const isAllCapsHeader = !headingMatch && /^[A-Z\s&']+:?$/.test(line.trim()) && line.trim().length > 3;
+    if (headingMatch || isAllCapsHeader) {
+      // Save previous section
+      if (currentLabel && currentBody.length > 0) {
+        sections.push({ label: currentLabel, body: currentBody.join("\n") });
+      }
+      currentLabel = stripMarkdown(headingMatch ? headingMatch[1] : line.trim().replace(/:$/, ""));
+      currentBody = [];
+    } else if (line.trim()) {
+      currentBody.push(stripMarkdown(line));
     }
-    const isAllCapsHeader = /^[A-Z\s&]+:?$/.test(line.trim());
-    if (isAllCapsHeader) {
-      return { type: "heading" as const, text: line.trim().replace(/:$/, "") };
-    }
-    return { type: "paragraph" as const, text: stripMarkdown(line) };
-  });
+  }
+  if (currentLabel && currentBody.length > 0) {
+    sections.push({ label: currentLabel, body: currentBody.join("\n") });
+  }
 
   return (
     <div
@@ -215,19 +254,28 @@ function DigestModal({
           Daily Digest
         </h2>
 
-        <div className="space-y-3">
-          {parsed.map((item, i) => {
-            if (item.type === "heading") {
+        <div>
+          {sections.map((section, i) => {
+            // Today's One-Liner — special callout style
+            if (/one[- ]liner/i.test(section.label)) {
               return (
-                <h3 key={i} className="font-serif text-sm font-bold text-text-primary uppercase tracking-wide mt-4 mb-1">
-                  {item.text}
-                </h3>
+                <div key={i} className="mb-6 border-l-4 border-accent-primary pl-4 py-2">
+                  <p className="text-[12px] uppercase tracking-[0.08em] font-semibold text-text-tertiary mb-2">
+                    {section.label}
+                  </p>
+                  <p className="font-serif text-[18px] italic leading-[1.5] text-text-primary">
+                    {section.body}
+                  </p>
+                </div>
               );
             }
+            // Contrarian Take — elevated callout
+            if (/contrarian/i.test(section.label)) {
+              return <CalloutBlock key={i} label={section.label} text={section.body} />;
+            }
+            // All other sections — scannable
             return (
-              <p key={i} className="text-sm text-text-secondary leading-relaxed">
-                {item.text}
-              </p>
+              <ScannableSection key={i} label={section.label} text={section.body} />
             );
           })}
         </div>
@@ -264,14 +312,15 @@ export function NewsletterRail({
     setShowDigestModal(false);
   }, []);
 
-  // Truncated digest preview for the rail
-  const digestPreview = dailyDigest ? truncateDigest(dailyDigest, 90) : null;
+  // Structured digest preview for the rail
+  const digestPreview = dailyDigest ? parseDigestPreview(dailyDigest) : null;
+  const digestFallback = dailyDigest ? truncateDigest(dailyDigest, 90) : null;
 
   return (
     <>
       <div className="sticky top-[calc(3.5rem+2rem)] max-h-[calc(100vh-3.5rem-3rem)] overflow-y-auto scrollbar-rail">
         {/* ── Daily Digest / Intelligence Briefing ── */}
-        <div className="mb-0 pb-6 border-b border-border-primary bg-bg-secondary p-5">
+        <div className="mb-4 pb-6 border-b border-border-primary bg-bg-secondary p-5">
           <p className="flex items-center gap-1.5 uppercase text-[11px] tracking-[0.15em] font-semibold text-text-secondary">
             <span className="text-accent-primary">●</span>
             Inbox Intelligence
@@ -280,17 +329,34 @@ export function NewsletterRail({
             Daily Digest
           </h2>
 
-          {digestPreview ? (
+          {dailyDigest ? (
             <>
-              <p className="mt-2 text-sm text-text-secondary leading-relaxed">
-                {digestPreview}
-              </p>
+              {digestPreview?.oneLiner && (
+                <p className="mt-3 text-[14px] font-semibold text-text-primary leading-snug">
+                  {digestPreview.oneLiner}
+                </p>
+              )}
+              {digestPreview?.topStoriesSnippet && (
+                <div className="mt-3">
+                  <p className="text-[12px] uppercase tracking-[0.08em] font-semibold text-text-secondary mb-1">
+                    Top Stories
+                  </p>
+                  <p className="text-[13px] text-text-secondary leading-relaxed">
+                    {digestPreview.topStoriesSnippet}
+                  </p>
+                </div>
+              )}
+              {!digestPreview?.oneLiner && !digestPreview?.topStoriesSnippet && (
+                <p className="mt-2 text-sm text-text-secondary leading-relaxed">
+                  {digestFallback}
+                </p>
+              )}
               <div className="mt-3 flex justify-end">
                 <button
                   onClick={handleOpenDigestModal}
                   className="text-[11px] uppercase tracking-[0.05em] font-medium text-text-secondary hover:text-text-primary transition-colors"
                 >
-                  Read full →
+                  View full digest →
                 </button>
               </div>
             </>

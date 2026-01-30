@@ -405,6 +405,7 @@
   font-weight: 900;
   line-height: 1.05;
   letter-spacing: -0.02em;
+  color: var(--text-primary);
 }
 .typo-feed-headline {
   font-family: var(--font-heading);

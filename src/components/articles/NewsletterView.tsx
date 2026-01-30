@@ -27,6 +27,7 @@ import {
 import type { Newsletter } from "@/types";
 import { getRelativeTime } from "@/lib/mock-data";
 import { NewsletterCardSkeleton } from "@/components/ui/LoadingSkeleton";
+import { SectionHeader, SectionBody, CalloutBlock, SubtleCallout } from "@/components/ui/ScannableText";
 
 interface StoredDigest {
   date: string;
@@ -668,93 +669,38 @@ function NewsletterItem({
       {isExpanded && (
         <div className="mt-4 pl-0">
           {summary && "theNews" in summary ? (
-            <div className="space-y-4">
+            <div className="space-y-0">
               {/* The News */}
               <div>
-                <div className="mb-2 flex items-center gap-1.5">
-                  <Newspaper size={14} className="text-accent-primary" />
-                  <span className="text-xs font-semibold uppercase tracking-wide text-accent-primary">
-                    The News
-                  </span>
-                </div>
-                <div className="text-sm leading-relaxed text-text-primary">
-                  <RichText
-                    text={(summary as { theNews: string }).theNews}
-                  />
-                </div>
+                <SectionHeader label="The News" tier="primary" />
+                <SectionBody text={stripMarkdown((summary as { theNews: string }).theNews)} />
               </div>
 
               {/* Why It Matters */}
               <div>
-                <div className="mb-2 flex items-center gap-1.5">
-                  <Lightbulb size={14} className="text-accent-warning" />
-                  <span className="text-xs font-semibold uppercase tracking-wide text-accent-warning">
-                    Why It Matters
-                  </span>
-                </div>
-                <div className="text-sm leading-relaxed text-text-primary">
-                  <RichText
-                    text={
-                      (summary as { whyItMatters: string }).whyItMatters
-                    }
-                  />
-                </div>
+                <SectionHeader label="Why It Matters" tier="secondary" />
+                <SectionBody text={stripMarkdown((summary as { whyItMatters: string }).whyItMatters)} />
               </div>
 
               {/* The Context */}
               <div>
-                <div className="mb-2 flex items-center gap-1.5">
-                  <Globe size={14} className="text-accent-success" />
-                  <span className="text-xs font-semibold uppercase tracking-wide text-accent-success">
-                    The Context
-                  </span>
-                </div>
-                <div className="text-sm leading-relaxed text-text-primary">
-                  <RichText
-                    text={(summary as { theContext: string }).theContext}
-                  />
-                </div>
+                <SectionHeader label="The Context" tier="secondary" />
+                <SectionBody text={stripMarkdown((summary as { theContext: string }).theContext)} />
               </div>
 
               {/* So What? */}
               {"soWhat" in summary &&
                 (summary as { soWhat?: string }).soWhat && (
-                  <div className="border-l-2 border-accent-primary/40 pl-4 py-2">
-                    <div className="mb-1 flex items-center gap-1.5">
-                      <Zap size={13} className="text-accent-primary" />
-                      <span className="text-xs font-semibold text-accent-primary">
-                        So What?
-                      </span>
-                    </div>
-                    <p className="text-sm font-medium italic leading-relaxed text-text-primary">
-                      <RichText
-                        text={(summary as { soWhat: string }).soWhat}
-                      />
-                    </p>
-                  </div>
+                  <CalloutBlock label="So What" text={stripMarkdown((summary as { soWhat: string }).soWhat)} />
                 )}
 
               {/* Watch Next */}
               {"watchNext" in summary &&
                 (summary as { watchNext?: string }).watchNext && (
-                  <div>
-                    <div className="mb-2 flex items-center gap-1.5">
-                      <Eye size={14} className="text-text-tertiary" />
-                      <span className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">
-                        Watch Next
-                      </span>
-                    </div>
-                    <div className="text-sm leading-relaxed text-text-secondary">
-                      <RichText
-                        text={
-                          (summary as { watchNext: string }).watchNext
-                        }
-                      />
-                    </div>
-                  </div>
+                  <SubtleCallout label="Watch Next" text={stripMarkdown((summary as { watchNext: string }).watchNext)} />
                 )}
 
-              {/* Recruiter Relevance */}
+              {/* Work Radar */}
               {"recruiterRelevance" in summary &&
                 (summary as { recruiterRelevance?: string })
                   .recruiterRelevance &&
@@ -762,22 +708,7 @@ function NewsletterItem({
                   summary as { recruiterRelevance: string }
                 ).recruiterRelevance.toLowerCase() !==
                   "no direct signals." && (
-                  <div className="border-l border-border-primary pl-4 py-2">
-                    <div className="mb-1 flex items-center gap-1.5">
-                      <Briefcase size={12} className="text-text-tertiary" />
-                      <span className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">
-                        Work Radar
-                      </span>
-                    </div>
-                    <p className="text-xs leading-relaxed text-text-tertiary">
-                      <RichText
-                        text={
-                          (summary as { recruiterRelevance: string })
-                            .recruiterRelevance
-                        }
-                      />
-                    </p>
-                  </div>
+                  <SubtleCallout label="Work Radar" text={stripMarkdown((summary as { recruiterRelevance: string }).recruiterRelevance)} />
                 )}
 
               {/* Toggle raw content */}

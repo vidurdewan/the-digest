@@ -6,6 +6,7 @@ import type { Summary, Entity, ArticleIntelligence, ArticleSignal } from "@/type
 import { SignalBadges } from "@/components/intelligence/SignalBadge";
 import { AnnotationsPanel } from "./AnnotationsPanel";
 import { GoDeeper } from "@/components/intelligence/GoDeeper";
+import { ScannableSection, CalloutBlock } from "@/components/ui/ScannableText";
 
 interface ExpandedArticleViewProps {
   summary: Summary;
@@ -59,38 +60,23 @@ export function ExpandedArticleView({
       )}
 
       {/* The News */}
-      <div>
-        <h4 className="mb-1.5 flex items-center gap-2 text-sm font-semibold text-text-primary">
-          <span className="inline-block h-1 w-1 rounded-full bg-accent-primary" />
-          The News
-        </h4>
-        <p className="text-sm leading-relaxed text-text-secondary">
-          {summary.theNews}
-        </p>
-      </div>
+      {summary.theNews && (
+        <ScannableSection label="The News" text={summary.theNews} tier="primary" />
+      )}
 
       {/* Why It Matters */}
-      <div className="rounded-xl bg-bg-secondary p-4">
-        <h4 className="mb-1.5 flex items-center gap-2 text-sm font-semibold text-text-primary">
-          <span className="inline-block h-1 w-1 rounded-full bg-accent-warning" />
-          Why It Matters
-        </h4>
-        <p className="text-sm leading-relaxed text-text-secondary">
-          {summary.whyItMatters}
-        </p>
-      </div>
+      {summary.whyItMatters && (
+        <ScannableSection label="Why It Matters" text={summary.whyItMatters} tier="secondary" />
+      )}
 
       {/* The Context */}
       {summary.theContext && (
-        <div>
-          <h4 className="mb-1.5 flex items-center gap-2 text-sm font-semibold text-text-primary">
-            <span className="inline-block h-1 w-1 rounded-full bg-accent-success" />
-            The Context
-          </h4>
-          <p className="text-sm leading-relaxed text-text-secondary">
-            {summary.theContext}
-          </p>
-        </div>
+        <ScannableSection label="The Context" text={summary.theContext} tier="secondary" />
+      )}
+
+      {/* So What (if present on newsletter summaries passed through) */}
+      {"soWhat" in summary && typeof (summary as { soWhat?: string }).soWhat === "string" && (
+        <CalloutBlock label="So What" text={(summary as { soWhat: string }).soWhat} />
       )}
 
       {/* Deciphering — Primary document analysis */}
