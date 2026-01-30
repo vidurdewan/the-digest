@@ -15,9 +15,11 @@ interface UseKeyboardShortcutsOptions {
   onNavigatePrev: () => void;
   onSave: () => void;
   onExpand: () => void;
-  onOpenReader: () => void;
+  onOpenSourceUrl: () => void;
   onCloseReader: () => void;
   onShowHelp: () => void;
+  onDismiss?: () => void;
+  onToggleBriefing?: () => void;
   onOpenSearch?: () => void;
   onOpenChat?: () => void;
   onMarkRead?: () => void;
@@ -30,9 +32,11 @@ export function useKeyboardShortcuts({
   onNavigatePrev,
   onSave,
   onExpand,
-  onOpenReader,
+  onOpenSourceUrl,
   onCloseReader,
   onShowHelp,
+  onDismiss,
+  onToggleBriefing,
   onOpenSearch,
   onOpenChat,
   onMarkRead,
@@ -66,11 +70,13 @@ export function useKeyboardShortcuts({
       switch (e.key) {
         case "j":
         case "J":
+        case "ArrowDown":
           e.preventDefault();
           onNavigateNext();
           break;
         case "k":
         case "K":
+        case "ArrowUp":
           e.preventDefault();
           onNavigatePrev();
           break;
@@ -80,17 +86,29 @@ export function useKeyboardShortcuts({
           onSave();
           break;
         case "Enter":
+        case "ArrowRight":
           e.preventDefault();
           onExpand();
+          break;
+        case "Escape":
+        case "ArrowLeft":
+          e.preventDefault();
+          onCloseReader();
           break;
         case "o":
         case "O":
           e.preventDefault();
-          onOpenReader();
+          onOpenSourceUrl();
           break;
-        case "Escape":
+        case "x":
+        case "X":
           e.preventDefault();
-          onCloseReader();
+          onDismiss?.();
+          break;
+        case "b":
+        case "B":
+          e.preventDefault();
+          onToggleBriefing?.();
           break;
         case "?":
           e.preventDefault();
@@ -120,7 +138,7 @@ export function useKeyboardShortcuts({
           break;
       }
     },
-    [onNavigateNext, onNavigatePrev, onSave, onExpand, onOpenReader, onCloseReader, onShowHelp, onOpenSearch, onOpenChat, onMarkRead, onJumpToSection]
+    [onNavigateNext, onNavigatePrev, onSave, onExpand, onOpenSourceUrl, onCloseReader, onShowHelp, onDismiss, onToggleBriefing, onOpenSearch, onOpenChat, onMarkRead, onJumpToSection]
   );
 
   handlerRef.current = handleKeyDown;
@@ -143,8 +161,10 @@ export const SHORTCUT_SECTIONS: ShortcutSection[] = [
   {
     title: "Navigation",
     shortcuts: [
-      { key: "J", description: "Next article" },
-      { key: "K", description: "Previous article" },
+      { key: "J / ↓", description: "Next article" },
+      { key: "K / ↑", description: "Previous article" },
+      { key: "→ / Enter", description: "Open article panel" },
+      { key: "← / Esc", description: "Close panel" },
       { key: "1–5", description: "Jump to sidebar section" },
       { key: "/", description: "Search" },
       { key: "⌘K", description: "Command palette" },
@@ -153,16 +173,16 @@ export const SHORTCUT_SECTIONS: ShortcutSection[] = [
   {
     title: "Reading",
     shortcuts: [
-      { key: "Enter", description: "Expand / collapse article" },
-      { key: "O", description: "Open in reader view" },
-      { key: "Esc", description: "Close reader view" },
       { key: "S", description: "Save / unsave article" },
+      { key: "X", description: "Dismiss article" },
+      { key: "O", description: "Open source in new tab" },
       { key: "M", description: "Mark article as read" },
     ],
   },
   {
     title: "Tools",
     shortcuts: [
+      { key: "B", description: "Briefing mode" },
       { key: "C", description: "AI Chat" },
       { key: "?", description: "Keyboard shortcuts" },
     ],

@@ -1278,3 +1278,54 @@ h1, h2, h3, h4, h5, h6 {
 .animate-fade-in {
   animation: fade-in 0.2s ease-out;
 }
+
+/* ═══ Keyboard Navigation: Feed Item Focus ═════════════════════ */
+.feed-item-focused {
+  border-left: 2px solid var(--accent-primary) !important;
+  background: var(--accent-primary-muted, rgba(99, 102, 241, 0.04)) !important;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+/* ═══ Briefing Mode Overlay ════════════════════════════════════ */
+.briefing-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-primary);
+}
+
+.briefing-progress-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 2px;
+  background: var(--accent-primary);
+  transition: width 0.3s ease;
+  z-index: 1;
+}
+
+/* ═══ Shortcut Hint Toast ══════════════════════════════════════ */
+.shortcut-hint-toast {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  padding: 0.625rem 1.25rem;
+  border-radius: 9999px;
+  border: 1px solid var(--border-primary);
+  background: var(--bg-primary);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  animation: toast-in 0.3s ease-out;
+  white-space: nowrap;
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}

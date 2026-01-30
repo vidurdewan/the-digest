@@ -68,6 +68,7 @@ interface IntelligenceFeedProps {
   onForceRefresh?: () => void;
   isRefreshing?: boolean;
   onMarkAllRead?: (articleIds: string[]) => void;
+  onPanelStateChange?: (isOpen: boolean) => void;
 }
 
 const ITEMS_PER_PAGE = 20;
@@ -84,6 +85,7 @@ export function IntelligenceFeed({
   onForceRefresh,
   isRefreshing,
   onMarkAllRead,
+  onPanelStateChange,
 }: IntelligenceFeedProps) {
   const [activeTab, setActiveTab] = useState<"all" | TopicCategory>("all");
   const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
@@ -97,6 +99,11 @@ export function IntelligenceFeed({
   const recordRead = useReadingPatternsStore((s) => s.recordRead);
   const sourceReadCounts = useReadingPatternsStore((s) => s.sourceReadCounts);
   const topicReadCounts = useReadingPatternsStore((s) => s.topicReadCounts);
+  // Notify parent of panel open/close state
+  useEffect(() => {
+    onPanelStateChange?.(expandedArticleId !== null);
+  }, [expandedArticleId, onPanelStateChange]);
+
   const [caughtUpDismissed, setCaughtUpDismissed] = useState(false);
   const [wydmCollapsed, setWydmCollapsed] = useState(() => {
     if (typeof window !== "undefined") {

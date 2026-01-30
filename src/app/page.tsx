@@ -40,6 +40,8 @@ import {
 } from "@/components/onboarding/OnboardingWizard";
 import { useServiceWorker } from "@/hooks/useServiceWorker";
 import { KeyboardShortcutHandler } from "@/components/ui/KeyboardShortcutHandler";
+import { ShortcutHintToast } from "@/components/ui/ShortcutHintToast";
+import { BriefingOverlay } from "@/components/intelligence/BriefingOverlay";
 import { useFeedNavigationStore } from "@/lib/store";
 
 import {
@@ -156,6 +158,7 @@ function NewsByTopicSection({
 // ─── Main Page ──────────────────────────────────────────────
 export default function Home() {
   const activeSection = useSidebarStore((state) => state.activeSection);
+  const setActiveSection = useSidebarStore((state) => state.setActiveSection);
   const { addToast } = useToastStore();
   const [readerArticle, setReaderArticle] = useState<
     (Article & { summary?: Summary }) | null
@@ -311,6 +314,36 @@ export default function Home() {
     }
   }, [rankedArticles, handleMarkAllRead]);
 
+  // Briefing mode state
+  const [briefingMode, setBriefingMode] = useState(false);
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+
+  const handleDismissFocused = useCallback(() => {
+    const idx = useFeedNavigationStore.getState().focusedIndex;
+    if (idx < 0 || idx >= rankedArticles.length) return;
+    const article = rankedArticles[idx];
+    if (!article.isRead) {
+      handleMarkAllRead([article.id]);
+    }
+  }, [rankedArticles, handleMarkAllRead]);
+
+  const handleOpenSourceUrlFocused = useCallback(() => {
+    const idx = useFeedNavigationStore.getState().focusedIndex;
+    if (idx < 0 || idx >= rankedArticles.length) return;
+    const article = rankedArticles[idx];
+    if (article.sourceUrl) {
+      window.open(article.sourceUrl, "_blank", "noopener,noreferrer");
+    }
+  }, [rankedArticles]);
+
+  const handleToggleBriefing = useCallback(() => {
+    setBriefingMode((prev) => !prev);
+  }, []);
+
+  const handlePanelStateChange = useCallback((isOpen: boolean) => {
+    setIsPanelOpen(isOpen);
+  }, []);
+
   const renderSection = () => {
     if (isLoading) return <PageSkeleton />;
 
@@ -330,6 +363,7 @@ export default function Home() {
             onForceRefresh={handleForceRefresh}
             isRefreshing={articleData.isIngesting}
             onMarkAllRead={handleMarkAllRead}
+            onPanelStateChange={handlePanelStateChange}
           />
         );
       case "newsletters":
@@ -423,6 +457,7 @@ export default function Home() {
             onForceRefresh={handleForceRefresh}
             isRefreshing={articleData.isIngesting}
             onMarkAllRead={handleMarkAllRead}
+            onPanelStateChange={handlePanelStateChange}
           />
         );
     }
@@ -481,10 +516,22 @@ export default function Home() {
       <KeyboardShortcutHandler
         onSaveFocused={handleSaveFocused}
         onExpandFocused={handleExpandFocused}
-        onOpenReaderFocused={handleOpenReaderFocused}
+        onOpenSourceUrlFocused={handleOpenSourceUrlFocused}
         onCloseReader={handleCloseReader}
         onMarkReadFocused={handleMarkReadFocused}
+        onDismissFocused={handleDismissFocused}
+        onToggleBriefing={handleToggleBriefing}
+        isPanelOpen={isPanelOpen}
       />
+      <ShortcutHintToast />
+      {briefingMode && (
+        <BriefingOverlay
+          articles={rankedArticles}
+          onExit={() => setBriefingMode(false)}
+          onOpenFeed={() => setActiveSection("priority-feed")}
+          onOpenNewsletters={() => setActiveSection("newsletters")}
+        />
+      )}
       {showOnboarding && (
         <OnboardingWizard
           onComplete={handleOnboardingComplete}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { X, Keyboard } from "lucide-react";
 import { useFeedNavigationStore, useOverlayStore, useSidebarStore } from "@/lib/store";
 import { useKeyboardShortcuts, SHORTCUT_SECTIONS } from "@/hooks/useKeyboardShortcuts";
@@ -17,32 +17,61 @@ const SECTION_JUMP_MAP: Record<number, string> = {
 interface KeyboardShortcutHandlerProps {
   onSaveFocused?: () => void;
   onExpandFocused?: () => void;
-  onOpenReaderFocused?: () => void;
+  onOpenSourceUrlFocused?: () => void;
   onCloseReader?: () => void;
   onMarkReadFocused?: () => void;
+  onDismissFocused?: () => void;
+  onToggleBriefing?: () => void;
+  isPanelOpen?: boolean;
 }
 
 export function KeyboardShortcutHandler({
   onSaveFocused,
   onExpandFocused,
-  onOpenReaderFocused,
+  onOpenSourceUrlFocused,
   onCloseReader,
   onMarkReadFocused,
+  onDismissFocused,
+  onToggleBriefing,
+  isPanelOpen,
 }: KeyboardShortcutHandlerProps) {
   const [showHelp, setShowHelp] = useState(false);
   const { focusedIndex, focusNext, focusPrev } = useFeedNavigationStore();
   const { openSearchOverlay, toggleChatPanel } = useOverlayStore();
   const setActiveSection = useSidebarStore((s) => s.setActiveSection);
 
+  // Apply focus styling via class instead of inline ring
+  useEffect(() => {
+    const elements = document.querySelectorAll("[data-feed-index]");
+    elements.forEach((el) => el.classList.remove("feed-item-focused"));
+    if (focusedIndex >= 0 && focusedIndex < elements.length) {
+      const el = elements[focusedIndex] as HTMLElement;
+      el.classList.add("feed-item-focused");
+      el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [focusedIndex]);
+
   const handleNavigateNext = useCallback(() => {
     const total = document.querySelectorAll("[data-feed-index]").length;
     useFeedNavigationStore.getState().setTotalItems(total);
     focusNext();
-  }, [focusNext]);
+    // If panel is open, also update panel to show newly focused article
+    if (isPanelOpen) {
+      // Small delay to let focusNext settle, then trigger expand
+      requestAnimationFrame(() => {
+        onExpandFocused?.();
+      });
+    }
+  }, [focusNext, isPanelOpen, onExpandFocused]);
 
   const handleNavigatePrev = useCallback(() => {
     focusPrev();
-  }, [focusPrev]);
+    if (isPanelOpen) {
+      requestAnimationFrame(() => {
+        onExpandFocused?.();
+      });
+    }
+  }, [focusPrev, isPanelOpen, onExpandFocused]);
 
   const handleSave = useCallback(() => {
     if (focusedIndex >= 0) {
@@ -56,11 +85,11 @@ export function KeyboardShortcutHandler({
     }
   }, [focusedIndex, onExpandFocused]);
 
-  const handleOpenReader = useCallback(() => {
+  const handleOpenSourceUrl = useCallback(() => {
     if (focusedIndex >= 0) {
-      onOpenReaderFocused?.();
+      onOpenSourceUrlFocused?.();
     }
-  }, [focusedIndex, onOpenReaderFocused]);
+  }, [focusedIndex, onOpenSourceUrlFocused]);
 
   const handleCloseReader = useCallback(() => {
     onCloseReader?.();
@@ -84,6 +113,16 @@ export function KeyboardShortcutHandler({
     }
   }, [focusedIndex, onMarkReadFocused]);
 
+  const handleDismiss = useCallback(() => {
+    if (focusedIndex >= 0) {
+      onDismissFocused?.();
+    }
+  }, [focusedIndex, onDismissFocused]);
+
+  const handleToggleBriefing = useCallback(() => {
+    onToggleBriefing?.();
+  }, [onToggleBriefing]);
+
   const handleJumpToSection = useCallback(
     (index: number) => {
       const sectionId = SECTION_JUMP_MAP[index];
@@ -99,25 +138,16 @@ export function KeyboardShortcutHandler({
     onNavigatePrev: handleNavigatePrev,
     onSave: handleSave,
     onExpand: handleExpand,
-    onOpenReader: handleOpenReader,
+    onOpenSourceUrl: handleOpenSourceUrl,
     onCloseReader: handleCloseReader,
     onShowHelp: handleShowHelp,
+    onDismiss: handleDismiss,
+    onToggleBriefing: handleToggleBriefing,
     onOpenSearch: handleOpenSearch,
     onOpenChat: handleOpenChat,
     onMarkRead: handleMarkRead,
     onJumpToSection: handleJumpToSection,
   });
-
-  // Scroll focused element into view
-  if (typeof window !== "undefined") {
-    const elements = document.querySelectorAll("[data-feed-index]");
-    if (focusedIndex >= 0 && focusedIndex < elements.length) {
-      const el = elements[focusedIndex] as HTMLElement;
-      el.scrollIntoView({ behavior: "smooth", block: "nearest" });
-      elements.forEach((e) => e.classList.remove("ring-2", "ring-accent-primary", "ring-offset-2"));
-      el.classList.add("ring-2", "ring-accent-primary", "ring-offset-2");
-    }
-  }
 
   return (
     <>
