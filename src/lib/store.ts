@@ -104,6 +104,44 @@ export const navigationSections: NavigationSection[] = [
   ...bottomNavSections,
 ];
 
+// ─── Read State (client-side, localStorage-persisted) ─────────
+interface ReadStateState {
+  readArticleIds: string[];
+  readNewsletterIds: string[];
+  digestReadToday: boolean; // true if daily digest was opened today
+  markArticleRead: (id: string) => void;
+  markNewsletterRead: (id: string) => void;
+  markDigestRead: () => void;
+  isArticleRead: (id: string) => boolean;
+  isNewsletterRead: (id: string) => boolean;
+  resetDaily: () => void;
+}
+
+export const useReadStateStore = create<ReadStateState>()(
+  persist(
+    (set, get) => ({
+      readArticleIds: [],
+      readNewsletterIds: [],
+      digestReadToday: false,
+      markArticleRead: (id) =>
+        set((state) => {
+          if (state.readArticleIds.includes(id)) return state;
+          return { readArticleIds: [...state.readArticleIds, id] };
+        }),
+      markNewsletterRead: (id) =>
+        set((state) => {
+          if (state.readNewsletterIds.includes(id)) return state;
+          return { readNewsletterIds: [...state.readNewsletterIds, id] };
+        }),
+      markDigestRead: () => set({ digestReadToday: true }),
+      isArticleRead: (id) => get().readArticleIds.includes(id),
+      isNewsletterRead: (id) => get().readNewsletterIds.includes(id),
+      resetDaily: () => set({ digestReadToday: false }),
+    }),
+    { name: "the-digest-read-state" }
+  )
+);
+
 // ─── Overlay / Panel state ────────────────────────────────────
 interface OverlayState {
   commandPaletteOpen: boolean;

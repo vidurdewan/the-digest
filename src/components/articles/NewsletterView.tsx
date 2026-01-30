@@ -28,6 +28,7 @@ import type { Newsletter } from "@/types";
 import { getRelativeTime } from "@/lib/mock-data";
 import { NewsletterCardSkeleton } from "@/components/ui/LoadingSkeleton";
 import { SectionHeader, SectionBody, CalloutBlock, SubtleCallout } from "@/components/ui/ScannableText";
+import { useReadStateStore } from "@/lib/store";
 
 interface StoredDigest {
   date: string;
@@ -559,19 +560,25 @@ function NewsletterItem({
   const [isExpanded, setIsExpanded] = useState(false);
   const [showRawContent, setShowRawContent] = useState(false);
   const summary = newsletter.newsletterSummary || newsletter.summary;
+  const markNewsletterRead = useReadStateStore((s) => s.markNewsletterRead);
+  const readNewsletterIds = useReadStateStore((s) => s.readNewsletterIds);
+  const isNlRead = newsletter.isRead || readNewsletterIds.includes(newsletter.id);
 
   return (
     <div
-      className={`border-b border-border-primary py-5 transition-opacity ${
-        newsletter.isRead && !isExpanded ? "opacity-60" : ""
+      className={`border-b border-border-primary py-5 transition-opacity duration-300 ${
+        isNlRead && !isExpanded ? "opacity-55" : ""
       }`}
     >
       <div
         className="cursor-pointer"
         onClick={() => {
           setIsExpanded(!isExpanded);
-          if (!isExpanded && !newsletter.isRead) {
-            onToggleRead(newsletter.id);
+          if (!isExpanded) {
+            markNewsletterRead(newsletter.id);
+            if (!newsletter.isRead) {
+              onToggleRead(newsletter.id);
+            }
           }
         }}
       >
@@ -583,7 +590,7 @@ function NewsletterItem({
           {isVip && (
             <Star size={12} className="fill-accent-warning text-accent-warning" />
           )}
-          {!newsletter.isRead && (
+          {!isNlRead && (
             <span className="h-1.5 w-1.5 rounded-full bg-accent-primary" />
           )}
         </div>
@@ -616,15 +623,16 @@ function NewsletterItem({
           <button
             onClick={(e) => {
               e.stopPropagation();
+              markNewsletterRead(newsletter.id);
               onToggleRead(newsletter.id);
             }}
             className={`text-xs transition-colors ${
-              newsletter.isRead
+              isNlRead
                 ? "text-accent-success"
                 : "text-text-tertiary hover:text-text-secondary"
             }`}
           >
-            {newsletter.isRead ? (
+            {isNlRead ? (
               <span className="flex items-center gap-1"><CheckCheck size={12} /> Read</span>
             ) : (
               <span className="flex items-center gap-1"><Check size={12} /> Mark read</span>

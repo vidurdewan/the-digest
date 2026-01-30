@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import type { Newsletter } from "@/types";
 import { ScannableSection, CalloutBlock, SectionBody } from "@/components/ui/ScannableText";
+import { useReadStateStore } from "@/lib/store";
 
 interface NewsletterRailProps {
   newsletters: Newsletter[];
@@ -135,6 +136,8 @@ function NewsletterModal({
   newsletter: Newsletter | null;
   onClose: () => void;
 }) {
+  const markNewsletterRead = useReadStateStore((s) => s.markNewsletterRead);
+
   // Close on Escape key
   useEffect(() => {
     if (!newsletter) return;
@@ -144,6 +147,15 @@ function NewsletterModal({
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
   }, [newsletter, onClose]);
+
+  // Auto-mark newsletter as read after 3s in modal
+  useEffect(() => {
+    if (!newsletter) return;
+    const timer = setTimeout(() => {
+      markNewsletterRead(newsletter.id);
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [newsletter, markNewsletterRead]);
 
   if (!newsletter) return null;
 
@@ -197,6 +209,8 @@ function DigestModal({
   digest: string;
   onClose: () => void;
 }) {
+  const markDigestRead = useReadStateStore((s) => s.markDigestRead);
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -204,6 +218,12 @@ function DigestModal({
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
   }, [onClose]);
+
+  // Auto-mark digest as read after 3s
+  useEffect(() => {
+    const timer = setTimeout(() => markDigestRead(), 3000);
+    return () => clearTimeout(timer);
+  }, [markDigestRead]);
 
   // Parse digest into sections: { label, body }
   const sections: { label: string; body: string }[] = [];
@@ -295,6 +315,7 @@ export function NewsletterRail({
   const recentNewsletters = newsletters.slice(0, 4);
   const [modalNewsletter, setModalNewsletter] = useState<Newsletter | null>(null);
   const [showDigestModal, setShowDigestModal] = useState(false);
+  const readNewsletterIds = useReadStateStore((s) => s.readNewsletterIds);
 
   const handleOpenModal = useCallback((nl: Newsletter) => {
     setModalNewsletter(nl);
@@ -386,11 +407,13 @@ export function NewsletterRail({
         {/* ── Newsletter Cards ── */}
         {recentNewsletters.map((nl) => {
           const bullets = extractBulletPoints(nl);
+          const isNlRead = nl.isRead || readNewsletterIds.includes(nl.id);
           return (
-            <div key={nl.id} className="my-6 pb-6 border-b border-border-primary/50 newsletter-card-hover">
+            <div key={nl.id} className={`my-6 pb-6 border-b border-border-primary/50 newsletter-card-hover transition-opacity duration-300 ${isNlRead ? "opacity-55" : ""}`}>
               <div className="px-5">
-                <p className="uppercase text-[11px] tracking-[0.1em] font-semibold text-text-secondary mb-2">
+                <p className="uppercase text-[11px] tracking-[0.1em] font-semibold text-text-secondary mb-2 flex items-center gap-2">
                   {nl.publication}
+                  {!isNlRead && <span className="inline-block h-1.5 w-1.5 rounded-full bg-accent-primary" />}
                 </p>
                 <h3 className="font-serif font-bold text-base leading-snug text-text-primary mb-3">
                   {stripMarkdown(nl.subject)}

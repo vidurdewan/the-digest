@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useSidebarStore, useThemeStore } from "@/lib/store";
+import { useSidebarStore, useThemeStore, useReadStateStore } from "@/lib/store";
 import {
   Bell,
   Sun,
@@ -153,6 +153,8 @@ export function EditorialHeader({
 }: EditorialHeaderProps) {
   const { activeSection, setActiveSection } = useSidebarStore();
   const { theme, setTheme } = useThemeStore();
+  const readArticleIds = useReadStateStore((s) => s.readArticleIds);
+  const readNewsletterIds = useReadStateStore((s) => s.readNewsletterIds);
   const [themeOpen, setThemeOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [readNotifIds, setReadNotifIds] = useState<Set<string>>(new Set());
@@ -245,9 +247,13 @@ export function EditorialHeader({
           <nav className="hidden items-center gap-5 lg:flex">
             {NAV_LINKS.map((link) => {
               const isActive = activeSection === link.section;
+              // Compute unread newsletter count including Zustand state
+              const nlUnread = link.id === "newsletters" && newsletters
+                ? newsletters.filter((n) => !n.isRead && !readNewsletterIds.includes(n.id)).length
+                : 0;
               const label =
-                link.id === "newsletters" && unreadNewsletterCount > 0
-                  ? `Newsletters (${unreadNewsletterCount})`
+                link.id === "newsletters" && nlUnread > 0
+                  ? `Newsletters (${nlUnread} new)`
                   : link.label;
 
               return (
@@ -265,6 +271,29 @@ export function EditorialHeader({
               );
             })}
           </nav>
+
+          {/* Progress indicator */}
+          {activeSection === "priority-feed" && articles && articles.length > 0 && (() => {
+            const totalArticles = articles.length;
+            const readCount = articles.filter(
+              (a) => a.isRead || readArticleIds.includes(a.id)
+            ).length;
+            const allRead = readCount >= totalArticles;
+            return (
+              <div className="hidden lg:flex items-center gap-2 text-xs">
+                {allRead ? (
+                  <span className="flex items-center gap-1 text-accent-success font-medium">
+                    <Check size={13} />
+                    Caught up
+                  </span>
+                ) : (
+                  <span className="text-text-tertiary">
+                    {readCount} of {totalArticles} stories
+                  </span>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Feed actions — only show on priority-feed */}
           {activeSection === "priority-feed" && (

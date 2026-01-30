@@ -481,6 +481,13 @@
   height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
+  border: 1.5px solid transparent;
+  transition: background-color 300ms ease, border-color 300ms ease;
+}
+.topic-dot-read {
+  background-color: transparent !important;
+  border-color: currentColor;
+  opacity: 0.5;
 }
 
 /* ===== BASE STYLES ===== */

@@ -11,6 +11,7 @@ import { ScannableSection, CalloutBlock } from "@/components/ui/ScannableText";
 interface ExpandedArticleViewProps {
   summary: Summary;
   onOpenFull?: (e: React.MouseEvent) => void;
+  onOpenSource?: () => void;
   sourceUrl: string;
   articleId?: string;
   intelligence?: ArticleIntelligence;
@@ -25,6 +26,7 @@ interface ExpandedArticleViewProps {
 export function ExpandedArticleView({
   summary,
   onOpenFull,
+  onOpenSource,
   sourceUrl,
   articleId,
   intelligence,
@@ -259,6 +261,7 @@ export function ExpandedArticleView({
           href={sourceUrl}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={() => onOpenSource?.()}
           className="flex items-center gap-1.5 rounded-xl border border-border-secondary px-4 py-2 text-xs font-medium text-text-secondary hover:bg-bg-hover transition-colors"
         >
           <ExternalLink size={14} />

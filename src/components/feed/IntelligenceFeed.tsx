@@ -18,6 +18,8 @@ import type {
 } from "@/types";
 import { topicLabels, topicDotColors } from "@/lib/mock-data";
 import { ExpandedArticleView } from "@/components/articles/ExpandedArticleView";
+import { useReadStateStore } from "@/lib/store";
+import { CheckCircle } from "lucide-react";
 
 function formatArticleTime(dateString: string): string {
   const date = new Date(dateString);
@@ -88,6 +90,10 @@ export function IntelligenceFeed({
   const [expandedArticleId, setExpandedArticleId] = useState<string | null>(null);
   const [isLoadingExpanded, setIsLoadingExpanded] = useState(false);
   const expandedRef = useRef<HTMLDivElement>(null);
+  const markArticleRead = useReadStateStore((s) => s.markArticleRead);
+  const readArticleIds = useReadStateStore((s) => s.readArticleIds);
+  const digestReadToday = useReadStateStore((s) => s.digestReadToday);
+  const [caughtUpDismissed, setCaughtUpDismissed] = useState(false);
 
   const handleArticleClick = useCallback(async (article: Article & { summary?: Summary; intelligence?: ArticleIntelligence }) => {
     if (expandedArticleId === article.id) {
@@ -136,6 +142,15 @@ export function IntelligenceFeed({
     }
   }, [expandedArticleId]);
 
+  // Auto-mark article as read after 2s in slide-over panel
+  useEffect(() => {
+    if (!expandedArticleId) return;
+    const timer = setTimeout(() => {
+      markArticleRead(expandedArticleId);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [expandedArticleId, markArticleRead]);
+
   // Sort all articles by publishedAt descending
   const sortedArticles = useMemo(
     () =>
@@ -175,6 +190,13 @@ export function IntelligenceFeed({
   const visibleFeedArticles = feedArticles.slice(0, visibleCount);
   const hasMore = visibleCount < feedArticles.length;
 
+  // "Caught up" — all top 10 stories (hero + first 9 feed) + digest are read
+  const top10 = sortedArticles.slice(0, 10);
+  const allTopRead = top10.length > 0 && top10.every(
+    (a) => a.isRead || readArticleIds.includes(a.id)
+  );
+  const isCaughtUp = allTopRead && digestReadToday && !caughtUpDismissed;
+
   // Get unique topics for tab bar
   const availableTopics = useMemo(() => {
     const topics = new Set<TopicCategory>();
@@ -210,8 +232,29 @@ export function IntelligenceFeed({
 
       {/* Feed action buttons are now in the header nav bar */}
 
+      {/* ═══ CAUGHT UP BANNER ═══ */}
+      {isCaughtUp && (
+        <section className="pb-8 border-b border-border-primary">
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <CheckCircle size={40} className="text-accent-success mb-4" />
+            <h2 className="font-serif text-2xl font-bold text-text-primary mb-2">
+              You&apos;re Caught Up
+            </h2>
+            <p className="text-sm text-text-secondary max-w-md">
+              You&apos;ve read today&apos;s top stories and daily digest. New stories will appear as they arrive.
+            </p>
+            <button
+              onClick={() => setCaughtUpDismissed(true)}
+              className="mt-4 text-xs text-text-tertiary hover:text-text-primary transition-colors"
+            >
+              Dismiss
+            </button>
+          </div>
+        </section>
+      )}
+
       {/* ═══ HERO STORY ═══ */}
-      {heroArticle && (
+      {heroArticle && !isCaughtUp && (
         <section className="pb-8 border-b border-border-primary">
           <div
             className="flex flex-col md:flex-row gap-6 md:gap-8 cursor-pointer group"
@@ -319,10 +362,11 @@ export function IntelligenceFeed({
         {visibleFeedArticles.map((article) => {
           const curation = getCurationReason(article);
           const isExpanded = expandedArticleId === article.id;
+          const isRead = article.isRead || readArticleIds.includes(article.id);
           return (
             <div
               key={article.id}
-              className="border-b border-border-primary feed-item-row rounded-sm feed-item-enter"
+              className={`border-b border-border-primary feed-item-row rounded-sm feed-item-enter transition-opacity duration-300 ${isRead ? "opacity-55" : ""}`}
               style={{ animationDelay: `${feedArticles.indexOf(article) * 50}ms` }}
             >
               <div
@@ -335,9 +379,10 @@ export function IntelligenceFeed({
                   {/* Line 1: dot + topic + timestamp */}
                   <div className="flex items-center gap-2 mb-2">
                     <span
-                      className="topic-dot"
+                      className={`topic-dot ${isRead ? "topic-dot-read" : ""}`}
                       style={{
-                        backgroundColor: topicDotColors[article.topic],
+                        backgroundColor: isRead ? "transparent" : topicDotColors[article.topic],
+                        borderColor: topicDotColors[article.topic],
                       }}
                     />
                     <span className="text-xs uppercase tracking-[0.08em] text-text-secondary">
@@ -350,9 +395,7 @@ export function IntelligenceFeed({
                   </div>
                   {/* Line 2: headline */}
                   <h3
-                    className={`typo-feed-headline feed-headline text-[22px] md:text-[24px] text-text-primary mb-1.5 transition-colors ${
-                      article.isRead ? "opacity-60" : ""
-                    }`}
+                    className="typo-feed-headline feed-headline text-[22px] md:text-[24px] text-text-primary mb-1.5 transition-colors"
                   >
                     {article.title}
                   </h3>
@@ -500,8 +543,10 @@ export function IntelligenceFeed({
                   summary={expandedArticle.summary}
                   onOpenFull={(e) => {
                     e?.stopPropagation();
+                    markArticleRead(expandedArticle.id);
                     onOpenReader(expandedArticle);
                   }}
+                  onOpenSource={() => markArticleRead(expandedArticle.id)}
                   sourceUrl={expandedArticle.sourceUrl}
                   articleId={expandedArticle.id}
                   intelligence={(expandedArticle as ArticleWithIntelligence).intelligence}
