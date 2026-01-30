@@ -144,6 +144,11 @@ const TIER_3_NAMES: string[] = [
   "Morning Brew",
   "The Hustle",
   "Finimize",
+  "Car and Driver",
+  "Jalopnik",
+  "Road & Track",
+  "The Drive",
+  "NBC News",
 ];
 
 const TIER_3_DOMAINS: string[] = [
@@ -162,6 +167,11 @@ const TIER_3_DOMAINS: string[] = [
   "morningbrew.com",
   "thehustle.co",
   "finimize.com",
+  "caranddriver.com",
+  "jalopnik.com",
+  "roadandtrack.com",
+  "thedrive.com",
+  "nbcnews.com",
 ];
 
 // ─── Lookup Maps (built once at module load) ───────────────────

@@ -46,6 +46,14 @@ export const defaultSources: NewsSource[] = [
     topic: "vc-startups",
     isActive: true,
   },
+  {
+    id: "puck-news",
+    name: "Puck News",
+    url: "https://puck.news/feed/",
+    type: "rss",
+    topic: "vc-startups",
+    isActive: true,
+  },
 
   // ─── Fundraising & Acquisitions ────────────────────────
   {
@@ -96,6 +104,14 @@ export const defaultSources: NewsSource[] = [
     id: "marketwatch",
     name: "MarketWatch",
     url: "https://feeds.marketwatch.com/marketwatch/topstories/",
+    type: "rss",
+    topic: "financial-markets",
+    isActive: true,
+  },
+  {
+    id: "bloomberg-markets",
+    name: "Bloomberg Markets",
+    url: "https://feeds.bloomberg.com/markets/news.rss",
     type: "rss",
     topic: "financial-markets",
     isActive: true,
@@ -162,6 +178,14 @@ export const defaultSources: NewsSource[] = [
     topic: "geopolitics",
     isActive: true,
   },
+  {
+    id: "nbc-news",
+    name: "NBC News",
+    url: "https://feeds.nbcnews.com/nbcnews/public/news",
+    type: "rss",
+    topic: "geopolitics",
+    isActive: true,
+  },
 
   // ─── Science & Tech ────────────────────────────────────
   {
@@ -210,6 +234,38 @@ export const defaultSources: NewsSource[] = [
     id: "electrek",
     name: "Electrek",
     url: "https://electrek.co/feed/",
+    type: "rss",
+    topic: "automotive",
+    isActive: true,
+  },
+  {
+    id: "caranddriver",
+    name: "Car and Driver",
+    url: "https://www.caranddriver.com/rss/all.xml/",
+    type: "rss",
+    topic: "automotive",
+    isActive: true,
+  },
+  {
+    id: "jalopnik",
+    name: "Jalopnik",
+    url: "https://jalopnik.com/rss",
+    type: "rss",
+    topic: "automotive",
+    isActive: true,
+  },
+  {
+    id: "roadandtrack",
+    name: "Road & Track",
+    url: "https://www.roadandtrack.com/rss/all.xml/",
+    type: "rss",
+    topic: "automotive",
+    isActive: true,
+  },
+  {
+    id: "thedrive",
+    name: "The Drive",
+    url: "https://www.thedrive.com/feed",
     type: "rss",
     topic: "automotive",
     isActive: true,
