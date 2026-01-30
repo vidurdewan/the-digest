@@ -484,6 +484,11 @@
   border: 1.5px solid transparent;
   transition: background-color 300ms ease, border-color 300ms ease;
 }
+.feed-item-primary {
+  border-left: 3px solid var(--accent-primary);
+  padding-left: 1rem;
+}
+
 .topic-dot-read {
   background-color: transparent !important;
   border-color: currentColor;

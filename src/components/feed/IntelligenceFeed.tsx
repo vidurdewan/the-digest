@@ -20,6 +20,7 @@ import { topicLabels, topicDotColors } from "@/lib/mock-data";
 import { ExpandedArticleView } from "@/components/articles/ExpandedArticleView";
 import { useReadStateStore } from "@/lib/store";
 import { CheckCircle } from "lucide-react";
+import { getSourceType, getSourceTypeConfig, findCoverageDensity } from "@/lib/source-provenance";
 
 function formatArticleTime(dateString: string): string {
   const date = new Date(dateString);
@@ -197,6 +198,15 @@ export function IntelligenceFeed({
   );
   const isCaughtUp = allTopRead && digestReadToday && !caughtUpDismissed;
 
+  // Pre-compute coverage density for all articles
+  const coverageMap = useMemo(() => {
+    const map = new Map<string, { count: number; sources: string[] }>();
+    for (const a of articles) {
+      map.set(a.id, findCoverageDensity(a, articles));
+    }
+    return map;
+  }, [articles]);
+
   // Get unique topics for tab bar
   const availableTopics = useMemo(() => {
     const topics = new Set<TopicCategory>();
@@ -363,10 +373,14 @@ export function IntelligenceFeed({
           const curation = getCurationReason(article);
           const isExpanded = expandedArticleId === article.id;
           const isRead = article.isRead || readArticleIds.includes(article.id);
+          const sourceType = getSourceType(article.source, article.documentType);
+          const sourceConfig = getSourceTypeConfig(sourceType);
+          const coverage = coverageMap.get(article.id);
+          const isPrimary = sourceType === "primary";
           return (
             <div
               key={article.id}
-              className={`border-b border-border-primary feed-item-row rounded-sm feed-item-enter transition-opacity duration-300 ${isRead ? "opacity-55" : ""}`}
+              className={`border-b border-border-primary feed-item-row rounded-sm feed-item-enter transition-opacity duration-300 ${isRead ? "opacity-55" : ""} ${isPrimary ? "feed-item-primary" : ""}`}
               style={{ animationDelay: `${feedArticles.indexOf(article) * 50}ms` }}
             >
               <div
@@ -406,9 +420,46 @@ export function IntelligenceFeed({
                         article.content?.slice(0, 200)}
                     </p>
                   )}
-                  {/* Line 4: source + curation reason */}
-                  <div className="flex items-center gap-1.5 typo-metadata">
-                    <span>{article.source}</span>
+                  {/* Line 4: source + source type + coverage density */}
+                  <div className="flex items-center gap-1.5 typo-metadata flex-wrap">
+                    <span>
+                      {isPrimary && article.documentType
+                        ? `${article.source} · ${article.documentType}`
+                        : article.source}
+                    </span>
+                    {/* Source type badge */}
+                    {sourceConfig.icon && (
+                      <span
+                        className="inline-flex items-center gap-0.5"
+                        style={{ color: sourceConfig.color }}
+                      >
+                        <span>{sourceConfig.icon}</span>
+                        {sourceConfig.label && (
+                          <span className="text-[10px] uppercase tracking-[0.05em] font-semibold">
+                            {sourceConfig.label}
+                          </span>
+                        )}
+                      </span>
+                    )}
+                    {/* Coverage density */}
+                    {coverage && coverage.count >= 3 && (
+                      <>
+                        <span className="text-text-tertiary">·</span>
+                        <span className="text-text-tertiary normal-case">
+                          Widely covered · {coverage.count} sources
+                        </span>
+                      </>
+                    )}
+                    {coverage && coverage.count === 1 && (
+                      <>
+                        <span className="text-text-tertiary">·</span>
+                        <span className="normal-case">
+                          <span className="font-medium">Only in:</span>{" "}
+                          <span className="text-text-tertiary">{article.source}</span>
+                        </span>
+                      </>
+                    )}
+                    {/* Curation reason */}
                     {curation && (
                       <>
                         <span className="text-accent-primary">•</span>
@@ -521,14 +572,66 @@ export function IntelligenceFeed({
               </button>
             </div>
 
-            {/* Panel title */}
+            {/* Panel title + source context bar */}
             <div className="px-6 pt-5 pb-2">
               <h2 className="font-serif text-xl font-bold text-text-primary leading-snug">
                 {expandedArticle.title}
               </h2>
-              <p className="mt-1 text-xs text-text-secondary uppercase tracking-wider">
-                {expandedArticle.source}
-              </p>
+              {/* Source context bar */}
+              {(() => {
+                const st = getSourceType(expandedArticle.source, expandedArticle.documentType);
+                const sc = getSourceTypeConfig(st);
+                const cov = coverageMap.get(expandedArticle.id);
+                return (
+                  <div className="mt-3 flex items-center gap-3">
+                    {/* First-letter avatar */}
+                    <span
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+                      style={{ backgroundColor: "var(--accent-primary)" }}
+                    >
+                      {expandedArticle.source.charAt(0).toUpperCase()}
+                    </span>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-xs font-semibold text-text-primary">
+                          {expandedArticle.source}
+                        </span>
+                        {sc.icon && (
+                          <span
+                            className="inline-flex items-center gap-0.5 text-[10px] font-semibold uppercase tracking-[0.05em]"
+                            style={{ color: sc.color }}
+                          >
+                            {sc.icon} {sc.label}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[11px] text-text-tertiary">
+                        <span>Published {formatArticleTime(expandedArticle.publishedAt)}</span>
+                        <span>·</span>
+                        <span>{expandedArticle.readingTimeMinutes} min read</span>
+                        {cov && cov.sources.length > 0 && (
+                          <>
+                            <span>·</span>
+                            <span>Also covered by: {cov.sources.slice(0, 3).join(", ")}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+              {/* Primary source: View Original Filing button */}
+              {expandedArticle.documentType && (
+                <a
+                  href={expandedArticle.sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-accent-primary px-3 py-1.5 text-xs font-medium text-accent-primary hover:bg-accent-primary hover:text-text-inverse transition-colors"
+                >
+                  <ExternalLink size={13} />
+                  View Original Filing →
+                </a>
+              )}
             </div>
 
             {/* Panel scrollable content */}
