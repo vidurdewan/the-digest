@@ -25,11 +25,17 @@ export function MainLayout({
   headerProps,
   newsletters,
   onNavigateToNewsletter,
+  dailyDigest,
+  isGeneratingDigest,
+  onGenerateDigest,
 }: {
   children: React.ReactNode;
   headerProps?: EditorialHeaderProps;
   newsletters?: Newsletter[];
   onNavigateToNewsletter?: (id: string) => void;
+  dailyDigest?: string | null;
+  isGeneratingDigest?: boolean;
+  onGenerateDigest?: () => Promise<void>;
 }) {
   const activeSection = useSidebarStore((s) => s.activeSection);
   const [animKey, setAnimKey] = useState(activeSection);
@@ -70,10 +76,13 @@ export function MainLayout({
           </div>
         </main>
         {showAside && (
-          <aside className="hidden lg:block">
+          <aside className="hidden lg:block border-l border-border-primary pl-8">
             <NewsletterRail
               newsletters={newsletters ?? []}
               onNavigateToNewsletter={onNavigateToNewsletter}
+              dailyDigest={dailyDigest ?? null}
+              isGeneratingDigest={isGeneratingDigest ?? false}
+              onGenerateDigest={onGenerateDigest}
             />
           </aside>
         )}

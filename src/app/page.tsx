@@ -444,6 +444,9 @@ export default function Home() {
         isRefreshing: articleData.isIngesting,
       }}
       newsletters={newsletterData.newsletters}
+      dailyDigest={newsletterData.dailyDigest}
+      isGeneratingDigest={newsletterData.isGeneratingDigest}
+      onGenerateDigest={newsletterData.generateDigest}
     >
       <div key={activeSection} className="section-enter mx-auto max-w-5xl pb-8">
         {renderSection()}
