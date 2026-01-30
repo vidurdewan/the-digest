@@ -868,6 +868,7 @@ export function IntelligenceFeed({
                   relatedContent={relatedContent}
                   onNavigateToArticle={handleNavigateToArticle}
                   onOpenNewsletter={handleOpenNewsletter}
+                  sourceName={expandedArticle.source}
                 />
               ) : (
                 <div className="py-4">
@@ -885,6 +886,22 @@ export function IntelligenceFeed({
                 </div>
               )}
             </div>
+
+            {/* Sticky footer: Open Source */}
+            {expandedArticle.sourceUrl && (
+              <div className="sticky-source-footer">
+                <a
+                  href={expandedArticle.sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => markArticleRead(expandedArticle.id)}
+                  className="sticky-source-footer-link"
+                >
+                  <ExternalLink size={14} />
+                  Read full article on {expandedArticle.source} →
+                </a>
+              </div>
+            )}
           </div>
         )}
       </div>

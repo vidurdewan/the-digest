@@ -7,7 +7,7 @@ import type { RelatedItem } from "@/lib/cross-references";
 import { SignalBadges } from "@/components/intelligence/SignalBadge";
 import { AnnotationsPanel } from "./AnnotationsPanel";
 import { GoDeeper } from "@/components/intelligence/GoDeeper";
-import { ScannableSection, CalloutBlock } from "@/components/ui/ScannableText";
+import { ScannableSection, CalloutBlock, KeyQuotePullquote, SourceExcerptBlock } from "@/components/ui/ScannableText";
 
 interface ExpandedArticleViewProps {
   summary: Summary;
@@ -25,6 +25,7 @@ interface ExpandedArticleViewProps {
   relatedContent?: RelatedItem[];
   onNavigateToArticle?: (id: string) => void;
   onOpenNewsletter?: (id: string) => void;
+  sourceName?: string;
 }
 
 export function ExpandedArticleView({
@@ -43,9 +44,41 @@ export function ExpandedArticleView({
   relatedContent,
   onNavigateToArticle,
   onOpenNewsletter,
+  sourceName,
 }: ExpandedArticleViewProps) {
   const [overflowOpen, setOverflowOpen] = useState(false);
+  const [showExcerpt, setShowExcerpt] = useState<Record<string, boolean>>({});
   const overflowRef = useRef<HTMLDivElement>(null);
+
+  // Extract key quotes from summary text (text in quotation marks with attribution)
+  const keyQuotes = (() => {
+    const allText = [summary.theNews, summary.whyItMatters, summary.theContext].filter(Boolean).join(" ");
+    const quoteMatches = allText.match(/[""\u201C]([^""\u201D]{15,}?)[""\u201D]\s*(?:[-–—]\s*(.+?)(?:[,.]|$))?/g);
+    if (!quoteMatches) return [];
+    return quoteMatches.slice(0, 2).map((m) => {
+      const parsed = m.match(/[""\u201C](.+?)[""\u201D]\s*(?:[-–—]\s*(.+?))?$/);
+      return { quote: parsed?.[1] ?? m, attribution: parsed?.[2]?.trim() };
+    });
+  })();
+
+  // Extract a source excerpt from the original article content
+  const getExcerpt = (sectionText: string): string | null => {
+    if (!articleContent) return null;
+    // Find a sentence from the original that overlaps with the summary section
+    const words = sectionText.split(/\s+/).slice(0, 5).map(w => w.toLowerCase().replace(/[^a-z0-9]/g, "")).filter(w => w.length > 3);
+    if (words.length === 0) return null;
+    const contentLower = articleContent.toLowerCase();
+    // Look for a sentence containing at least 2 of the first 5 significant words
+    const sentences = articleContent.split(/(?<=[.!?])\s+/);
+    for (const sentence of sentences) {
+      const sentLower = sentence.toLowerCase();
+      const matchCount = words.filter(w => sentLower.includes(w)).length;
+      if (matchCount >= 2 && sentence.length > 30 && sentence.length < 400) {
+        return sentence.trim();
+      }
+    }
+    return null;
+  };
 
   // Close overflow on outside click
   useEffect(() => {
@@ -70,17 +103,79 @@ export function ExpandedArticleView({
 
       {/* The News */}
       {summary.theNews && (
-        <ScannableSection label="The News" text={summary.theNews} tier="primary" />
+        <div>
+          <ScannableSection label="The News" text={summary.theNews} tier="primary" />
+          {articleContent && (() => {
+            const excerpt = getExcerpt(summary.theNews);
+            if (!excerpt) return null;
+            return (
+              <>
+                <button
+                  onClick={() => setShowExcerpt(p => ({ ...p, theNews: !p.theNews }))}
+                  className="mt-1 text-[11px] text-text-tertiary hover:text-text-secondary transition-colors"
+                >
+                  {showExcerpt.theNews ? "Hide source excerpt" : "Show source excerpt"}
+                </button>
+                {showExcerpt.theNews && (
+                  <SourceExcerptBlock sourceName={sourceName ?? "Source"} excerpt={excerpt} />
+                )}
+              </>
+            );
+          })()}
+        </div>
       )}
+
+      {/* Key Quotes */}
+      {keyQuotes.length > 0 && keyQuotes.map((kq, i) => (
+        <KeyQuotePullquote key={i} quote={kq.quote} attribution={kq.attribution} />
+      ))}
 
       {/* Why It Matters */}
       {summary.whyItMatters && (
-        <ScannableSection label="Why It Matters" text={summary.whyItMatters} tier="secondary" />
+        <div>
+          <ScannableSection label="Why It Matters" text={summary.whyItMatters} tier="secondary" />
+          {articleContent && (() => {
+            const excerpt = getExcerpt(summary.whyItMatters);
+            if (!excerpt) return null;
+            return (
+              <>
+                <button
+                  onClick={() => setShowExcerpt(p => ({ ...p, whyItMatters: !p.whyItMatters }))}
+                  className="mt-1 text-[11px] text-text-tertiary hover:text-text-secondary transition-colors"
+                >
+                  {showExcerpt.whyItMatters ? "Hide source excerpt" : "Show source excerpt"}
+                </button>
+                {showExcerpt.whyItMatters && (
+                  <SourceExcerptBlock sourceName={sourceName ?? "Source"} excerpt={excerpt} />
+                )}
+              </>
+            );
+          })()}
+        </div>
       )}
 
       {/* The Context */}
       {summary.theContext && (
-        <ScannableSection label="The Context" text={summary.theContext} tier="secondary" />
+        <div>
+          <ScannableSection label="The Context" text={summary.theContext} tier="secondary" />
+          {articleContent && (() => {
+            const excerpt = getExcerpt(summary.theContext);
+            if (!excerpt) return null;
+            return (
+              <>
+                <button
+                  onClick={() => setShowExcerpt(p => ({ ...p, theContext: !p.theContext }))}
+                  className="mt-1 text-[11px] text-text-tertiary hover:text-text-secondary transition-colors"
+                >
+                  {showExcerpt.theContext ? "Hide source excerpt" : "Show source excerpt"}
+                </button>
+                {showExcerpt.theContext && (
+                  <SourceExcerptBlock sourceName={sourceName ?? "Source"} excerpt={excerpt} />
+                )}
+              </>
+            );
+          })()}
+        </div>
       )}
 
       {/* So What (if present on newsletter summaries passed through) */}
@@ -298,16 +393,6 @@ export function ExpandedArticleView({
           <FileText size={14} />
           Read Full Article
         </button>
-        <a
-          href={sourceUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={() => onOpenSource?.()}
-          className="flex items-center gap-1.5 rounded-xl border border-border-secondary px-4 py-2 text-xs font-medium text-text-secondary hover:bg-bg-hover transition-colors"
-        >
-          <ExternalLink size={14} />
-          Open Source
-        </a>
         <button className="flex items-center gap-1.5 rounded-xl border border-border-secondary px-4 py-2 text-xs font-medium text-text-secondary hover:bg-bg-hover transition-colors">
           <Share2 size={14} />
           Share

@@ -39,20 +39,63 @@ function getSectionTier(label: string): SectionTier {
   return "tertiary";
 }
 
+// ─── Inline Citation Renderer ─────────────────────────────
+// Detects [Source Name] patterns and renders them as clickable chips.
+function renderWithCitations(text: string, sourceUrls?: Record<string, string>): React.ReactNode {
+  // Split on [Source Name] patterns — but not [1], [2] numeric refs
+  const parts = text.split(/(\[[^\]]+\])/g);
+  if (parts.length <= 1) return text;
+
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (part.startsWith("[") && part.endsWith("]")) {
+          const name = part.slice(1, -1);
+          if (/^\d+$/.test(name)) return <span key={i}>{part}</span>;
+          const url = sourceUrls?.[name];
+          if (url) {
+            return (
+              <a
+                key={i}
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="source-citation-chip"
+              >
+                {name}
+              </a>
+            );
+          }
+          return <span key={i} className="source-citation-chip source-citation-static">{name}</span>;
+        }
+        return <span key={i}>{part}</span>;
+      })}
+    </>
+  );
+}
+
 // ─── Bold-First-Sentence Renderer ─────────────────────────
 // Splits text at the first sentence boundary and bolds the lead.
-function renderWithBoldLead(text: string): React.ReactNode {
+// Also handles inline citations.
+function renderWithBoldLead(text: string, sourceUrls?: Record<string, string>): React.ReactNode {
+  const hasCitations = /\[[^\]]+\]/.test(text) && !/^\[\d+\]/.test(text);
+
   // Find first sentence: text up to first ". " or "! " or "? " (not inside quotes)
   const match = text.match(/^(.+?[.!?])\s+([\s\S]*)$/);
   if (match) {
     return (
       <>
-        <strong className="font-semibold text-text-primary">{match[1]}</strong>{" "}
-        <span className="text-text-secondary">{match[2]}</span>
+        <strong className="font-semibold text-text-primary">
+          {hasCitations ? renderWithCitations(match[1], sourceUrls) : match[1]}
+        </strong>{" "}
+        <span className="text-text-secondary">
+          {hasCitations ? renderWithCitations(match[2], sourceUrls) : match[2]}
+        </span>
       </>
     );
   }
   // No sentence boundary found — just render as-is
+  if (hasCitations) return <span className="text-text-primary">{renderWithCitations(text, sourceUrls)}</span>;
   return <span className="text-text-primary">{text}</span>;
 }
 
@@ -109,11 +152,11 @@ export function SectionHeader({
 }
 
 // ─── Bullet Item ──────────────────────────────────────────
-function BulletItem({ text }: { text: string }) {
+function BulletItem({ text, sourceUrls }: { text: string; sourceUrls?: Record<string, string> }) {
   return (
     <div className="border-l-[3px] border-border-primary pl-3 py-1">
       <p className="text-[15px] leading-[1.7] font-sans">
-        {renderWithBoldLead(text)}
+        {renderWithBoldLead(text, sourceUrls)}
       </p>
     </div>
   );
@@ -170,15 +213,15 @@ export function SubtleCallout({
 }
 
 // ─── Section Body ─────────────────────────────────────────
-// Renders text with bold-first-sentence and bullet splitting.
-export function SectionBody({ text }: { text: string }) {
+// Renders text with bold-first-sentence, bullet splitting, and inline citations.
+export function SectionBody({ text, sourceUrls }: { text: string; sourceUrls?: Record<string, string> }) {
   const bullets = hasBulletItems(text) ? splitBulletItems(text) : [];
 
   if (bullets.length > 0) {
     return (
       <div className="space-y-2">
         {bullets.map((item, i) => (
-          <BulletItem key={i} text={item} />
+          <BulletItem key={i} text={item} sourceUrls={sourceUrls} />
         ))}
       </div>
     );
@@ -186,7 +229,7 @@ export function SectionBody({ text }: { text: string }) {
 
   return (
     <p className="text-[15px] leading-[1.7] font-sans">
-      {renderWithBoldLead(text)}
+      {renderWithBoldLead(text, sourceUrls)}
     </p>
   );
 }
@@ -198,10 +241,12 @@ export function ScannableSection({
   label,
   text,
   tier,
+  sourceUrls,
 }: {
   label: string;
   text: string;
   tier?: SectionTier;
+  sourceUrls?: Record<string, string>;
 }) {
   if (CALLOUT_SECTIONS.has(label)) {
     return <CalloutBlock label={label} text={text} />;
@@ -214,7 +259,51 @@ export function ScannableSection({
   return (
     <div>
       <SectionHeader label={label} tier={tier} />
-      <SectionBody text={text} />
+      <SectionBody text={text} sourceUrls={sourceUrls} />
+    </div>
+  );
+}
+
+// ─── Key Quote Pullquote ─────────────────────────────────
+// Renders a direct quote as a styled pullquote with attribution.
+export function KeyQuotePullquote({
+  quote,
+  attribution,
+}: {
+  quote: string;
+  attribution?: string;
+}) {
+  return (
+    <blockquote className="key-quote-pullquote">
+      <p className="font-serif text-[17px] italic leading-[1.6] text-text-primary text-center">
+        &ldquo;{quote}&rdquo;
+      </p>
+      {attribution && (
+        <p className="mt-2 text-center text-[13px] text-text-secondary">
+          — {attribution}
+        </p>
+      )}
+    </blockquote>
+  );
+}
+
+// ─── Source Excerpt Block ─────────────────────────────────
+// Blockquote-styled excerpt from original source content.
+export function SourceExcerptBlock({
+  sourceName,
+  excerpt,
+}: {
+  sourceName: string;
+  excerpt: string;
+}) {
+  return (
+    <div className="source-excerpt-block">
+      <p className="text-[11px] text-text-tertiary mb-1">
+        From <span className="font-semibold">{sourceName}</span>:
+      </p>
+      <blockquote className="border-l-2 border-border-primary pl-3 italic text-[13px] leading-[1.7] text-text-secondary">
+        {excerpt}
+      </blockquote>
     </div>
   );
 }

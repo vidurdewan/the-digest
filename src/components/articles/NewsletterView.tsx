@@ -764,21 +764,24 @@ function NewsletterItem({
                 );
               })()}
 
-              {/* Toggle raw content */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowRawContent(!showRawContent);
-                }}
-                className="text-xs text-text-tertiary hover:text-text-secondary"
-              >
-                {showRawContent
-                  ? "Hide original content"
-                  : "Show original content"}
-              </button>
+              {/* Summary / Original tab switcher */}
+              <div className="newsletter-content-tabs">
+                <button
+                  onClick={(e) => { e.stopPropagation(); setShowRawContent(false); }}
+                  className={`newsletter-tab ${!showRawContent ? "newsletter-tab-active" : ""}`}
+                >
+                  Summary
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setShowRawContent(true); }}
+                  className={`newsletter-tab ${showRawContent ? "newsletter-tab-active" : ""}`}
+                >
+                  Original
+                </button>
+              </div>
 
               {showRawContent && (
-                <div className="max-h-96 overflow-y-auto border-t border-border-primary pt-3">
+                <div className="max-h-96 overflow-y-auto border-t border-border-primary pt-3 animate-fade-in">
                   <div className="whitespace-pre-wrap text-xs leading-relaxed text-text-tertiary">
                     {newsletter.content}
                   </div>

@@ -1168,3 +1168,113 @@ h1, h2, h3, h4, h5, h6 {
     padding-right: 24px;
   }
 }
+
+/* ═══ Source Fidelity: Citation Chips ══════════════════════════ */
+.source-citation-chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent-primary);
+  background: var(--accent-primary-muted, rgba(99, 102, 241, 0.08));
+  border-radius: 9999px;
+  padding: 1px 8px;
+  margin: 0 2px;
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease;
+  cursor: pointer;
+}
+.source-citation-chip:hover {
+  background: var(--accent-primary);
+  color: var(--text-inverse, #fff);
+}
+.source-citation-static {
+  cursor: default;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+}
+.source-citation-static:hover {
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+}
+
+/* ═══ Source Fidelity: Key Quote Pullquote ═════════════════════ */
+.key-quote-pullquote {
+  margin: 1.5rem 0;
+  padding: 1.25rem 1.5rem;
+  border-top: 1px solid var(--border-primary);
+  border-bottom: 1px solid var(--border-primary);
+  background: var(--bg-secondary);
+}
+
+/* ═══ Source Fidelity: Source Excerpt Block ════════════════════ */
+.source-excerpt-block {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: var(--bg-secondary);
+  border-radius: 6px;
+}
+
+/* ═══ Source Fidelity: Sticky Source Footer ════════════════════ */
+.sticky-source-footer {
+  flex-shrink: 0;
+  border-top: 1px solid var(--border-primary);
+  padding: 0.75rem 1.5rem;
+  background: var(--bg-primary);
+}
+.sticky-source-footer-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.625rem 1rem;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent-primary);
+  background: var(--accent-primary-muted, rgba(99, 102, 241, 0.08));
+  border-radius: 8px;
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.sticky-source-footer-link:hover {
+  background: var(--accent-primary);
+  color: var(--text-inverse, #fff);
+}
+
+/* ═══ Source Fidelity: Newsletter Content Tabs ═════════════════ */
+.newsletter-content-tabs {
+  display: inline-flex;
+  gap: 0;
+  border: 1px solid var(--border-primary);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.newsletter-tab {
+  padding: 4px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-tertiary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.newsletter-tab:not(:last-child) {
+  border-right: 1px solid var(--border-primary);
+}
+.newsletter-tab-active {
+  background: var(--accent-primary);
+  color: var(--text-inverse, #fff);
+}
+
+/* Fade-in animation for content transitions */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out;
+}
