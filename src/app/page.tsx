@@ -290,10 +290,13 @@ export default function Home() {
   }, []);
 
   const handleOpenReaderFocused = useCallback(() => {
+    // Enter key now triggers inline expansion via click on feed item
     const idx = useFeedNavigationStore.getState().focusedIndex;
-    if (idx < 0 || idx >= rankedArticles.length) return;
-    handleOpenReader(rankedArticles[idx]);
-  }, [rankedArticles]);
+    if (idx < 0) return;
+    const elements = document.querySelectorAll("[data-feed-index]");
+    const el = elements[idx] as HTMLElement | undefined;
+    if (el) el.click();
+  }, []);
 
   const handleCloseReader = useCallback(() => {
     setReaderArticle(null);
@@ -436,6 +439,9 @@ export default function Home() {
         newsletters: newsletterData.newsletters,
         onNavigateToArticle: handleNavigateToArticle,
         unreadNewsletterCount: newsletterData.newsletters.filter((n) => !n.isRead).length,
+        onMarkAllRead: handleMarkAllRead,
+        onForceRefresh: handleForceRefresh,
+        isRefreshing: articleData.isIngesting,
       }}
       newsletters={newsletterData.newsletters}
     >

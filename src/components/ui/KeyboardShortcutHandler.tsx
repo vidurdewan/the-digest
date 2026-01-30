@@ -121,15 +121,7 @@ export function KeyboardShortcutHandler({
 
   return (
     <>
-      {/* Keyboard hint — bottom-right corner, desktop only */}
-      <button
-        onClick={() => setShowHelp(true)}
-        className="fixed bottom-[4.5rem] right-6 z-10 hidden lg:flex items-center gap-1.5 rounded-lg bg-bg-card border border-border-secondary px-2.5 py-1.5 text-xs text-text-tertiary hover:text-text-secondary shadow-sm transition-colors"
-        aria-label="Keyboard shortcuts"
-      >
-        <Keyboard size={12} />
-        <kbd className="font-mono text-[10px]">?</kbd>
-      </button>
+      {/* Keyboard hint hidden — floating buttons removed for editorial aesthetic */}
 
       {/* Shortcut help modal — organized by section */}
       {showHelp && (

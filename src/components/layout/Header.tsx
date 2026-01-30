@@ -13,6 +13,9 @@ import {
   Mail,
   Menu,
   X,
+  CheckCheck,
+  RefreshCw,
+  Loader2,
 } from "lucide-react";
 import type { Theme, Article, Newsletter } from "@/types";
 
@@ -134,6 +137,9 @@ export interface EditorialHeaderProps {
   newsletters?: Newsletter[];
   onNavigateToArticle?: (articleId: string) => void;
   unreadNewsletterCount?: number;
+  onMarkAllRead?: (articleIds: string[]) => void;
+  onForceRefresh?: () => void;
+  isRefreshing?: boolean;
 }
 
 export function EditorialHeader({
@@ -141,6 +147,9 @@ export function EditorialHeader({
   newsletters,
   onNavigateToArticle,
   unreadNewsletterCount = 0,
+  onMarkAllRead,
+  onForceRefresh,
+  isRefreshing,
 }: EditorialHeaderProps) {
   const { activeSection, setActiveSection } = useSidebarStore();
   const { theme, setTheme } = useThemeStore();
@@ -256,6 +265,36 @@ export function EditorialHeader({
               );
             })}
           </nav>
+
+          {/* Feed actions — only show on priority-feed */}
+          {activeSection === "priority-feed" && (
+            <div className="hidden lg:flex items-center gap-3">
+              {onMarkAllRead && articles && (
+                <button
+                  onClick={() => onMarkAllRead(articles.map((a) => a.id))}
+                  className="text-xs uppercase tracking-wide text-text-secondary hover:text-text-primary transition-colors"
+                >
+                  Mark All Read
+                </button>
+              )}
+              {onForceRefresh && (
+                <button
+                  onClick={onForceRefresh}
+                  disabled={isRefreshing}
+                  className="text-xs uppercase tracking-wide text-text-secondary hover:text-text-primary transition-colors disabled:opacity-50"
+                >
+                  {isRefreshing ? (
+                    <span className="flex items-center gap-1">
+                      <Loader2 size={12} className="animate-spin" />
+                      Refreshing
+                    </span>
+                  ) : (
+                    "Refresh"
+                  )}
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Separator */}
           <div className="hidden h-5 w-px bg-border-secondary lg:block" />

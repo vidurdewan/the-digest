@@ -1,11 +1,30 @@
 "use client";
 
+import { useState } from "react";
 import type { Newsletter } from "@/types";
 import { useSidebarStore } from "@/lib/store";
 
 interface NewsletterRailProps {
   newsletters: Newsletter[];
   onNavigateToNewsletter?: (id: string) => void;
+}
+
+/** Strip markdown formatting (bold **text**, *text*) and return plain text */
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/\*([^*]+)\*/g, "$1")
+    .replace(/__([^_]+)__/g, "$1")
+    .replace(/_([^_]+)_/g, "$1")
+    .replace(/`([^`]+)`/g, "$1");
+}
+
+/** Truncate text to ~maxWords words and add ellipsis */
+function truncateWords(text: string, maxWords: number): string {
+  const cleaned = stripMarkdown(text).trim();
+  const words = cleaned.split(/\s+/);
+  if (words.length <= maxWords) return cleaned;
+  return words.slice(0, maxWords).join(" ") + "...";
 }
 
 function extractBulletPoints(newsletter: Newsletter): string[] {
@@ -18,7 +37,6 @@ function extractBulletPoints(newsletter: Newsletter): string[] {
   }
   // Fallback to summary brief
   if (points.length === 0 && newsletter.summary?.brief) {
-    // Split on sentences, take first 2-3
     const sentences = newsletter.summary.brief
       .split(/\.\s+/)
       .filter((s) => s.trim().length > 10)
@@ -28,17 +46,58 @@ function extractBulletPoints(newsletter: Newsletter): string[] {
   return points.slice(0, 3);
 }
 
+/** Extract full text for inline expansion */
+function extractFullText(newsletter: Newsletter): string {
+  const ns = newsletter.newsletterSummary;
+  if (ns) {
+    const parts: string[] = [];
+    if (ns.theNews) parts.push(stripMarkdown(ns.theNews));
+    if (ns.whyItMatters) parts.push(stripMarkdown(ns.whyItMatters));
+    if (ns.theContext) parts.push(stripMarkdown(ns.theContext));
+    if (ns.soWhat) parts.push(stripMarkdown(ns.soWhat));
+    if (ns.watchNext) parts.push(stripMarkdown(ns.watchNext));
+    return parts.join("\n\n");
+  }
+  if (newsletter.summary?.brief) return stripMarkdown(newsletter.summary.brief);
+  return "";
+}
+
+/** Build dynamic daily digest summary from newsletter data */
+function buildDailyDigestSummary(newsletters: Newsletter[]): string {
+  if (newsletters.length === 0) return "";
+  const sources = newsletters.slice(0, 3).map((nl) => nl.publication);
+  const subjects = newsletters.slice(0, 3).map((nl) => {
+    const words = nl.subject.split(/\s+/).slice(0, 6).join(" ");
+    return words.length < nl.subject.length ? words + "..." : words;
+  });
+
+  const sourceList =
+    sources.length === 1
+      ? sources[0]
+      : sources.length === 2
+      ? `${sources[0]} and ${sources[1]}`
+      : `${sources[0]}, ${sources[1]}, and ${sources[2]}`;
+
+  return `Today\u2019s highlights from ${sourceList} \u2014 covering ${subjects.join(", ")}.`;
+}
+
 export function NewsletterRail({
   newsletters,
   onNavigateToNewsletter,
 }: NewsletterRailProps) {
   const setActiveSection = useSidebarStore((s) => s.setActiveSection);
   const recentNewsletters = newsletters.slice(0, 4);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const handleReadFull = (id: string) => {
-    setActiveSection("newsletters");
-    onNavigateToNewsletter?.(id);
+    if (expandedId === id) {
+      setExpandedId(null);
+    } else {
+      setExpandedId(id);
+    }
   };
+
+  const digestSummary = buildDailyDigestSummary(newsletters);
 
   return (
     <div
@@ -50,46 +109,57 @@ export function NewsletterRail({
           <span className="text-accent-primary">●</span>
           Inbox Intelligence
         </p>
-        <h2 className="mt-2 font-heading text-xl font-bold text-text-primary">
+        <h2 className="mt-2 font-serif text-lg font-bold text-text-primary">
           Daily Digest
         </h2>
         <p className="mt-1.5 text-sm text-text-secondary">
-          We&apos;ve parsed {newsletters.length} newsletter
-          {newsletters.length !== 1 ? "s" : ""} from your inbox and summarized
-          the key points.
+          {digestSummary ||
+            `We\u2019ve parsed ${newsletters.length} newsletter${
+              newsletters.length !== 1 ? "s" : ""
+            } from your inbox and summarized the key points.`}
         </p>
       </div>
 
       {/* Newsletter Cards */}
-      {recentNewsletters.map((nl, idx) => {
+      {recentNewsletters.map((nl) => {
         const bullets = extractBulletPoints(nl);
+        const isExpanded = expandedId === nl.id;
+        const fullText = isExpanded ? extractFullText(nl) : "";
         return (
           <div key={nl.id} className="border-b border-border-primary">
             <div className="py-6">
-              <p className="typo-section-label text-text-secondary">
+              <p className="uppercase text-xs tracking-widest font-semibold text-text-secondary mb-1">
                 {nl.publication}
               </p>
-              <h3 className="mt-2 typo-rail-headline text-text-primary">
-                {nl.subject}
+              <h3 className="font-serif font-bold text-lg text-text-primary">
+                {stripMarkdown(nl.subject)}
               </h3>
-              {bullets.length > 0 && (
-                <div className="mt-3 space-y-1.5">
+
+              {!isExpanded && bullets.length > 0 && (
+                <div className="mt-3 space-y-2">
                   {bullets.map((point, i) => (
                     <p
                       key={i}
-                      className="typo-rail-bullet"
+                      className="text-sm text-text-secondary"
                     >
-                      — {point}
+                      — {truncateWords(point, 18)}
                     </p>
                   ))}
                 </div>
               )}
+
+              {isExpanded && fullText && (
+                <div className="mt-3 text-sm text-text-secondary leading-relaxed whitespace-pre-line">
+                  {fullText}
+                </div>
+              )}
+
               <div className="mt-4 flex justify-end">
                 <button
                   onClick={() => handleReadFull(nl.id)}
                   className="pill-outlined hover:bg-bg-hover transition-colors"
                 >
-                  Read Full
+                  {isExpanded ? "Collapse" : "Read Full"}
                 </button>
               </div>
             </div>

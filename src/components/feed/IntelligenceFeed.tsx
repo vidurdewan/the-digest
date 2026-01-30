@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useCallback, useRef } from "react";
 import {
-  RefreshCw,
   ArrowUp,
   Loader2,
-  CheckCheck,
   Bookmark,
+  X,
+  ExternalLink,
+  RefreshCw,
 } from "lucide-react";
 import type {
   Article,
@@ -16,16 +17,7 @@ import type {
   TopicCategory,
 } from "@/types";
 import { topicLabels, topicDotColors } from "@/lib/mock-data";
-
-function getRelativeTimeShort(date: Date): string {
-  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
-  if (seconds < 60) return "just now";
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
-}
+import { ExpandedArticleView } from "@/components/articles/ExpandedArticleView";
 
 function formatArticleTime(dateString: string): string {
   const date = new Date(dateString);
@@ -83,6 +75,7 @@ export function IntelligenceFeed({
   articles,
   onSave,
   onOpenReader,
+  onRequestSummary,
   newCount = 0,
   onShowNew,
   lastUpdated,
@@ -92,6 +85,43 @@ export function IntelligenceFeed({
 }: IntelligenceFeedProps) {
   const [activeTab, setActiveTab] = useState<"all" | TopicCategory>("all");
   const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
+  const [expandedArticleId, setExpandedArticleId] = useState<string | null>(null);
+  const [isLoadingExpanded, setIsLoadingExpanded] = useState(false);
+  const expandedRef = useRef<HTMLDivElement>(null);
+
+  const handleArticleClick = useCallback(async (article: Article & { summary?: Summary; intelligence?: ArticleIntelligence }) => {
+    if (expandedArticleId === article.id) {
+      setExpandedArticleId(null);
+      return;
+    }
+    setExpandedArticleId(article.id);
+    // Request summary if not available
+    if (!article.summary?.theNews && onRequestSummary) {
+      setIsLoadingExpanded(true);
+      await onRequestSummary(article);
+      setIsLoadingExpanded(false);
+    }
+  }, [expandedArticleId, onRequestSummary]);
+
+  // Keyboard: Esc closes expanded article
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && expandedArticleId) {
+        setExpandedArticleId(null);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [expandedArticleId]);
+
+  // Scroll expanded content into view
+  useEffect(() => {
+    if (expandedArticleId && expandedRef.current) {
+      setTimeout(() => {
+        expandedRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }, 50);
+    }
+  }, [expandedArticleId]);
 
   // Sort all articles by publishedAt descending
   const sortedArticles = useMemo(
@@ -149,12 +179,6 @@ export function IntelligenceFeed({
     return [label];
   }, [heroArticle]);
 
-  const today = new Date().toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
-
   return (
     <div className="space-y-0">
       {/* "New stories" pill */}
@@ -171,49 +195,7 @@ export function IntelligenceFeed({
         </button>
       )}
 
-      {/* Header */}
-      <div className="flex items-end justify-between pb-8">
-        <div>
-          <p className="typo-section-label text-text-tertiary mb-1">{today}</p>
-          <h2 className="font-serif text-2xl font-bold text-text-primary tracking-tight">
-            Your Briefing
-          </h2>
-          {lastUpdated && (
-            <p className="mt-1 text-xs text-text-tertiary">
-              Updated {getRelativeTimeShort(lastUpdated)}
-            </p>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          {onMarkAllRead && (
-            <button
-              onClick={() => {
-                onMarkAllRead(articles.map((a) => a.id));
-              }}
-              className="pill-outlined flex items-center gap-1.5 transition-colors hover:bg-bg-hover"
-              title="Mark all as read"
-            >
-              <CheckCheck size={14} />
-              Mark all read
-            </button>
-          )}
-          {onForceRefresh && (
-            <button
-              onClick={onForceRefresh}
-              disabled={isRefreshing}
-              className="pill-outlined flex items-center gap-1.5 transition-colors hover:bg-bg-hover disabled:opacity-50"
-              title="Refresh articles"
-            >
-              {isRefreshing ? (
-                <Loader2 size={14} className="animate-spin" />
-              ) : (
-                <RefreshCw size={14} />
-              )}
-              {isRefreshing ? "Refreshing..." : "Refresh"}
-            </button>
-          )}
-        </div>
-      </div>
+      {/* Feed action buttons are now in the header nav bar */}
 
       {/* ═══ HERO STORY ═══ */}
       {heroArticle && (
@@ -322,11 +304,12 @@ export function IntelligenceFeed({
       <section>
         {visibleFeedArticles.map((article) => {
           const curation = getCurationReason(article);
+          const isExpanded = expandedArticleId === article.id;
           return (
             <div key={article.id} className="border-b border-border-primary feed-item-row rounded-sm">
               <div
                 className="flex items-start gap-4 py-4 px-4 md:py-8 md:px-0 cursor-pointer group"
-                onClick={() => onOpenReader(article)}
+                onClick={() => handleArticleClick(article)}
                 data-feed-index={feedArticles.indexOf(article)}
               >
                 {/* Left side */}
@@ -355,8 +338,8 @@ export function IntelligenceFeed({
                   >
                     {article.title}
                   </h3>
-                  {/* Line 3: summary */}
-                  {(article.summary?.brief || article.content) && (
+                  {/* Line 3: summary (hidden when expanded) */}
+                  {!isExpanded && (article.summary?.brief || article.content) && (
                     <p className="typo-body text-text-secondary line-clamp-2 mb-2">
                       {article.summary?.brief ||
                         article.content?.slice(0, 200)}
@@ -387,6 +370,71 @@ export function IntelligenceFeed({
                     className={article.isSaved ? "fill-current" : ""}
                   />
                 </button>
+              </div>
+
+              {/* Inline expanded article content */}
+              <div
+                className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                  isExpanded ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0"
+                }`}
+              >
+                {isExpanded && (
+                  <div
+                    ref={expandedRef}
+                    className="border-l-[3px] ml-4 md:ml-0 pl-6 pr-4 py-6 bg-bg-secondary/30"
+                    style={{ borderLeftColor: topicDotColors[article.topic] }}
+                  >
+                    {/* Close button */}
+                    <div className="flex justify-end mb-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setExpandedArticleId(null);
+                        }}
+                        className="p-1 text-text-tertiary hover:text-text-primary transition-colors"
+                        aria-label="Close"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+
+                    {isLoadingExpanded ? (
+                      <div className="flex items-center gap-3 text-text-tertiary py-4">
+                        <Loader2 size={14} className="animate-spin" />
+                        <span className="text-sm">Generating AI summary...</span>
+                      </div>
+                    ) : article.summary ? (
+                      <ExpandedArticleView
+                        summary={article.summary}
+                        onOpenFull={(e) => {
+                          e?.stopPropagation();
+                          onOpenReader(article);
+                        }}
+                        sourceUrl={article.sourceUrl}
+                        articleId={article.id}
+                        intelligence={(article as ArticleWithIntelligence).intelligence}
+                        signals={(article as ArticleWithIntelligence).signals}
+                        articleTitle={article.title}
+                        articleContent={article.content}
+                      />
+                    ) : (
+                      <div className="py-4">
+                        <p className="text-sm text-text-secondary mb-4">
+                          {article.content?.slice(0, 300)}
+                        </p>
+                        <a
+                          href={article.sourceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 text-sm font-medium text-accent-primary hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          Read Full Article <ExternalLink size={14} />
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           );
