@@ -142,6 +142,34 @@ export const useReadStateStore = create<ReadStateState>()(
   )
 );
 
+// ─── Reading Patterns (source/topic frequency tracking) ──────
+interface ReadingPatternsState {
+  sourceReadCounts: Record<string, number>;
+  topicReadCounts: Record<string, number>;
+  recordRead: (source: string, topic: string) => void;
+}
+
+export const useReadingPatternsStore = create<ReadingPatternsState>()(
+  persist(
+    (set) => ({
+      sourceReadCounts: {},
+      topicReadCounts: {},
+      recordRead: (source, topic) =>
+        set((s) => ({
+          sourceReadCounts: {
+            ...s.sourceReadCounts,
+            [source]: (s.sourceReadCounts[source] ?? 0) + 1,
+          },
+          topicReadCounts: {
+            ...s.topicReadCounts,
+            [topic]: (s.topicReadCounts[topic] ?? 0) + 1,
+          },
+        })),
+    }),
+    { name: "the-digest-reading-patterns" }
+  )
+);
+
 // ─── Overlay / Panel state ────────────────────────────────────
 interface OverlayState {
   commandPaletteOpen: boolean;

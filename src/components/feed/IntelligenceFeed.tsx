@@ -8,6 +8,9 @@ import {
   X,
   ExternalLink,
   RefreshCw,
+  ChevronDown,
+  ChevronUp,
+  Sparkles,
 } from "lucide-react";
 import type {
   Article,
@@ -19,27 +22,19 @@ import type {
 } from "@/types";
 import { topicLabels, topicDotColors } from "@/lib/mock-data";
 import { ExpandedArticleView } from "@/components/articles/ExpandedArticleView";
-import { useReadStateStore } from "@/lib/store";
+import { useReadStateStore, useReadingPatternsStore } from "@/lib/store";
 import { CheckCircle } from "lucide-react";
+import {
+  computeNewToYouScore,
+  formatFreshness,
+  detectDevelopingStories,
+  getTimeGroup,
+  getTimeGroupLabel,
+  type TimeGroup,
+} from "@/lib/surfacing";
 import { getSourceType, getSourceTypeConfig, findCoverageDensity } from "@/lib/source-provenance";
 import { findRelatedForArticle, type RelatedItem } from "@/lib/cross-references";
 
-function formatArticleTime(dateString: string): string {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffHours = diffMs / 3600000;
-
-  if (diffHours < 24) {
-    return date.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    }).toUpperCase();
-  }
-  if (diffHours < 48) return "YESTERDAY";
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" }).toUpperCase();
-}
 
 function getCurationReason(
   article: Article & { summary?: Summary; intelligence?: ArticleIntelligence }
@@ -99,7 +94,17 @@ export function IntelligenceFeed({
   const markArticleRead = useReadStateStore((s) => s.markArticleRead);
   const readArticleIds = useReadStateStore((s) => s.readArticleIds);
   const digestReadToday = useReadStateStore((s) => s.digestReadToday);
+  const recordRead = useReadingPatternsStore((s) => s.recordRead);
+  const sourceReadCounts = useReadingPatternsStore((s) => s.sourceReadCounts);
+  const topicReadCounts = useReadingPatternsStore((s) => s.topicReadCounts);
   const [caughtUpDismissed, setCaughtUpDismissed] = useState(false);
+  const [wydmCollapsed, setWydmCollapsed] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("the-digest-wydm-collapsed") === "true";
+    }
+    return false;
+  });
+  const [expandedStoryId, setExpandedStoryId] = useState<string | null>(null);
 
   const handleArticleClick = useCallback(async (article: Article & { summary?: Summary; intelligence?: ArticleIntelligence }) => {
     if (expandedArticleId === article.id) {
@@ -180,14 +185,16 @@ export function IntelligenceFeed({
     }
   }, [expandedArticleId]);
 
-  // Auto-mark article as read after 2s in slide-over panel
+  // Auto-mark article as read after 2s in slide-over panel + track reading patterns
   useEffect(() => {
     if (!expandedArticleId) return;
     const timer = setTimeout(() => {
       markArticleRead(expandedArticleId);
+      const art = articles.find((a) => a.id === expandedArticleId);
+      if (art) recordRead(art.source, art.topic);
     }, 2000);
     return () => clearTimeout(timer);
-  }, [expandedArticleId, markArticleRead]);
+  }, [expandedArticleId, markArticleRead, articles, recordRead]);
 
   // Listen for newsletter-hover events to highlight matching feed items
   useEffect(() => {
@@ -233,14 +240,21 @@ export function IntelligenceFeed({
     return best;
   }, [sortedArticles]);
 
-  // Feed articles (all except hero), filtered by topic tab
+  // Detect developing stories (must be before feedArticles which filters by groupedIds)
+  const { stories: developingStories, groupedIds } = useMemo(
+    () => detectDevelopingStories(articles),
+    [articles]
+  );
+
+  // Feed articles (all except hero and grouped developing updates), filtered by topic tab
   const feedArticles = useMemo(() => {
     const withoutHero = heroArticle
       ? sortedArticles.filter((a) => a.id !== heroArticle.id)
       : sortedArticles;
-    if (activeTab === "all") return withoutHero;
-    return withoutHero.filter((a) => a.topic === activeTab);
-  }, [sortedArticles, heroArticle, activeTab]);
+    const withoutGrouped = withoutHero.filter((a) => !groupedIds.has(a.id));
+    if (activeTab === "all") return withoutGrouped;
+    return withoutGrouped.filter((a) => a.topic === activeTab);
+  }, [sortedArticles, heroArticle, activeTab, groupedIds]);
 
   const visibleFeedArticles = feedArticles.slice(0, visibleCount);
   const hasMore = visibleCount < feedArticles.length;
@@ -260,6 +274,48 @@ export function IntelligenceFeed({
     }
     return map;
   }, [articles]);
+
+  // Map lead article ID → DevelopingStory for quick lookup
+  const storyByLeadId = useMemo(() => {
+    const map = new Map<string, typeof developingStories[number]>();
+    for (const s of developingStories) map.set(s.leadArticleId, s);
+    return map;
+  }, [developingStories]);
+
+  // New-to-You scores
+  const readingPatterns = useMemo(() => ({
+    sourceReadCounts,
+    topicReadCounts,
+  }), [sourceReadCounts, topicReadCounts]);
+
+  const newToYouMap = useMemo(() => {
+    const map = new Map<string, { score: number; reason: string }>();
+    for (const a of articles) {
+      const cov = coverageMap.get(a.id);
+      map.set(a.id, computeNewToYouScore(a, readingPatterns, cov?.count ?? 1));
+    }
+    return map;
+  }, [articles, readingPatterns, coverageMap]);
+
+  // "What You'd Miss" — top 3-5 articles scoring ≥ 5
+  const whatYoudMiss = useMemo(() => {
+    return sortedArticles
+      .filter((a) => {
+        const nty = newToYouMap.get(a.id);
+        return nty && nty.score >= 5 && !a.isRead && !readArticleIds.includes(a.id);
+      })
+      .slice(0, 5)
+      .map((a) => ({ article: a, ...newToYouMap.get(a.id)! }));
+  }, [sortedArticles, newToYouMap, readArticleIds]);
+
+  // Persist WYDM collapse state
+  const toggleWydmCollapse = useCallback(() => {
+    setWydmCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem("the-digest-wydm-collapsed", String(next));
+      return next;
+    });
+  }, []);
 
   // Get unique topics for tab bar
   const availableTopics = useMemo(() => {
@@ -386,6 +442,39 @@ export function IntelligenceFeed({
         </section>
       )}
 
+      {/* ═══ WHAT YOU'D MISS ═══ */}
+      {whatYoudMiss.length > 0 && !isCaughtUp && (
+        <section className="py-4 border-b border-border-primary">
+          <button
+            onClick={toggleWydmCollapse}
+            className="flex w-full items-center justify-between text-left"
+          >
+            <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-text-secondary">
+              <Sparkles size={13} className="text-accent-primary" />
+              What you&apos;d miss
+            </span>
+            {wydmCollapsed ? <ChevronDown size={14} className="text-text-tertiary" /> : <ChevronUp size={14} className="text-text-tertiary" />}
+          </button>
+          {!wydmCollapsed && (
+            <div className="mt-3 space-y-1.5">
+              {whatYoudMiss.map(({ article, reason }) => (
+                <button
+                  key={article.id}
+                  onClick={() => handleArticleClick(article)}
+                  className="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left hover:bg-bg-hover transition-colors group"
+                >
+                  <span className="flex-1 min-w-0 truncate text-sm font-medium text-text-primary group-hover:text-accent-primary transition-colors">
+                    {article.title}
+                  </span>
+                  <span className="shrink-0 text-xs text-text-tertiary">{article.source}</span>
+                  <span className="new-to-you-badge shrink-0">{reason}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
       {/* ═══ TOPIC FILTER TABS ═══ */}
       <section className="py-4 border-b border-border-primary relative">
         <div className="flex items-center gap-6 overflow-x-auto scrollbar-hide tab-scroll-container">
@@ -423,7 +512,7 @@ export function IntelligenceFeed({
 
       {/* ═══ FEED LIST ═══ */}
       <section key={activeTab} className="content-crossfade">
-        {visibleFeedArticles.map((article) => {
+        {visibleFeedArticles.map((article, idx) => {
           const curation = getCurationReason(article);
           const isExpanded = expandedArticleId === article.id;
           const isRead = article.isRead || readArticleIds.includes(article.id);
@@ -431,115 +520,164 @@ export function IntelligenceFeed({
           const sourceConfig = getSourceTypeConfig(sourceType);
           const coverage = coverageMap.get(article.id);
           const isPrimary = sourceType === "primary";
-          return (
-            <div
-              key={article.id}
-              data-article-id={article.id}
-              className={`border-b border-border-primary feed-item-row rounded-sm feed-item-enter transition-opacity duration-300 ${isRead ? "opacity-55" : ""} ${isPrimary ? "feed-item-primary" : ""}`}
-              style={{ animationDelay: `${feedArticles.indexOf(article) * 50}ms` }}
-            >
-              <div
-                className="flex items-start gap-4 py-6 px-4 md:py-8 md:px-0 cursor-pointer group"
-                onClick={() => handleArticleClick(article)}
-                data-feed-index={feedArticles.indexOf(article)}
-              >
-                {/* Left side */}
-                <div className="flex-1 min-w-0">
-                  {/* Line 1: dot + topic + timestamp */}
-                  <div className="flex items-center gap-2 mb-2">
-                    <span
-                      className={`topic-dot ${isRead ? "topic-dot-read" : ""}`}
-                      style={{
-                        backgroundColor: isRead ? "transparent" : topicDotColors[article.topic],
-                        borderColor: topicDotColors[article.topic],
-                      }}
-                    />
-                    <span className="text-xs uppercase tracking-[0.08em] text-text-secondary">
-                      {topicLabels[article.topic]}
-                    </span>
-                    <span className="text-xs text-accent-primary">·</span>
-                    <span className="text-xs uppercase tracking-[0.08em] text-text-secondary">
-                      {formatArticleTime(article.publishedAt)}
-                    </span>
-                  </div>
-                  {/* Line 2: headline */}
-                  <h3
-                    className="typo-feed-headline feed-headline text-[22px] md:text-[24px] text-text-primary mb-1.5 transition-colors"
-                  >
-                    {article.title}
-                  </h3>
-                  {/* Line 3: summary (hidden when expanded) */}
-                  {!isExpanded && (article.summary?.brief || article.content) && (
-                    <p className="typo-body text-text-secondary line-clamp-2 mb-2">
-                      {article.summary?.brief ||
-                        article.content?.slice(0, 200)}
-                    </p>
-                  )}
-                  {/* Line 4: source + source type + coverage density */}
-                  <div className="flex items-center gap-1.5 typo-metadata flex-wrap">
-                    <span>
-                      {isPrimary && article.documentType
-                        ? `${article.source} · ${article.documentType}`
-                        : article.source}
-                    </span>
-                    {/* Source type badge */}
-                    {sourceConfig.icon && (
-                      <span
-                        className="inline-flex items-center gap-0.5"
-                        style={{ color: sourceConfig.color }}
-                      >
-                        <span>{sourceConfig.icon}</span>
-                        {sourceConfig.label && (
-                          <span className="text-[10px] uppercase tracking-[0.05em] font-semibold">
-                            {sourceConfig.label}
-                          </span>
-                        )}
-                      </span>
-                    )}
-                    {/* Coverage density */}
-                    {coverage && coverage.count >= 3 && (
-                      <>
-                        <span className="text-text-tertiary">·</span>
-                        <span className="text-text-tertiary normal-case">
-                          Widely covered · {coverage.count} sources
-                        </span>
-                      </>
-                    )}
-                    {coverage && coverage.count === 1 && (
-                      <>
-                        <span className="text-text-tertiary">·</span>
-                        <span className="normal-case">
-                          <span className="font-medium">Only in:</span>{" "}
-                          <span className="text-text-tertiary">{article.source}</span>
-                        </span>
-                      </>
-                    )}
-                    {/* Curation reason */}
-                    {curation && (
-                      <>
-                        <span className="text-accent-primary">•</span>
-                        <span className="italic normal-case">{curation}</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-                {/* Right side: save icon */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onSave(article.id);
-                  }}
-                  className={`flex-shrink-0 mt-2 p-1.5 text-text-secondary hover:text-text-primary transition-colors feed-save-icon ${article.isSaved ? "!opacity-100" : ""}`}
-                  title={article.isSaved ? "Unsave" : "Save"}
-                >
-                  <Bookmark
-                    size={18}
-                    className={article.isSaved ? "fill-current" : ""}
-                  />
-                </button>
-              </div>
+          const freshness = formatFreshness(article.publishedAt);
+          const ntyScore = newToYouMap.get(article.id);
+          const devStory = storyByLeadId.get(article.id);
 
-              {/* Article expansion now rendered as slide-over panel below */}
+          // Time group header
+          const currentGroup = getTimeGroup(article.publishedAt);
+          const prevArticle = idx > 0 ? visibleFeedArticles[idx - 1] : null;
+          const prevGroup = prevArticle ? getTimeGroup(prevArticle.publishedAt) : null;
+          const showGroupHeader = currentGroup !== prevGroup;
+
+          return (
+            <div key={article.id}>
+              {/* Time group header */}
+              {showGroupHeader && (
+                <div className="feed-time-group">{getTimeGroupLabel(currentGroup)}</div>
+              )}
+              <div
+                data-article-id={article.id}
+                className={`border-b border-border-primary feed-item-row rounded-sm feed-item-enter transition-opacity duration-300 ${isRead ? "opacity-55" : ""} ${isPrimary ? "feed-item-primary" : ""}`}
+                style={{ animationDelay: `${idx * 50}ms` }}
+              >
+                <div
+                  className="flex items-start gap-4 py-6 px-4 md:py-8 md:px-0 cursor-pointer group"
+                  onClick={() => handleArticleClick(article)}
+                  data-feed-index={idx}
+                >
+                  {/* Left side */}
+                  <div className="flex-1 min-w-0">
+                    {/* Line 1: dot + topic + timestamp */}
+                    <div className="flex items-center gap-2 mb-2">
+                      <span
+                        className={`topic-dot ${isRead ? "topic-dot-read" : ""}`}
+                        style={{
+                          backgroundColor: isRead ? "transparent" : topicDotColors[article.topic],
+                          borderColor: topicDotColors[article.topic],
+                        }}
+                      />
+                      <span className="text-xs uppercase tracking-[0.08em] text-text-secondary">
+                        {topicLabels[article.topic]}
+                      </span>
+                      <span className="text-xs text-accent-primary">·</span>
+                      <span
+                        className={`text-xs uppercase tracking-[0.08em] ${freshness.isUrgent ? "text-accent-primary font-semibold" : "text-text-secondary"}`}
+                        title={freshness.tooltip}
+                      >
+                        {freshness.label}
+                      </span>
+                    </div>
+                    {/* Line 2: headline */}
+                    <h3 className="typo-feed-headline feed-headline text-[22px] md:text-[24px] text-text-primary mb-1.5 transition-colors">
+                      {article.title}
+                    </h3>
+                    {/* Line 3: summary (hidden when expanded) */}
+                    {!isExpanded && (article.summary?.brief || article.content) && (
+                      <p className="typo-body text-text-secondary line-clamp-2 mb-2">
+                        {article.summary?.brief || article.content?.slice(0, 200)}
+                      </p>
+                    )}
+                    {/* Line 4: source + source type + coverage density + NEW TO YOU badge */}
+                    <div className="flex items-center gap-1.5 typo-metadata flex-wrap">
+                      <span>
+                        {isPrimary && article.documentType
+                          ? `${article.source} · ${article.documentType}`
+                          : article.source}
+                      </span>
+                      {sourceConfig.icon && (
+                        <span className="inline-flex items-center gap-0.5" style={{ color: sourceConfig.color }}>
+                          <span>{sourceConfig.icon}</span>
+                          {sourceConfig.label && (
+                            <span className="text-[10px] uppercase tracking-[0.05em] font-semibold">{sourceConfig.label}</span>
+                          )}
+                        </span>
+                      )}
+                      {coverage && coverage.count >= 3 && (
+                        <>
+                          <span className="text-text-tertiary">·</span>
+                          <span className="text-text-tertiary normal-case">Widely covered · {coverage.count} sources</span>
+                        </>
+                      )}
+                      {coverage && coverage.count === 1 && (
+                        <>
+                          <span className="text-text-tertiary">·</span>
+                          <span className="normal-case">
+                            <span className="font-medium">Only in:</span>{" "}
+                            <span className="text-text-tertiary">{article.source}</span>
+                          </span>
+                        </>
+                      )}
+                      {curation && (
+                        <>
+                          <span className="text-accent-primary">•</span>
+                          <span className="italic normal-case">{curation}</span>
+                        </>
+                      )}
+                      {ntyScore && ntyScore.score >= 5 && (
+                        <span className="new-to-you-badge">New to you</span>
+                      )}
+                    </div>
+                    {/* Developing story badge */}
+                    {devStory && devStory.updateIds.length > 0 && (
+                      <div className="mt-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setExpandedStoryId(expandedStoryId === article.id ? null : article.id);
+                          }}
+                          className="inline-flex items-center gap-1.5 text-xs font-medium text-accent-primary hover:text-accent-primary-hover transition-colors"
+                        >
+                          <span className="h-1.5 w-1.5 rounded-full bg-accent-primary animate-pulse" />
+                          Developing · {devStory.updateIds.length + 1} updates
+                          {expandedStoryId === article.id ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                        </button>
+                        {expandedStoryId === article.id && (
+                          <div className="developing-timeline mt-2">
+                            {devStory.updateIds.map((uid) => {
+                              const upd = articles.find((a) => a.id === uid);
+                              if (!upd) return null;
+                              const updFresh = formatFreshness(upd.publishedAt);
+                              return (
+                                <div
+                                  key={uid}
+                                  className="developing-timeline-item cursor-pointer hover:text-accent-primary transition-colors"
+                                  onClick={(e) => { e.stopPropagation(); handleArticleClick(upd); }}
+                                >
+                                  <span className="text-[11px] text-text-tertiary" title={updFresh.tooltip}>{updFresh.label}</span>
+                                  <span className="mx-1.5 text-text-tertiary">·</span>
+                                  <span className="text-xs text-text-secondary">{upd.title}</span>
+                                  <span className="mx-1.5 text-text-tertiary">·</span>
+                                  <span className="text-[11px] text-text-tertiary">{upd.source}</span>
+                                </div>
+                              );
+                            })}
+                            {/* Current (lead) article at the end */}
+                            <div className="developing-timeline-item">
+                              <span className="text-[11px] font-medium text-accent-primary" title={freshness.tooltip}>{freshness.label}</span>
+                              <span className="mx-1.5 text-text-tertiary">·</span>
+                              <span className="text-xs font-medium text-text-primary">{article.title}</span>
+                              <span className="mx-1.5 text-text-tertiary">·</span>
+                              <span className="text-[11px] text-text-tertiary">{article.source}</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {/* Right side: save icon */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSave(article.id);
+                    }}
+                    className={`flex-shrink-0 mt-2 p-1.5 text-text-secondary hover:text-text-primary transition-colors feed-save-icon ${article.isSaved ? "!opacity-100" : ""}`}
+                    title={article.isSaved ? "Unsave" : "Save"}
+                  >
+                    <Bookmark size={18} className={article.isSaved ? "fill-current" : ""} />
+                  </button>
+                </div>
+              </div>
             </div>
           );
         })}
@@ -622,9 +760,14 @@ export function IntelligenceFeed({
                   {topicLabels[expandedArticle.topic]}
                 </span>
                 <span className="text-xs text-text-tertiary">·</span>
-                <span className="text-xs text-text-secondary">
-                  {formatArticleTime(expandedArticle.publishedAt)}
-                </span>
+                {(() => {
+                  const f = formatFreshness(expandedArticle.publishedAt);
+                  return (
+                    <span className={`text-xs ${f.isUrgent ? "text-accent-primary font-semibold" : "text-text-secondary"}`} title={f.tooltip}>
+                      {f.label}
+                    </span>
+                  );
+                })()}
               </div>
               <button
                 onClick={() => { setExpandedArticleId(null); setArticleHistory([]); }}
@@ -669,7 +812,7 @@ export function IntelligenceFeed({
                         )}
                       </div>
                       <div className="flex items-center gap-1.5 text-[11px] text-text-tertiary">
-                        <span>Published {formatArticleTime(expandedArticle.publishedAt)}</span>
+                        <span title={formatFreshness(expandedArticle.publishedAt).tooltip}>Published {formatFreshness(expandedArticle.publishedAt).label}</span>
                         <span>·</span>
                         <span>{expandedArticle.readingTimeMinutes} min read</span>
                         {cov && cov.sources.length > 0 && (

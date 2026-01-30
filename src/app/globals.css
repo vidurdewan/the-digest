@@ -497,6 +497,50 @@
   animation: feedItemPulse 400ms ease-in-out;
 }
 
+/* Time group headers */
+.feed-time-group {
+  padding: 0.75rem 0 0.5rem;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-primary);
+}
+
+/* New to You badge */
+.new-to-you-badge {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent-primary);
+  border: 1px solid var(--accent-primary);
+  border-radius: 9999px;
+  padding: 1px 8px;
+  white-space: nowrap;
+}
+
+/* Developing story timeline */
+.developing-timeline {
+  border-left: 2px solid var(--border-secondary);
+  margin-left: 0.5rem;
+  padding-left: 1rem;
+}
+.developing-timeline-item {
+  position: relative;
+  padding: 0.25rem 0;
+}
+.developing-timeline-item::before {
+  content: "";
+  position: absolute;
+  left: -1.25rem;
+  top: 0.6rem;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+}
+
 .topic-dot-read {
   background-color: transparent !important;
   border-color: currentColor;
