@@ -51,9 +51,9 @@ interface SourceBadgeProps {
 }
 
 const SOURCE_COLOR_PALETTE = [
-  "#6366f1", "#8b5cf6", "#ec4899", "#ef4444",
-  "#f97316", "#eab308", "#22c55e", "#14b8a6",
-  "#06b6d4", "#3b82f6",
+  "var(--source-color-0)", "var(--source-color-1)", "var(--source-color-2)", "var(--source-color-3)",
+  "var(--source-color-4)", "var(--source-color-5)", "var(--source-color-6)", "var(--source-color-7)",
+  "var(--source-color-8)", "var(--source-color-9)",
 ];
 
 function getSourceColor(source: string): string {

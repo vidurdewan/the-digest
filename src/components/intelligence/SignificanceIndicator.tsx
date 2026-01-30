@@ -4,10 +4,10 @@ import { TrendingUp } from "lucide-react";
 import type { SignificanceLevel } from "@/types";
 
 function getColor(score: number): string {
-  if (score >= 8) return "#dc2626";
-  if (score >= 6) return "#f59e0b";
-  if (score >= 4) return "#3b82f6";
-  return "#9ca3af";
+  if (score >= 8) return "var(--significance-high)";
+  if (score >= 6) return "var(--significance-medium)";
+  if (score >= 4) return "var(--significance-low)";
+  return "var(--significance-none)";
 }
 
 export function SignificanceIndicator({ score }: { score: SignificanceLevel }) {

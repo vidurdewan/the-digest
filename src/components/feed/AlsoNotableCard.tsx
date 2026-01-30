@@ -208,24 +208,27 @@ export function AlsoNotableCard({
 }
 
 function getTopicStyle(topic: TopicCategory): React.CSSProperties {
-  const colors: Record<TopicCategory, { bg: string; text: string }> = {
-    "vc-startups": { bg: "#dbeafe", text: "#1e40af" },
-    "fundraising-acquisitions": { bg: "#d1fae5", text: "#065f46" },
-    "executive-movements": { bg: "#ede9fe", text: "#5b21b6" },
-    "financial-markets": { bg: "#fef3c7", text: "#92400e" },
-    geopolitics: { bg: "#fee2e2", text: "#991b1b" },
-    automotive: { bg: "#cffafe", text: "#155e75" },
-    "science-tech": { bg: "#e0e7ff", text: "#3730a3" },
-    "local-news": { bg: "#ffedd5", text: "#9a3412" },
-    politics: { bg: "#fce7f3", text: "#9d174d" },
+  const varMap: Record<TopicCategory, string> = {
+    "vc-startups": "vc",
+    "fundraising-acquisitions": "fundraising",
+    "executive-movements": "executive",
+    "financial-markets": "financial",
+    geopolitics: "geopolitics",
+    automotive: "automotive",
+    "science-tech": "science",
+    "local-news": "local",
+    politics: "politics",
   };
-  const c = colors[topic] || { bg: "#f3f4f6", text: "#374151" };
-  return { backgroundColor: c.bg, color: c.text };
+  const key = varMap[topic] || "fallback";
+  return {
+    backgroundColor: `var(--topic-badge-${key}-bg)`,
+    color: `var(--topic-badge-${key}-text)`,
+  };
 }
 
 function getSignificanceColor(score: number): string {
-  if (score >= 8) return "#dc2626";
-  if (score >= 6) return "#f59e0b";
-  if (score >= 4) return "#3b82f6";
-  return "#9ca3af";
+  if (score >= 8) return "var(--significance-high)";
+  if (score >= 6) return "var(--significance-medium)";
+  if (score >= 4) return "var(--significance-low)";
+  return "var(--significance-none)";
 }

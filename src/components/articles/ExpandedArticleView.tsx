@@ -218,14 +218,11 @@ export function ExpandedArticleView({
 }
 
 function EntityTag({ entity }: { entity: Entity }) {
-  const typeStyles: Record<string, { border: string; text: string }> = {
-    company: { border: "#3b82f6", text: "#2563eb" },
-    person: { border: "#8b5cf6", text: "#7c3aed" },
-    fund: { border: "#10b981", text: "#059669" },
-    keyword: { border: "#f59e0b", text: "#d97706" },
+  const entityKey = (["company", "person", "fund", "keyword"].includes(entity.type) ? entity.type : "keyword");
+  const style = {
+    border: `var(--entity-${entityKey}-border)`,
+    text: `var(--entity-${entityKey}-text)`,
   };
-
-  const style = typeStyles[entity.type] || typeStyles.keyword;
 
   return (
     <button

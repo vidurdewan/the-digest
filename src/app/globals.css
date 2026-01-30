@@ -57,6 +57,69 @@
   --topic-local-bg: #fff7ed;
   --topic-politics: #e11d48;
   --topic-politics-bg: #fff1f2;
+
+  /* Topic badge colors (inline style usage) */
+  --topic-badge-vc-bg: #dbeafe;
+  --topic-badge-vc-text: #1e40af;
+  --topic-badge-fundraising-bg: #d1fae5;
+  --topic-badge-fundraising-text: #065f46;
+  --topic-badge-executive-bg: #ede9fe;
+  --topic-badge-executive-text: #5b21b6;
+  --topic-badge-financial-bg: #fef3c7;
+  --topic-badge-financial-text: #92400e;
+  --topic-badge-geopolitics-bg: #fee2e2;
+  --topic-badge-geopolitics-text: #991b1b;
+  --topic-badge-automotive-bg: #cffafe;
+  --topic-badge-automotive-text: #155e75;
+  --topic-badge-science-bg: #e0e7ff;
+  --topic-badge-science-text: #3730a3;
+  --topic-badge-local-bg: #ffedd5;
+  --topic-badge-local-text: #9a3412;
+  --topic-badge-politics-bg: #fce7f3;
+  --topic-badge-politics-text: #9d174d;
+  --topic-badge-fallback-bg: #f3f4f6;
+  --topic-badge-fallback-text: #374151;
+
+  /* Significance colors */
+  --significance-high: #dc2626;
+  --significance-medium: #f59e0b;
+  --significance-low: #3b82f6;
+  --significance-none: #9ca3af;
+
+  /* Entity type colors */
+  --entity-company-border: #3b82f6;
+  --entity-company-text: #2563eb;
+  --entity-person-border: #8b5cf6;
+  --entity-person-text: #7c3aed;
+  --entity-fund-border: #10b981;
+  --entity-fund-text: #059669;
+  --entity-keyword-border: #f59e0b;
+  --entity-keyword-text: #d97706;
+
+  /* Source badge palette */
+  --source-color-0: #6366f1;
+  --source-color-1: #8b5cf6;
+  --source-color-2: #ec4899;
+  --source-color-3: #ef4444;
+  --source-color-4: #f97316;
+  --source-color-5: #eab308;
+  --source-color-6: #22c55e;
+  --source-color-7: #14b8a6;
+  --source-color-8: #06b6d4;
+  --source-color-9: #3b82f6;
+
+  /* Story border colors */
+  --story-breaking: #dc2626;
+  --story-developing: #f59e0b;
+  --story-analysis: #3b82f6;
+  --story-opinion: #8b5cf6;
+  --story-feature: #059669;
+  --story-update: #6b7280;
+
+  /* Theme swatch previews */
+  --theme-swatch-light: #FAFAF8;
+  --theme-swatch-dark: #1a1816;
+  --theme-swatch-newspaper: #FFF8F0;
 }
 
 /* ===== DARK THEME ===== */
@@ -115,6 +178,69 @@
   --topic-local-bg: #302214;
   --topic-politics: #fda4af;
   --topic-politics-bg: #351a22;
+
+  /* Topic badge colors — dark mode */
+  --topic-badge-vc-bg: #1e2a4a;
+  --topic-badge-vc-text: #93b4ff;
+  --topic-badge-fundraising-bg: #132e22;
+  --topic-badge-fundraising-text: #6ee7b7;
+  --topic-badge-executive-bg: #2a1f40;
+  --topic-badge-executive-text: #c4b5fd;
+  --topic-badge-financial-bg: #2a2210;
+  --topic-badge-financial-text: #fcd34d;
+  --topic-badge-geopolitics-bg: #351a1a;
+  --topic-badge-geopolitics-text: #fca5a5;
+  --topic-badge-automotive-bg: #1e2530;
+  --topic-badge-automotive-text: #cbd5e1;
+  --topic-badge-science-bg: #1a2040;
+  --topic-badge-science-text: #a5b4fc;
+  --topic-badge-local-bg: #302214;
+  --topic-badge-local-text: #fdba74;
+  --topic-badge-politics-bg: #351a22;
+  --topic-badge-politics-text: #fda4af;
+  --topic-badge-fallback-bg: #2a2722;
+  --topic-badge-fallback-text: #a3a3a3;
+
+  /* Significance colors — dark mode */
+  --significance-high: #ef4444;
+  --significance-medium: #fbbf24;
+  --significance-low: #60a5fa;
+  --significance-none: #6b7280;
+
+  /* Entity type colors — dark mode */
+  --entity-company-border: #60a5fa;
+  --entity-company-text: #93b4ff;
+  --entity-person-border: #a78bfa;
+  --entity-person-text: #c4b5fd;
+  --entity-fund-border: #34d399;
+  --entity-fund-text: #6ee7b7;
+  --entity-keyword-border: #fbbf24;
+  --entity-keyword-text: #fcd34d;
+
+  /* Source badge palette — dark mode (brighter) */
+  --source-color-0: #818cf8;
+  --source-color-1: #a78bfa;
+  --source-color-2: #f472b6;
+  --source-color-3: #f87171;
+  --source-color-4: #fb923c;
+  --source-color-5: #facc15;
+  --source-color-6: #4ade80;
+  --source-color-7: #2dd4bf;
+  --source-color-8: #22d3ee;
+  --source-color-9: #60a5fa;
+
+  /* Story border colors — dark mode */
+  --story-breaking: #ef4444;
+  --story-developing: #fbbf24;
+  --story-analysis: #60a5fa;
+  --story-opinion: #a78bfa;
+  --story-feature: #34d399;
+  --story-update: #9ca3af;
+
+  /* Theme swatch previews (same across themes) */
+  --theme-swatch-light: #FAFAF8;
+  --theme-swatch-dark: #1a1816;
+  --theme-swatch-newspaper: #FFF8F0;
 }
 
 /* ===== NEWSPAPER THEME ===== */
@@ -173,6 +299,69 @@
   --topic-local-bg: #fff7ed;
   --topic-politics: #e11d48;
   --topic-politics-bg: #fff1f2;
+
+  /* Topic badge colors — newspaper (same as light, warm-shifted) */
+  --topic-badge-vc-bg: #dbeafe;
+  --topic-badge-vc-text: #1e40af;
+  --topic-badge-fundraising-bg: #d1fae5;
+  --topic-badge-fundraising-text: #065f46;
+  --topic-badge-executive-bg: #ede9fe;
+  --topic-badge-executive-text: #5b21b6;
+  --topic-badge-financial-bg: #fef3c7;
+  --topic-badge-financial-text: #92400e;
+  --topic-badge-geopolitics-bg: #fee2e2;
+  --topic-badge-geopolitics-text: #991b1b;
+  --topic-badge-automotive-bg: #cffafe;
+  --topic-badge-automotive-text: #155e75;
+  --topic-badge-science-bg: #e0e7ff;
+  --topic-badge-science-text: #3730a3;
+  --topic-badge-local-bg: #ffedd5;
+  --topic-badge-local-text: #9a3412;
+  --topic-badge-politics-bg: #fce7f3;
+  --topic-badge-politics-text: #9d174d;
+  --topic-badge-fallback-bg: #f3f4f6;
+  --topic-badge-fallback-text: #374151;
+
+  /* Significance colors — newspaper */
+  --significance-high: #dc2626;
+  --significance-medium: #f59e0b;
+  --significance-low: #3b82f6;
+  --significance-none: #9ca3af;
+
+  /* Entity type colors — newspaper */
+  --entity-company-border: #3b82f6;
+  --entity-company-text: #2563eb;
+  --entity-person-border: #8b5cf6;
+  --entity-person-text: #7c3aed;
+  --entity-fund-border: #10b981;
+  --entity-fund-text: #059669;
+  --entity-keyword-border: #f59e0b;
+  --entity-keyword-text: #d97706;
+
+  /* Source badge palette — newspaper */
+  --source-color-0: #6366f1;
+  --source-color-1: #8b5cf6;
+  --source-color-2: #ec4899;
+  --source-color-3: #ef4444;
+  --source-color-4: #f97316;
+  --source-color-5: #eab308;
+  --source-color-6: #22c55e;
+  --source-color-7: #14b8a6;
+  --source-color-8: #06b6d4;
+  --source-color-9: #3b82f6;
+
+  /* Story border colors — newspaper */
+  --story-breaking: #c0392b;
+  --story-developing: #d4a020;
+  --story-analysis: #0284c7;
+  --story-opinion: #7c3aed;
+  --story-feature: #27ae60;
+  --story-update: #6b7280;
+
+  /* Theme swatch previews */
+  --theme-swatch-light: #FAFAF8;
+  --theme-swatch-dark: #1a1816;
+  --theme-swatch-newspaper: #FFF8F0;
 }
 
 /* ===== TAILWIND THEME INTEGRATION ===== */
@@ -505,12 +694,12 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* ===== STORY TYPE LEFT BORDERS ===== */
-.story-border-breaking { border-left: 3px solid #dc2626; }
-.story-border-developing { border-left: 3px solid #f59e0b; }
-.story-border-analysis { border-left: 3px solid #3b82f6; }
-.story-border-opinion { border-left: 3px solid #8b5cf6; }
-.story-border-feature { border-left: 3px solid #059669; }
-.story-border-update { border-left: 3px solid #6b7280; }
+.story-border-breaking { border-left: 3px solid var(--story-breaking); }
+.story-border-developing { border-left: 3px solid var(--story-developing); }
+.story-border-analysis { border-left: 3px solid var(--story-analysis); }
+.story-border-opinion { border-left: 3px solid var(--story-opinion); }
+.story-border-feature { border-left: 3px solid var(--story-feature); }
+.story-border-update { border-left: 3px solid var(--story-update); }
 
 /* ===== CARD INTERACTION STATES ===== */
 .card-interactive {

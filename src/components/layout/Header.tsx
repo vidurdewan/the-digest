@@ -16,11 +16,11 @@ import {
 } from "lucide-react";
 import type { Theme, Article, Newsletter } from "@/types";
 
-// Hardcoded bg-primary values per theme for swatch previews
-const themeSwatches: Record<Theme, string> = {
-  light: "#FAFAF8",
-  dark: "#1a1816",
-  newspaper: "#FFF8F0",
+// Theme swatch previews — uses CSS custom properties
+const themeSwatchVars: Record<Theme, string> = {
+  light: "var(--theme-swatch-light)",
+  dark: "var(--theme-swatch-dark)",
+  newspaper: "var(--theme-swatch-newspaper)",
 };
 
 const themeOptions: { value: Theme; label: string; icon: React.ReactNode }[] = [
@@ -283,7 +283,7 @@ export function EditorialHeader({
                   >
                     <span
                       className="h-5 w-5 rounded-full border border-border-primary shrink-0"
-                      style={{ backgroundColor: themeSwatches[opt.value] }}
+                      style={{ backgroundColor: themeSwatchVars[opt.value] }}
                     />
                     <span className="flex items-center gap-1.5">
                       {opt.icon}
