@@ -8,10 +8,6 @@ import { generateDailyDigest, isClaudeConfigured } from "@/lib/claude";
  */
 export async function POST(request: NextRequest) {
   try {
-    const keyExists = !!process.env.ANTHROPIC_API_KEY;
-    const keyPrefix = process.env.ANTHROPIC_API_KEY?.slice(0, 7) ?? "(unset)";
-    console.log(`[digest] ANTHROPIC_API_KEY exists: ${keyExists}, prefix: ${keyPrefix}, length: ${process.env.ANTHROPIC_API_KEY?.length ?? 0}`);
-
     if (!isClaudeConfigured()) {
       return NextResponse.json(
         {
