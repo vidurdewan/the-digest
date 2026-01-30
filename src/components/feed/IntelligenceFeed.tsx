@@ -103,6 +103,21 @@ export function IntelligenceFeed({
     }
   }, [expandedArticleId, onRequestSummary]);
 
+  // Lock body scroll when panel is open
+  useEffect(() => {
+    if (expandedArticleId) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [expandedArticleId]);
+
+  // Find the currently expanded article object
+  const expandedArticle = expandedArticleId
+    ? articles.find((a) => a.id === expandedArticleId)
+    : null;
+
   // Keyboard: Esc closes expanded article
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -114,12 +129,10 @@ export function IntelligenceFeed({
     return () => window.removeEventListener("keydown", handler);
   }, [expandedArticleId]);
 
-  // Scroll expanded content into view
+  // Scroll panel content to top when switching articles
   useEffect(() => {
     if (expandedArticleId && expandedRef.current) {
-      setTimeout(() => {
-        expandedRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-      }, 50);
+      expandedRef.current.scrollTop = 0;
     }
   }, [expandedArticleId]);
 
@@ -206,11 +219,11 @@ export function IntelligenceFeed({
           >
             {/* Mobile: image on top */}
             {heroArticle.imageUrl && (
-              <div className="md:hidden w-full">
+              <div className="md:hidden w-full overflow-hidden">
                 <img
                   src={heroArticle.imageUrl}
                   alt=""
-                  className="w-full max-h-[250px] object-cover"
+                  className="w-full max-h-[250px] object-cover hero-image-zoom"
                 />
               </div>
             )}
@@ -223,7 +236,16 @@ export function IntelligenceFeed({
                 />
                 Top Story For You
               </p>
-              <h1 className="typo-hero text-3xl md:text-4xl lg:text-[3.5rem] xl:text-[4rem] text-text-primary mb-4 group-hover:opacity-80 transition-opacity">
+              {/* Category pills */}
+              <div className="flex items-center gap-3 mb-3">
+                <span className="text-[10px] uppercase tracking-[0.08em] border border-border-primary px-2 py-0.5 text-text-secondary">
+                  {topicLabels[heroArticle.topic]}
+                </span>
+                <span className="text-[10px] uppercase tracking-[0.08em] border border-border-primary px-2 py-0.5 text-text-secondary">
+                  {heroArticle.readingTimeMinutes} min read
+                </span>
+              </div>
+              <h1 className="typo-hero text-3xl md:text-4xl lg:text-[3.5rem] xl:text-[4rem] text-text-primary mb-4 group-hover:text-accent-primary transition-colors">
                 {heroArticle.title}
               </h1>
               {heroArticle.summary?.brief && (
@@ -232,7 +254,7 @@ export function IntelligenceFeed({
                 </p>
               )}
               {heroTopics.length > 0 && (
-                <p className="text-sm text-text-secondary mb-4">
+                <p className="text-[13px] text-text-secondary italic mb-4">
                   Based on your interest in{" "}
                   {heroTopics.map((t, i) => (
                     <span key={t}>
@@ -242,22 +264,14 @@ export function IntelligenceFeed({
                   ))}
                 </p>
               )}
-              <div className="flex items-center gap-3">
-                <span className="pill-filled">
-                  {topicLabels[heroArticle.topic]}
-                </span>
-                <span className="pill-outlined">
-                  {heroArticle.readingTimeMinutes} MIN READ
-                </span>
-              </div>
             </div>
             {/* Image side ~45% — desktop only */}
             {heroArticle.imageUrl && (
-              <div className="hidden md:block md:w-[45%]">
+              <div className="hidden md:block md:w-[45%] overflow-hidden">
                 <img
                   src={heroArticle.imageUrl}
                   alt=""
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover hero-image-zoom"
                 />
               </div>
             )}
@@ -266,16 +280,16 @@ export function IntelligenceFeed({
       )}
 
       {/* ═══ TOPIC FILTER TABS ═══ */}
-      <section className="py-4 border-b border-border-primary">
-        <div className="flex items-center gap-6 overflow-x-auto scrollbar-hide">
+      <section className="py-4 border-b border-border-primary relative">
+        <div className="flex items-center gap-6 overflow-x-auto scrollbar-hide tab-scroll-container">
           <button
             onClick={() => {
               setActiveTab("all");
               setVisibleCount(ITEMS_PER_PAGE);
             }}
-            className={`pb-3 text-sm font-sans whitespace-nowrap transition-colors ${
+            className={`pb-3 text-sm font-sans whitespace-nowrap transition-colors tab-underline ${
               activeTab === "all"
-                ? "text-text-primary font-semibold underline underline-offset-8 decoration-2"
+                ? "text-text-primary font-semibold tab-underline-active"
                 : "text-text-secondary hover:text-text-primary"
             }`}
           >
@@ -288,9 +302,9 @@ export function IntelligenceFeed({
                 setActiveTab(topic);
                 setVisibleCount(ITEMS_PER_PAGE);
               }}
-              className={`pb-3 text-sm font-sans whitespace-nowrap transition-colors ${
+              className={`pb-3 text-sm font-sans whitespace-nowrap transition-colors tab-underline ${
                 activeTab === topic
-                  ? "text-text-primary font-semibold underline underline-offset-8 decoration-2"
+                  ? "text-text-primary font-semibold tab-underline-active"
                   : "text-text-secondary hover:text-text-primary"
               }`}
             >
@@ -301,14 +315,18 @@ export function IntelligenceFeed({
       </section>
 
       {/* ═══ FEED LIST ═══ */}
-      <section>
+      <section key={activeTab} className="content-crossfade">
         {visibleFeedArticles.map((article) => {
           const curation = getCurationReason(article);
           const isExpanded = expandedArticleId === article.id;
           return (
-            <div key={article.id} className="border-b border-border-primary feed-item-row rounded-sm">
+            <div
+              key={article.id}
+              className="border-b border-border-primary feed-item-row rounded-sm feed-item-enter"
+              style={{ animationDelay: `${feedArticles.indexOf(article) * 50}ms` }}
+            >
               <div
-                className="flex items-start gap-4 py-4 px-4 md:py-8 md:px-0 cursor-pointer group"
+                className="flex items-start gap-4 py-6 px-4 md:py-8 md:px-0 cursor-pointer group"
                 onClick={() => handleArticleClick(article)}
                 data-feed-index={feedArticles.indexOf(article)}
               >
@@ -322,17 +340,17 @@ export function IntelligenceFeed({
                         backgroundColor: topicDotColors[article.topic],
                       }}
                     />
-                    <span className="typo-section-label text-text-secondary">
+                    <span className="text-xs uppercase tracking-[0.08em] text-text-secondary">
                       {topicLabels[article.topic]}
                     </span>
-                    <span className="text-xs text-text-tertiary">·</span>
-                    <span className="text-xs text-text-secondary">
+                    <span className="text-xs text-accent-primary">·</span>
+                    <span className="text-xs uppercase tracking-[0.08em] text-text-secondary">
                       {formatArticleTime(article.publishedAt)}
                     </span>
                   </div>
                   {/* Line 2: headline */}
                   <h3
-                    className={`typo-feed-headline feed-headline text-xl md:text-2xl text-text-primary mb-1.5 transition-colors ${
+                    className={`typo-feed-headline feed-headline text-[22px] md:text-[24px] text-text-primary mb-1.5 transition-colors ${
                       article.isRead ? "opacity-60" : ""
                     }`}
                   >
@@ -350,8 +368,8 @@ export function IntelligenceFeed({
                     <span>{article.source}</span>
                     {curation && (
                       <>
-                        <span>•</span>
-                        <span className="italic">{curation}</span>
+                        <span className="text-accent-primary">•</span>
+                        <span className="italic normal-case">{curation}</span>
                       </>
                     )}
                   </div>
@@ -372,70 +390,7 @@ export function IntelligenceFeed({
                 </button>
               </div>
 
-              {/* Inline expanded article content */}
-              <div
-                className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                  isExpanded ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0"
-                }`}
-              >
-                {isExpanded && (
-                  <div
-                    ref={expandedRef}
-                    className="border-l-[3px] ml-4 md:ml-0 pl-6 pr-4 py-6 bg-bg-secondary/30"
-                    style={{ borderLeftColor: topicDotColors[article.topic] }}
-                  >
-                    {/* Close button */}
-                    <div className="flex justify-end mb-2">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setExpandedArticleId(null);
-                        }}
-                        className="p-1 text-text-tertiary hover:text-text-primary transition-colors"
-                        aria-label="Close"
-                      >
-                        <X size={16} />
-                      </button>
-                    </div>
-
-                    {isLoadingExpanded ? (
-                      <div className="flex items-center gap-3 text-text-tertiary py-4">
-                        <Loader2 size={14} className="animate-spin" />
-                        <span className="text-sm">Generating AI summary...</span>
-                      </div>
-                    ) : article.summary ? (
-                      <ExpandedArticleView
-                        summary={article.summary}
-                        onOpenFull={(e) => {
-                          e?.stopPropagation();
-                          onOpenReader(article);
-                        }}
-                        sourceUrl={article.sourceUrl}
-                        articleId={article.id}
-                        intelligence={(article as ArticleWithIntelligence).intelligence}
-                        signals={(article as ArticleWithIntelligence).signals}
-                        articleTitle={article.title}
-                        articleContent={article.content}
-                      />
-                    ) : (
-                      <div className="py-4">
-                        <p className="text-sm text-text-secondary mb-4">
-                          {article.content?.slice(0, 300)}
-                        </p>
-                        <a
-                          href={article.sourceUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 text-sm font-medium text-accent-primary hover:underline"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          Read Full Article <ExternalLink size={14} />
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+              {/* Article expansion now rendered as slide-over panel below */}
             </div>
           );
         })}
@@ -482,6 +437,100 @@ export function IntelligenceFeed({
           )}
         </div>
       )}
+
+      {/* ═══ SLIDE-OVER PANEL ═══ */}
+      {/* Backdrop */}
+      <div
+        className={`fixed inset-0 z-40 bg-black/40 transition-opacity duration-250 ease-out ${
+          expandedArticle ? "opacity-100" : "opacity-0 pointer-events-none"
+        }`}
+        onClick={() => setExpandedArticleId(null)}
+      />
+      {/* Panel */}
+      <div
+        className={`fixed top-0 right-0 z-50 h-full w-full md:w-[550px] bg-bg-card shadow-xl transition-transform duration-250 ease-out ${
+          expandedArticle ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        {expandedArticle && (
+          <div className="h-full flex flex-col">
+            {/* Panel header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border-primary">
+              <div className="flex items-center gap-2">
+                <span
+                  className="topic-dot"
+                  style={{ backgroundColor: topicDotColors[expandedArticle.topic] }}
+                />
+                <span className="typo-section-label text-text-secondary">
+                  {topicLabels[expandedArticle.topic]}
+                </span>
+                <span className="text-xs text-text-tertiary">·</span>
+                <span className="text-xs text-text-secondary">
+                  {formatArticleTime(expandedArticle.publishedAt)}
+                </span>
+              </div>
+              <button
+                onClick={() => setExpandedArticleId(null)}
+                className="p-1.5 text-text-secondary hover:text-text-primary transition-colors"
+                aria-label="Close panel"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Panel title */}
+            <div className="px-6 pt-5 pb-2">
+              <h2 className="font-serif text-xl font-bold text-text-primary leading-snug">
+                {expandedArticle.title}
+              </h2>
+              <p className="mt-1 text-xs text-text-secondary uppercase tracking-wider">
+                {expandedArticle.source}
+              </p>
+            </div>
+
+            {/* Panel scrollable content */}
+            <div ref={expandedRef} className="flex-1 overflow-y-auto px-6 pb-8">
+              {isLoadingExpanded ? (
+                <div className="flex items-center gap-3 text-text-tertiary py-8">
+                  <Loader2 size={14} className="animate-spin" />
+                  <span className="text-sm">Generating AI summary...</span>
+                </div>
+              ) : expandedArticle.summary ? (
+                <ExpandedArticleView
+                  summary={expandedArticle.summary}
+                  onOpenFull={(e) => {
+                    e?.stopPropagation();
+                    onOpenReader(expandedArticle);
+                  }}
+                  sourceUrl={expandedArticle.sourceUrl}
+                  articleId={expandedArticle.id}
+                  intelligence={(expandedArticle as ArticleWithIntelligence).intelligence}
+                  signals={(expandedArticle as ArticleWithIntelligence).signals}
+                  articleTitle={expandedArticle.title}
+                  articleContent={expandedArticle.content}
+                  onSave={() => onSave(expandedArticle.id)}
+                  onDismiss={() => setExpandedArticleId(null)}
+                  isSaved={expandedArticle.isSaved}
+                />
+              ) : (
+                <div className="py-4">
+                  <p className="text-sm text-text-secondary mb-4">
+                    {expandedArticle.content?.slice(0, 300)}
+                  </p>
+                  <a
+                    href={expandedArticle.sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-sm font-medium text-accent-primary hover:underline"
+                  >
+                    Read Full Article <ExternalLink size={14} />
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

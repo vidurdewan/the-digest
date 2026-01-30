@@ -420,12 +420,15 @@
 }
 .typo-body {
   font-family: var(--font-body);
-  font-size: 1rem;
-  line-height: 1.625;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-secondary);
 }
 .typo-metadata {
   font-family: var(--font-body);
-  font-size: 0.875rem;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   color: var(--text-secondary);
 }
 .typo-nav {
@@ -1017,4 +1020,86 @@ h1, h2, h3, h4, h5, h6 {
 }
 .feed-item-row:hover .feed-headline {
   color: var(--text-primary);
+}
+
+/* ===== MICRO-ANIMATIONS ===== */
+
+/* Feed item staggered fade-in */
+@keyframes feedItemFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.feed-item-enter {
+  animation: feedItemFadeIn 200ms ease-out both;
+}
+
+/* Article card hover lift */
+.feed-item-row {
+  transition: background-color 150ms ease, transform 150ms ease-out;
+}
+.feed-item-row:hover {
+  transform: translateY(-1px);
+}
+
+/* Newsletter rail card hover */
+.newsletter-card-hover {
+  transition: background-color 200ms ease;
+}
+.newsletter-card-hover:hover {
+  background-color: color-mix(in srgb, var(--bg-secondary) 40%, transparent);
+}
+
+/* Bookmark pulse on click */
+@keyframes bookmarkPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+.bookmark-pulse {
+  animation: bookmarkPulse 200ms ease-out;
+}
+
+/* Tab underline slide */
+.tab-underline {
+  position: relative;
+}
+.tab-underline::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: var(--accent-primary);
+  transform: scaleX(0);
+  transition: transform 200ms ease-out;
+}
+.tab-underline-active::after {
+  transform: scaleX(1);
+}
+
+/* Content crossfade for tab switching */
+@keyframes contentFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.content-crossfade {
+  animation: contentFadeIn 200ms ease-out;
+}
+
+/* Hero image hover zoom */
+.hero-image-zoom {
+  transition: transform 300ms ease-out;
+}
+.hero-image-zoom:hover {
+  transform: scale(1.02);
+}
+
+/* Tab scroll fade edges on mobile */
+@media (max-width: 767px) {
+  .tab-scroll-container {
+    mask-image: linear-gradient(to right, transparent 0, black 16px, black calc(100% - 32px), transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, transparent 0, black 16px, black calc(100% - 32px), transparent 100%);
+    padding-right: 24px;
+  }
 }

@@ -16,6 +16,7 @@ interface NewsletterRailProps {
 /** Strip markdown formatting and common artifacts */
 function stripMarkdown(text: string): string {
   return text
+    .replace(/^#{1,6}\s+/gm, "")         // strip heading markers
     .replace(/\*\*([^*]+)\*\*/g, "$1")
     .replace(/\*([^*]+)\*/g, "$1")
     .replace(/__([^_]+)__/g, "$1")
@@ -175,8 +176,19 @@ function DigestModal({
     return () => document.removeEventListener("keydown", handler);
   }, [onClose]);
 
-  // Parse the digest markdown into formatted sections
-  const lines = stripMarkdown(digest).split("\n").filter((l) => l.trim());
+  // Parse raw markdown lines, detect headings before stripping
+  const rawLines = digest.split("\n").filter((l) => l.trim());
+  const parsed = rawLines.map((line) => {
+    const headingMatch = line.match(/^#{1,6}\s+(.*)/);
+    if (headingMatch) {
+      return { type: "heading" as const, text: stripMarkdown(headingMatch[1]) };
+    }
+    const isAllCapsHeader = /^[A-Z\s&]+:?$/.test(line.trim());
+    if (isAllCapsHeader) {
+      return { type: "heading" as const, text: line.trim().replace(/:$/, "") };
+    }
+    return { type: "paragraph" as const, text: stripMarkdown(line) };
+  });
 
   return (
     <div
@@ -204,19 +216,17 @@ function DigestModal({
         </h2>
 
         <div className="space-y-3">
-          {lines.map((line, i) => {
-            // Detect section headers (lines that are all caps or end with colon)
-            const isHeader = /^[A-Z\s&]+:?$/.test(line.trim()) || /^#+\s/.test(line.trim());
-            if (isHeader) {
+          {parsed.map((item, i) => {
+            if (item.type === "heading") {
               return (
                 <h3 key={i} className="font-serif text-sm font-bold text-text-primary uppercase tracking-wide mt-4 mb-1">
-                  {line.replace(/^#+\s/, "").replace(/:$/, "")}
+                  {item.text}
                 </h3>
               );
             }
             return (
               <p key={i} className="text-sm text-text-secondary leading-relaxed">
-                {line}
+                {item.text}
               </p>
             );
           })}
@@ -261,8 +271,8 @@ export function NewsletterRail({
     <>
       <div className="sticky top-[calc(3.5rem+2rem)] max-h-[calc(100vh-3.5rem-3rem)] overflow-y-auto scrollbar-rail">
         {/* ── Daily Digest / Intelligence Briefing ── */}
-        <div className="mb-0 pb-6 border-b border-border-primary">
-          <p className="flex items-center gap-1.5 uppercase text-xs tracking-[0.15em] font-semibold text-text-secondary">
+        <div className="mb-0 pb-6 border-b border-border-primary bg-bg-secondary p-5">
+          <p className="flex items-center gap-1.5 uppercase text-[11px] tracking-[0.15em] font-semibold text-text-secondary">
             <span className="text-accent-primary">●</span>
             Inbox Intelligence
           </p>
@@ -278,9 +288,9 @@ export function NewsletterRail({
               <div className="mt-3 flex justify-end">
                 <button
                   onClick={handleOpenDigestModal}
-                  className="border border-text-primary text-xs uppercase tracking-wider px-4 py-1.5 bg-transparent text-text-primary hover:bg-text-primary hover:text-bg-primary transition-colors"
+                  className="text-[11px] uppercase tracking-[0.05em] font-medium text-text-secondary hover:text-text-primary transition-colors"
                 >
-                  Read Full
+                  Read full →
                 </button>
               </div>
             </>
@@ -297,9 +307,9 @@ export function NewsletterRail({
                 <div className="mt-3 flex justify-end">
                   <button
                     onClick={() => onGenerateDigest()}
-                    className="border border-text-primary text-xs uppercase tracking-wider px-4 py-1.5 bg-transparent text-text-primary hover:bg-text-primary hover:text-bg-primary transition-colors"
+                    className="text-[11px] uppercase tracking-[0.05em] font-medium text-accent-primary hover:text-text-primary transition-colors"
                   >
-                    Generate
+                    Generate →
                   </button>
                 </div>
               )}
@@ -311,9 +321,9 @@ export function NewsletterRail({
         {recentNewsletters.map((nl) => {
           const bullets = extractBulletPoints(nl);
           return (
-            <div key={nl.id} className="border-b border-border-primary">
-              <div className="py-6">
-                <p className="uppercase text-xs tracking-[0.15em] font-semibold text-text-secondary mb-1">
+            <div key={nl.id} className="my-6 pb-6 border-b border-border-primary/50 newsletter-card-hover">
+              <div className="px-5">
+                <p className="uppercase text-[11px] tracking-[0.1em] font-semibold text-text-secondary mb-2">
                   {nl.publication}
                 </p>
                 <h3 className="font-serif font-bold text-base leading-snug text-text-primary mb-3">
@@ -321,7 +331,7 @@ export function NewsletterRail({
                 </h3>
 
                 {bullets.length > 0 && (
-                  <div className="space-y-2">
+                  <div className="space-y-2 pl-4">
                     {bullets.map((point, i) => (
                       <p key={i} className="text-sm text-text-secondary leading-relaxed">
                         — {point}
@@ -333,9 +343,9 @@ export function NewsletterRail({
                 <div className="mt-4 flex justify-end">
                   <button
                     onClick={() => handleOpenModal(nl)}
-                    className="border border-text-primary text-xs uppercase tracking-wider px-4 py-1.5 bg-transparent text-text-primary hover:bg-text-primary hover:text-bg-primary transition-colors"
+                    className="text-[11px] uppercase tracking-[0.05em] font-medium text-text-secondary hover:text-text-primary transition-colors"
                   >
-                    Read Full
+                    Read full →
                   </button>
                 </div>
               </div>

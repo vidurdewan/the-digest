@@ -1,12 +1,11 @@
 "use client";
 
-import { ExternalLink, Share2, FileText, Tag, ArrowRight, ScrollText } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { ExternalLink, Share2, FileText, Tag, ArrowRight, ScrollText, Bookmark, Search, X, MoreHorizontal, Check, Lightbulb, Sparkles, Unlink, ThumbsDown, Bell, HelpCircle } from "lucide-react";
 import type { Summary, Entity, ArticleIntelligence, ArticleSignal } from "@/types";
 import { SignalBadges } from "@/components/intelligence/SignalBadge";
 import { AnnotationsPanel } from "./AnnotationsPanel";
-import { QuickReactions } from "@/components/intelligence/QuickReactions";
 import { GoDeeper } from "@/components/intelligence/GoDeeper";
-import { RemindMeButton } from "@/components/intelligence/RemindMeButton";
 
 interface ExpandedArticleViewProps {
   summary: Summary;
@@ -17,6 +16,9 @@ interface ExpandedArticleViewProps {
   signals?: ArticleSignal[];
   articleTitle?: string;
   articleContent?: string;
+  onSave?: () => void;
+  onDismiss?: () => void;
+  isSaved?: boolean;
 }
 
 export function ExpandedArticleView({
@@ -28,7 +30,25 @@ export function ExpandedArticleView({
   signals,
   articleTitle,
   articleContent,
+  onSave,
+  onDismiss,
+  isSaved,
 }: ExpandedArticleViewProps) {
+  const [overflowOpen, setOverflowOpen] = useState(false);
+  const overflowRef = useRef<HTMLDivElement>(null);
+
+  // Close overflow on outside click
+  useEffect(() => {
+    if (!overflowOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (overflowRef.current && !overflowRef.current.contains(e.target as Node)) {
+        setOverflowOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [overflowOpen]);
+
   return (
     <div className="space-y-4 px-5 py-5 sm:px-6">
       {/* Signal badges */}
@@ -166,21 +186,71 @@ export function ExpandedArticleView({
         </div>
       )}
 
-      {/* Quick Reactions + Remind Me */}
+      {/* ── Primary + Overflow Actions ── */}
       {articleId && (
-        <div className="flex items-center justify-between">
-          <QuickReactions articleId={articleId} />
-          <RemindMeButton articleId={articleId} />
-        </div>
-      )}
+        <div className="flex items-center gap-2">
+          {/* Save */}
+          <button
+            onClick={(e) => { e.stopPropagation(); onSave?.(); }}
+            className={`p-2 rounded-md transition-colors ${isSaved ? "text-accent-primary" : "text-text-tertiary hover:text-text-primary hover:bg-bg-secondary"}`}
+            title={isSaved ? "Saved" : "Save"}
+          >
+            <Bookmark size={16} className={isSaved ? "fill-current" : ""} />
+          </button>
 
-      {/* Go Deeper / Explain This */}
-      {articleId && articleTitle && (
-        <GoDeeper
-          articleId={articleId}
-          articleTitle={articleTitle}
-          articleContent={articleContent}
-        />
+          {/* Go Deeper (icon-only trigger; full component rendered below) */}
+          {articleTitle && (
+            <GoDeeper
+              articleId={articleId}
+              articleTitle={articleTitle}
+              articleContent={articleContent}
+            />
+          )}
+
+          {/* Dismiss */}
+          {onDismiss && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onDismiss(); }}
+              className="p-2 rounded-md text-text-tertiary hover:text-text-primary hover:bg-bg-secondary transition-colors"
+              title="Dismiss"
+            >
+              <X size={16} />
+            </button>
+          )}
+
+          {/* Overflow menu */}
+          <div className="relative" ref={overflowRef}>
+            <button
+              onClick={(e) => { e.stopPropagation(); setOverflowOpen(!overflowOpen); }}
+              className="p-2 rounded-md text-text-tertiary hover:text-text-primary hover:bg-bg-secondary transition-colors"
+              title="More actions"
+            >
+              <MoreHorizontal size={16} />
+            </button>
+            {overflowOpen && (
+              <div className="absolute bottom-full left-0 z-30 mb-1 w-44 rounded-lg border border-border-primary bg-bg-card py-1 shadow-lg">
+                {[
+                  { label: "Already knew", icon: Check },
+                  { label: "Useful", icon: Lightbulb },
+                  { label: "Surprising", icon: Sparkles },
+                  { label: "Bad connection", icon: Unlink },
+                  { label: "Not important", icon: ThumbsDown },
+                  { label: "Remind me", icon: Bell },
+                  { label: "Explain this", icon: HelpCircle },
+                ].map(({ label, icon: Icon }) => (
+                  <button
+                    key={label}
+                    onClick={(e) => { e.stopPropagation(); setOverflowOpen(false); }}
+                    className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-text-secondary hover:bg-bg-hover transition-colors"
+                  >
+                    <Icon size={13} />
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {/* Annotations */}
