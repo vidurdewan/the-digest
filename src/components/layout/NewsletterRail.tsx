@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import type { Newsletter, Article, Summary } from "@/types";
-import { ScannableSection, CalloutBlock, SectionBody } from "@/components/ui/ScannableText";
+import { ScannableSection, CalloutBlock, SectionBody, SectionHeader, DigestSectionBody } from "@/components/ui/ScannableText";
 import { useReadStateStore } from "@/lib/store";
 import { findMatchingArticleIds } from "@/lib/cross-references";
 
@@ -251,6 +251,17 @@ function DigestModal({
     sections.push({ label: currentLabel, body: currentBody.join("\n") });
   }
 
+  // Filter out empty/placeholder sections
+  const filteredSections = sections.filter((s) => {
+    const lower = s.body.toLowerCase().trim();
+    return !(
+      /^no (significant|notable|major|meaningful|relevant|new|reported|specific)/.test(lower) ||
+      /^nothing (significant|notable|major)/.test(lower) ||
+      /^none (reported|noted|identified|observed)/.test(lower) ||
+      lower === "none." || lower === "n/a" || lower === "none"
+    );
+  });
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
@@ -277,7 +288,7 @@ function DigestModal({
         </h2>
 
         <div>
-          {sections.map((section, i) => {
+          {filteredSections.map((section, i) => {
             // Today's One-Liner — special callout style
             if (/one[- ]liner/i.test(section.label)) {
               return (
@@ -295,9 +306,12 @@ function DigestModal({
             if (/contrarian/i.test(section.label)) {
               return <CalloutBlock key={i} label={section.label} text={section.body} />;
             }
-            // All other sections — scannable
+            // All other sections — scannable with inline callout parsing
             return (
-              <ScannableSection key={i} label={section.label} text={section.body} />
+              <div key={i}>
+                <SectionHeader label={section.label} />
+                <DigestSectionBody text={section.body} />
+              </div>
             );
           })}
         </div>
@@ -372,7 +386,7 @@ export function NewsletterRail({
 
   return (
     <>
-      <div className="sticky top-[calc(3.5rem+2rem)] max-h-[calc(100vh-3.5rem-3rem)] overflow-y-auto scrollbar-rail">
+      <div className="sticky top-[calc(3.5rem+2rem)] max-h-[calc(100vh-3.5rem-3rem)] overflow-y-auto overflow-x-hidden scrollbar-rail min-w-0">
         {/* ── Daily Digest / Intelligence Briefing ── */}
         <div className="mb-4 pb-6 border-b border-border-primary bg-bg-secondary p-5">
           <p className="flex items-center gap-1.5 uppercase text-[11px] tracking-[0.15em] font-semibold text-text-secondary">
@@ -386,7 +400,7 @@ export function NewsletterRail({
           {dailyDigest ? (
             <>
               {digestPreview?.oneLiner && (
-                <p className="mt-3 text-[14px] font-semibold text-text-primary leading-snug">
+                <p className="mt-3 text-[14px] font-semibold text-text-primary leading-snug break-words">
                   {digestPreview.oneLiner}
                 </p>
               )}
@@ -395,7 +409,7 @@ export function NewsletterRail({
                   <p className="text-[12px] uppercase tracking-[0.08em] font-semibold text-text-secondary mb-1">
                     Top Stories
                   </p>
-                  <p className="text-[13px] text-text-secondary leading-relaxed">
+                  <p className="text-[13px] text-text-secondary leading-relaxed break-words">
                     {digestPreview.topStoriesSnippet}
                   </p>
                 </div>
@@ -453,14 +467,14 @@ export function NewsletterRail({
                   {nl.publication}
                   {!isNlRead && <span className="inline-block h-1.5 w-1.5 rounded-full bg-accent-primary" />}
                 </p>
-                <h3 className="font-serif font-bold text-base leading-snug text-text-primary mb-3">
+                <h3 className="font-serif font-bold text-base leading-snug text-text-primary mb-3 line-clamp-3 break-words">
                   {stripMarkdown(nl.subject)}
                 </h3>
 
                 {bullets.length > 0 && (
                   <div className="space-y-2 pl-4">
                     {bullets.map((point, i) => (
-                      <p key={i} className="text-sm text-text-secondary leading-relaxed">
+                      <p key={i} className="text-sm text-text-secondary leading-relaxed break-words">
                         — {point}
                       </p>
                     ))}

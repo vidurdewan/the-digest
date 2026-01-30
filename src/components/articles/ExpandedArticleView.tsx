@@ -1,12 +1,10 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { ExternalLink, Share2, FileText, Tag, ArrowRight, ScrollText, Bookmark, Search, X, MoreHorizontal, Check, Lightbulb, Sparkles, Unlink, ThumbsDown, Bell, HelpCircle } from "lucide-react";
-import type { Summary, Entity, ArticleIntelligence, ArticleSignal } from "@/types";
+import { useState } from "react";
+import { Share2, ScrollText, Bookmark, X } from "lucide-react";
+import type { Summary, ArticleIntelligence, ArticleSignal } from "@/types";
 import type { RelatedItem } from "@/lib/cross-references";
 import { SignalBadges } from "@/components/intelligence/SignalBadge";
-import { AnnotationsPanel } from "./AnnotationsPanel";
-import { GoDeeper } from "@/components/intelligence/GoDeeper";
 import { ScannableSection, CalloutBlock, KeyQuotePullquote, SourceExcerptBlock } from "@/components/ui/ScannableText";
 
 interface ExpandedArticleViewProps {
@@ -46,9 +44,7 @@ export function ExpandedArticleView({
   onOpenNewsletter,
   sourceName,
 }: ExpandedArticleViewProps) {
-  const [overflowOpen, setOverflowOpen] = useState(false);
   const [showExcerpt, setShowExcerpt] = useState<Record<string, boolean>>({});
-  const overflowRef = useRef<HTMLDivElement>(null);
 
   // Extract key quotes from summary text (text in quotation marks with attribution)
   const keyQuotes = (() => {
@@ -79,18 +75,6 @@ export function ExpandedArticleView({
     }
     return null;
   };
-
-  // Close overflow on outside click
-  useEffect(() => {
-    if (!overflowOpen) return;
-    function handleClick(e: MouseEvent) {
-      if (overflowRef.current && !overflowRef.current.contains(e.target as Node)) {
-        setOverflowOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [overflowOpen]);
 
   return (
     <div className="space-y-4 px-5 py-5 sm:px-6">
@@ -263,57 +247,9 @@ export function ExpandedArticleView({
         </div>
       )}
 
-      {/* Key Entities */}
-      {summary.keyEntities.length > 0 && (
-        <div>
-          <h4 className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-text-tertiary">
-            <Tag size={12} />
-            Key Entities
-          </h4>
-          <div className="flex flex-wrap gap-2">
-            {summary.keyEntities.map((entity, i) => (
-              <EntityTag key={i} entity={entity} />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Watch for next */}
-      {intelligence?.watchForNext && (
-        <div className="flex items-start gap-2 rounded-lg border border-border-secondary bg-bg-secondary/50 px-3 py-2">
-          <ArrowRight size={14} className="mt-0.5 shrink-0 text-accent-primary" />
-          <div>
-            <span className="text-xs font-semibold uppercase tracking-wider text-accent-primary">
-              Watch for next
-            </span>
-            <p className="text-sm text-text-secondary">
-              {intelligence.watchForNext}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Connections */}
-      {intelligence?.connectsTo && intelligence.connectsTo.length > 0 && (
-        <div className="rounded-lg border border-border-secondary bg-bg-secondary/30 px-3 py-2">
-          <span className="text-xs font-semibold uppercase tracking-wider text-text-tertiary">
-            This connects to...
-          </span>
-          <div className="mt-1 space-y-1">
-            {intelligence.connectsTo.map((conn, i) => (
-              <p key={i} className="text-sm text-text-secondary">
-                <span className="font-medium text-text-primary">{conn.articleTitle}</span>
-                {" — "}{conn.reason}
-              </p>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ── Primary + Overflow Actions ── */}
+      {/* ── Action Bar ── */}
       {articleId && (
-        <div className="flex items-center gap-2">
-          {/* Save */}
+        <div className="flex items-center gap-1 border-t border-border-primary pt-4">
           <button
             onClick={(e) => { e.stopPropagation(); onSave?.(); }}
             className={`p-2 rounded-md transition-colors ${isSaved ? "text-accent-primary" : "text-text-tertiary hover:text-text-primary hover:bg-bg-secondary"}`}
@@ -321,17 +257,13 @@ export function ExpandedArticleView({
           >
             <Bookmark size={16} className={isSaved ? "fill-current" : ""} />
           </button>
-
-          {/* Go Deeper (icon-only trigger; full component rendered below) */}
-          {articleTitle && (
-            <GoDeeper
-              articleId={articleId}
-              articleTitle={articleTitle}
-              articleContent={articleContent}
-            />
-          )}
-
-          {/* Dismiss */}
+          <button
+            onClick={() => { if (navigator.share) { navigator.share({ title: articleTitle, url: sourceUrl }); } else { navigator.clipboard.writeText(sourceUrl); } }}
+            className="p-2 rounded-md text-text-tertiary hover:text-text-primary hover:bg-bg-secondary transition-colors"
+            title="Share"
+          >
+            <Share2 size={16} />
+          </button>
           {onDismiss && (
             <button
               onClick={(e) => { e.stopPropagation(); onDismiss(); }}
@@ -341,81 +273,9 @@ export function ExpandedArticleView({
               <X size={16} />
             </button>
           )}
-
-          {/* Overflow menu */}
-          <div className="relative" ref={overflowRef}>
-            <button
-              onClick={(e) => { e.stopPropagation(); setOverflowOpen(!overflowOpen); }}
-              className="p-2 rounded-md text-text-tertiary hover:text-text-primary hover:bg-bg-secondary transition-colors"
-              title="More actions"
-            >
-              <MoreHorizontal size={16} />
-            </button>
-            {overflowOpen && (
-              <div className="absolute bottom-full left-0 z-30 mb-1 w-44 rounded-lg border border-border-primary bg-bg-card py-1 shadow-lg">
-                {[
-                  { label: "Already knew", icon: Check },
-                  { label: "Useful", icon: Lightbulb },
-                  { label: "Surprising", icon: Sparkles },
-                  { label: "Bad connection", icon: Unlink },
-                  { label: "Not important", icon: ThumbsDown },
-                  { label: "Remind me", icon: Bell },
-                  { label: "Explain this", icon: HelpCircle },
-                ].map(({ label, icon: Icon }) => (
-                  <button
-                    key={label}
-                    onClick={(e) => { e.stopPropagation(); setOverflowOpen(false); }}
-                    className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-text-secondary hover:bg-bg-hover transition-colors"
-                  >
-                    <Icon size={13} />
-                    {label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
       )}
-
-      {/* Annotations */}
-      {articleId && (
-        <div className="border-t border-border-secondary pt-4">
-          <AnnotationsPanel articleId={articleId} />
-        </div>
-      )}
-
-      {/* Action buttons */}
-      <div className="flex flex-wrap items-center gap-2 border-t border-border-secondary pt-4">
-        <button
-          onClick={onOpenFull}
-          className="flex items-center gap-1.5 rounded-xl bg-accent-primary px-4 py-2 text-xs font-medium text-text-inverse hover:bg-accent-primary-hover transition-colors"
-        >
-          <FileText size={14} />
-          Read Full Article
-        </button>
-        <button className="flex items-center gap-1.5 rounded-xl border border-border-secondary px-4 py-2 text-xs font-medium text-text-secondary hover:bg-bg-hover transition-colors">
-          <Share2 size={14} />
-          Share
-        </button>
-      </div>
     </div>
   );
 }
 
-function EntityTag({ entity }: { entity: Entity }) {
-  const entityKey = (["company", "person", "fund", "keyword"].includes(entity.type) ? entity.type : "keyword");
-  const style = {
-    border: `var(--entity-${entityKey}-border)`,
-    text: `var(--entity-${entityKey}-text)`,
-  };
-
-  return (
-    <button
-      className="flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors hover:opacity-80"
-      style={{ borderColor: style.border, color: style.text }}
-    >
-      <span className="text-[10px] uppercase opacity-60">{entity.type}</span>
-      <span>{entity.name}</span>
-    </button>
-  );
-}

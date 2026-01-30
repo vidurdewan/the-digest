@@ -264,6 +264,53 @@ export function ScannableSection({
   );
 }
 
+// ─── Digest Section Body ─────────────────────────────────
+// Enhanced body renderer that detects inline callouts like "→ So What:" and "Bottom line:".
+// Splits the body into sub-blocks: regular text/bullets and callout blocks.
+export function DigestSectionBody({ text, sourceUrls }: { text: string; sourceUrls?: Record<string, string> }) {
+  // Split body into segments at callout markers
+  const segments: { type: "text" | "callout"; label?: string; content: string }[] = [];
+  const lines = text.split("\n");
+  let currentLines: string[] = [];
+
+  function flushText() {
+    if (currentLines.length > 0) {
+      segments.push({ type: "text", content: currentLines.join("\n") });
+      currentLines = [];
+    }
+  }
+
+  for (const line of lines) {
+    // Detect "→ So What:" or "→ Bottom Line:" or "Bottom line:" patterns
+    const calloutMatch = line.match(/^(?:→\s*)?(?:(So What|Bottom Line|Bottom line|Key Takeaway|Watch Next|The Upshot|Contrarian Take))\s*[:\-–—]\s*(.*)/i);
+    if (calloutMatch) {
+      flushText();
+      const label = calloutMatch[1];
+      const rest = calloutMatch[2].trim();
+      segments.push({ type: "callout", label, content: rest });
+      continue;
+    }
+    currentLines.push(line);
+  }
+  flushText();
+
+  if (segments.length <= 1 && segments[0]?.type === "text") {
+    // No callouts found — render normally
+    return <SectionBody text={text} sourceUrls={sourceUrls} />;
+  }
+
+  return (
+    <div className="space-y-3">
+      {segments.map((seg, i) => {
+        if (seg.type === "callout") {
+          return <CalloutBlock key={i} label={seg.label || "So What"} text={seg.content} />;
+        }
+        return <SectionBody key={i} text={seg.content} sourceUrls={sourceUrls} />;
+      })}
+    </div>
+  );
+}
+
 // ─── Key Quote Pullquote ─────────────────────────────────
 // Renders a direct quote as a styled pullquote with attribution.
 export function KeyQuotePullquote({

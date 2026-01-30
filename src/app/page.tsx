@@ -345,7 +345,10 @@ export default function Home() {
   }, []);
 
   const renderSection = () => {
-    if (isLoading) return <PageSkeleton />;
+    // Only show full-page skeleton for feed sections that depend on articles
+    if (isLoading && (activeSection === "priority-feed" || activeSection === "news" || activeSection === "intelligence" || activeSection === "saved")) {
+      return <PageSkeleton />;
+    }
 
     switch (activeSection) {
       case "priority-feed":

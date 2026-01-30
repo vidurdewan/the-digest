@@ -78,7 +78,7 @@ export function MainLayout({
           </div>
         </main>
         {showAside && (
-          <aside className="hidden lg:block border-l border-border-primary pl-8">
+          <aside className="hidden lg:block border-l border-border-primary pl-8 min-w-0 overflow-hidden">
             <NewsletterRail
               newsletters={newsletters ?? []}
               articles={articles}
