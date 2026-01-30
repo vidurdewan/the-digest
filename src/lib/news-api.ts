@@ -74,6 +74,7 @@ export async function fetchNewsApi(source: NewsSource): Promise<RawArticle[]> {
           imageUrl: a.urlToImage,
           contentHash: generateContentHash(a.title, a.url),
           sourceTier: getArticleSourceTier(sourceName, a.url),
+          requiresClassification: source.requiresClassification,
         };
       });
   } catch (error) {

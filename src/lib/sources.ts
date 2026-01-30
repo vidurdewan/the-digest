@@ -7,6 +7,8 @@ export interface NewsSource {
   type: "rss" | "api";
   topic: TopicCategory;
   isActive: boolean;
+  /** Broad sources (wire services, general news) that need per-article AI classification */
+  requiresClassification?: boolean;
 }
 
 /**
@@ -63,6 +65,7 @@ export const defaultSources: NewsSource[] = [
     type: "rss",
     topic: "financial-markets",
     isActive: true,
+    requiresClassification: true,
   },
   {
     id: "newsapi-fundraising",
@@ -71,6 +74,7 @@ export const defaultSources: NewsSource[] = [
     type: "api",
     topic: "fundraising-acquisitions",
     isActive: true,
+    requiresClassification: true,
   },
 
   // ─── Executive Movements ───────────────────────────────
@@ -81,6 +85,7 @@ export const defaultSources: NewsSource[] = [
     type: "api",
     topic: "executive-movements",
     isActive: true,
+    requiresClassification: true,
   },
 
   // ─── Financial Markets ─────────────────────────────────
@@ -91,6 +96,7 @@ export const defaultSources: NewsSource[] = [
     type: "rss",
     topic: "financial-markets",
     isActive: true,
+    requiresClassification: true,
   },
   {
     id: "cnbc",
@@ -99,6 +105,7 @@ export const defaultSources: NewsSource[] = [
     type: "rss",
     topic: "financial-markets",
     isActive: true,
+    requiresClassification: true,
   },
   {
     id: "marketwatch",
@@ -169,6 +176,7 @@ export const defaultSources: NewsSource[] = [
     type: "rss",
     topic: "geopolitics",
     isActive: true,
+    requiresClassification: true,
   },
   {
     id: "reuters-world",
@@ -177,6 +185,7 @@ export const defaultSources: NewsSource[] = [
     type: "rss",
     topic: "geopolitics",
     isActive: true,
+    requiresClassification: true,
   },
   {
     id: "nbc-news",
@@ -185,6 +194,7 @@ export const defaultSources: NewsSource[] = [
     type: "rss",
     topic: "geopolitics",
     isActive: true,
+    requiresClassification: true,
   },
 
   // ─── Science & Tech ────────────────────────────────────
@@ -229,6 +239,7 @@ export const defaultSources: NewsSource[] = [
     type: "api",
     topic: "automotive",
     isActive: true,
+    requiresClassification: true,
   },
   {
     id: "electrek",
@@ -279,6 +290,7 @@ export const defaultSources: NewsSource[] = [
     type: "api",
     topic: "local-news",
     isActive: true,
+    requiresClassification: true,
   },
 
   // ─── Politics ──────────────────────────────────────────

@@ -563,7 +563,7 @@ export async function classifyArticleTopics(
   const articlesText = batch
     .map(
       (a, i) =>
-        `[${i + 1}] ID: ${a.id}\nTitle: ${a.title}\nContent preview: ${a.content.slice(0, 300)}`
+        `[${i + 1}] ID: ${a.id}\nTitle: ${a.title}\nContent preview: ${a.content.slice(0, 600)}`
     )
     .join("\n\n---\n\n");
 
@@ -577,17 +577,22 @@ export async function classifyArticleTopics(
           content: `Classify each article into exactly ONE topic category. Choose the BEST fit based on the article's actual content, not its source.
 
 Valid topics:
-- "vc-startups" — ONLY for: VC firm activity, startup ecosystem news, accelerator programs, startup strategy/culture. NOT for product launches, feature updates, or general tech news from big companies (Apple, Google, Samsung, Meta, Amazon, Spotify, etc.)
-- "fundraising-acquisitions" — Funding rounds, M&A deals, IPO filings, SPAC mergers, company acquisitions, valuations
-- "executive-movements" — C-suite hires/departures, board appointments, leadership changes
-- "financial-markets" — Stock markets, economic data, interest rates, earnings reports, SEC filings, Fed policy, personal finance
-- "geopolitics" — International relations, trade policy, sanctions, wars, diplomacy
-- "automotive" — EVs, autonomous driving, auto industry, transportation
-- "science-tech" — Product launches, feature updates, AI/ML research, hardware, software, cybersecurity, space, consumer tech. This is the DEFAULT for tech news about established companies (Apple, Google, Meta, Samsung, Microsoft, Amazon, Spotify, etc.)
-- "local-news" — City/regional news, local government, community events
-- "politics" — Domestic politics, legislation, elections, government policy
+- "vc-startups" — ONLY for: VC firm activity, startup ecosystem news, accelerator programs, startup strategy/culture. NOT for product launches, feature updates, or general tech news from big companies.
+- "fundraising-acquisitions" — Funding rounds, M&A deals, IPO filings, SPAC mergers, company acquisitions, valuations.
+- "executive-movements" — C-suite hires/departures, board appointments, leadership changes.
+- "financial-markets" — Stock markets, economic data, interest rates, earnings reports, SEC filings, Fed policy, personal finance, corporate earnings.
+- "geopolitics" — STRICTLY: international relations, trade policy between nations, sanctions, wars, diplomacy, treaties, foreign affairs. NOT for: domestic policy, food/drug recalls, health/medical news, sports, entertainment, weather, crime, consumer products, or anything that happens within a single country's domestic sphere.
+- "automotive" — EVs, autonomous driving, auto industry, car reviews, transportation policy.
+- "science-tech" — Product launches, feature updates, AI/ML, hardware, software, cybersecurity, space, consumer tech. DEFAULT for tech news about established companies (Apple, Google, Meta, Samsung, Microsoft, Amazon, Spotify, etc.) and for articles that don't clearly fit another category.
+- "local-news" — City/regional news, local government, community events.
+- "politics" — DOMESTIC politics: legislation, elections, government policy, regulatory actions, political parties, congressional activity. Distinct from geopolitics (which is international).
 
-IMPORTANT: Most tech news belongs in "science-tech", NOT "vc-startups". Only classify as "vc-startups" if the article is specifically about venture capital, startup founding/strategy, or the startup ecosystem. News about products, features, lawsuits, layoffs, or business operations of established tech companies should be "science-tech".
+RULES:
+1. Most tech news → "science-tech", NOT "vc-startups". Only use "vc-startups" for venture capital, startup founding/strategy, or the startup ecosystem.
+2. Food recalls, FDA actions, health warnings, consumer safety → "science-tech" (not geopolitics).
+3. Sports, Olympics, entertainment, celebrity news → "science-tech" as catch-all (not geopolitics).
+4. Domestic US policy, regulation, legislation → "politics" (not geopolitics).
+5. When unsure: prefer "science-tech" for tech/product news, "financial-markets" for business/earnings.
 
 ${articlesText}
 

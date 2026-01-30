@@ -34,6 +34,7 @@ export interface RawArticle {
   contentHash: string;
   sourceTier: SourceTier;
   documentType?: DocumentType;
+  requiresClassification?: boolean;
 }
 
 /**
@@ -92,6 +93,7 @@ export async function fetchRssFeed(source: NewsSource): Promise<RawArticle[]> {
         contentHash: generateContentHash(title, url),
         sourceTier: getArticleSourceTier(source.name, url),
         documentType,
+        requiresClassification: source.requiresClassification,
       });
     }
 

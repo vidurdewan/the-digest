@@ -14,7 +14,7 @@ import { rankRecentArticles } from "@/lib/story-ranker";
  * Fire-and-forget — errors are logged but don't block the response.
  */
 async function runPostIngestionWork(
-  articles: { contentHash: string; content?: string | null; title: string }[],
+  articles: { contentHash: string; content?: string | null; title: string; requiresClassification?: boolean }[],
   shouldSummarize: boolean
 ) {
   try {
@@ -50,35 +50,65 @@ async function runPostIngestionWork(
     // Topic classification, intelligence processing, and ranking in parallel
     const work: Promise<unknown>[] = [];
 
-    // AI topic classification — reclassify recent articles based on content
+    // AI topic classification — prioritize broad-source articles, then recent articles
     if (isClaudeConfigured() && isSupabaseConfigured() && supabase) {
       work.push(
         (async () => {
           try {
-            const { data: recentArticles } = await supabase
-              .from("articles")
-              .select("id, title, content, topic")
-              .order("published_at", { ascending: false })
-              .limit(50);
+            // 1. Find articles from broad sources that need classification
+            const flaggedHashes = articles
+              .filter((a) => a.requiresClassification && a.content && a.content.length > 50)
+              .map((a) => a.contentHash);
 
-            if (!recentArticles || recentArticles.length === 0) return;
+            let toClassify: { id: string; title: string; content: string; currentTopic: string }[] = [];
+            const seenIds = new Set<string>();
 
-            const toClassify = recentArticles
-              .filter((a: { content: string | null }) => a.content && a.content.length > 50)
-              .map((a: { id: string; title: string; content: string; topic: string }) => ({
-                id: a.id,
-                title: a.title,
-                content: a.content,
-                currentTopic: a.topic,
-              }));
+            if (flaggedHashes.length > 0) {
+              // Fetch flagged articles from DB (they were just stored)
+              for (let i = 0; i < flaggedHashes.length; i += 100) {
+                const chunk = flaggedHashes.slice(i, i + 100);
+                const { data: flagged } = await supabase
+                  .from("articles")
+                  .select("id, title, content, topic")
+                  .in("content_hash", chunk);
+                if (flagged) {
+                  for (const a of flagged) {
+                    if (a.content && a.content.length > 50 && !seenIds.has(a.id)) {
+                      seenIds.add(a.id);
+                      toClassify.push({ id: a.id, title: a.title, content: a.content, currentTopic: a.topic });
+                    }
+                  }
+                }
+              }
+            }
+
+            // 2. Fill remaining slots with recent articles (up to 60 total)
+            const remaining = 60 - toClassify.length;
+            if (remaining > 0) {
+              const { data: recentArticles } = await supabase
+                .from("articles")
+                .select("id, title, content, topic")
+                .order("published_at", { ascending: false })
+                .limit(remaining);
+              if (recentArticles) {
+                for (const a of recentArticles) {
+                  if (a.content && a.content.length > 50 && !seenIds.has(a.id)) {
+                    seenIds.add(a.id);
+                    toClassify.push({ id: a.id, title: a.title, content: a.content, currentTopic: a.topic });
+                  }
+                }
+              }
+            }
+
+            if (toClassify.length === 0) return;
 
             // Classify in batches of 20
+            let totalUpdated = 0;
             for (let i = 0; i < toClassify.length; i += 20) {
               const batch = toClassify.slice(i, i + 20);
               const results = await classifyArticleTopics(batch);
               if (!results) continue;
 
-              // Update articles whose topic changed
               const updates = results.filter(
                 (r, idx) => r.topic !== batch[idx].currentTopic
               );
@@ -92,8 +122,11 @@ async function runPostIngestionWork(
                       .eq("id", u.id)
                   )
                 );
-                console.log(`[Ingest] Reclassified ${updates.length} articles`);
+                totalUpdated += updates.length;
               }
+            }
+            if (totalUpdated > 0) {
+              console.log(`[Ingest] Reclassified ${totalUpdated}/${toClassify.length} articles`);
             }
           } catch (err) {
             console.error("[Ingest] Topic classification error:", err);
