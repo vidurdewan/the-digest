@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { ExternalLink, Share2, FileText, Tag, ArrowRight, ScrollText, Bookmark, Search, X, MoreHorizontal, Check, Lightbulb, Sparkles, Unlink, ThumbsDown, Bell, HelpCircle } from "lucide-react";
 import type { Summary, Entity, ArticleIntelligence, ArticleSignal } from "@/types";
+import type { RelatedItem } from "@/lib/cross-references";
 import { SignalBadges } from "@/components/intelligence/SignalBadge";
 import { AnnotationsPanel } from "./AnnotationsPanel";
 import { GoDeeper } from "@/components/intelligence/GoDeeper";
@@ -21,6 +22,9 @@ interface ExpandedArticleViewProps {
   onSave?: () => void;
   onDismiss?: () => void;
   isSaved?: boolean;
+  relatedContent?: RelatedItem[];
+  onNavigateToArticle?: (id: string) => void;
+  onOpenNewsletter?: (id: string) => void;
 }
 
 export function ExpandedArticleView({
@@ -36,6 +40,9 @@ export function ExpandedArticleView({
   onSave,
   onDismiss,
   isSaved,
+  relatedContent,
+  onNavigateToArticle,
+  onOpenNewsletter,
 }: ExpandedArticleViewProps) {
   const [overflowOpen, setOverflowOpen] = useState(false);
   const overflowRef = useRef<HTMLDivElement>(null);
@@ -124,6 +131,40 @@ export function ExpandedArticleView({
               <p className="text-sm leading-relaxed text-text-secondary">{summary.deciphering.watchNext}</p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Related Coverage */}
+      {relatedContent && relatedContent.length > 0 && (
+        <div>
+          <h4 className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-text-tertiary">
+            🔗 Related Coverage
+          </h4>
+          <div className="space-y-1">
+            {relatedContent.map((item) => {
+              const icon = item.type === "newsletter" ? "📧" : item.type === "primary" ? "📄" : "📰";
+              return (
+                <button
+                  key={`${item.type}-${item.id}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (item.type === "newsletter") {
+                      onOpenNewsletter?.(item.id);
+                    } else if (item.type === "primary" && item.sourceUrl) {
+                      window.open(item.sourceUrl, "_blank", "noopener,noreferrer");
+                    } else {
+                      onNavigateToArticle?.(item.id);
+                    }
+                  }}
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-text-secondary hover:bg-bg-hover transition-colors"
+                >
+                  <span className="shrink-0">{icon}</span>
+                  <span className="font-medium text-text-primary shrink-0">{item.source}:</span>
+                  <span className="truncate">{item.title}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 

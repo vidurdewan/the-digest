@@ -6,7 +6,7 @@ import { ToastContainer } from "@/components/ui/Toast";
 import { NewsletterRail } from "./NewsletterRail";
 import { useSidebarStore } from "@/lib/store";
 import { useRef, useEffect, useState } from "react";
-import type { Newsletter } from "@/types";
+import type { Newsletter, Article, Summary } from "@/types";
 
 // Sections where the aside rail should be hidden (full-width main)
 const FULL_WIDTH_SECTIONS = new Set([
@@ -24,6 +24,7 @@ export function MainLayout({
   children,
   headerProps,
   newsletters,
+  articles,
   onNavigateToNewsletter,
   dailyDigest,
   isGeneratingDigest,
@@ -32,6 +33,7 @@ export function MainLayout({
   children: React.ReactNode;
   headerProps?: EditorialHeaderProps;
   newsletters?: Newsletter[];
+  articles?: (Article & { summary?: Summary })[];
   onNavigateToNewsletter?: (id: string) => void;
   dailyDigest?: string | null;
   isGeneratingDigest?: boolean;
@@ -79,6 +81,7 @@ export function MainLayout({
           <aside className="hidden lg:block border-l border-border-primary pl-8">
             <NewsletterRail
               newsletters={newsletters ?? []}
+              articles={articles}
               onNavigateToNewsletter={onNavigateToNewsletter}
               dailyDigest={dailyDigest ?? null}
               isGeneratingDigest={isGeneratingDigest ?? false}

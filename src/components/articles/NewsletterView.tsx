@@ -24,8 +24,9 @@ import {
   Briefcase,
   Star,
 } from "lucide-react";
-import type { Newsletter } from "@/types";
+import type { Newsletter, Article, Summary } from "@/types";
 import { getRelativeTime } from "@/lib/mock-data";
+import { findRelatedForNewsletter, type RelatedItem } from "@/lib/cross-references";
 import { NewsletterCardSkeleton } from "@/components/ui/LoadingSkeleton";
 import { SectionHeader, SectionBody, CalloutBlock, SubtleCallout } from "@/components/ui/ScannableText";
 import { useReadStateStore } from "@/lib/store";
@@ -61,6 +62,8 @@ interface NewsletterViewProps {
   onToggleSave: (id: string) => void;
   vipNewsletters: string[];
   onToggleVip: (publication: string) => void;
+  articles?: (Article & { summary?: Summary })[];
+  onNavigateToArticle?: (articleId: string) => void;
 }
 
 function formatDateLabel(dateStr: string): string {
@@ -550,12 +553,18 @@ function NewsletterItem({
   onToggleSave,
   isVip,
   onToggleVip,
+  articles,
+  allNewsletters,
+  onNavigateToArticle,
 }: {
   newsletter: Newsletter;
   onToggleRead: (id: string) => void;
   onToggleSave: (id: string) => void;
   isVip: boolean;
   onToggleVip: (publication: string) => void;
+  articles?: (Article & { summary?: Summary })[];
+  allNewsletters?: Newsletter[];
+  onNavigateToArticle?: (articleId: string) => void;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showRawContent, setShowRawContent] = useState(false);
@@ -719,6 +728,42 @@ function NewsletterItem({
                   <SubtleCallout label="Work Radar" text={stripMarkdown((summary as { recruiterRelevance: string }).recruiterRelevance)} />
                 )}
 
+              {/* Related Coverage */}
+              {articles && articles.length > 0 && (() => {
+                const related = findRelatedForNewsletter(newsletter, articles, allNewsletters ?? []);
+                if (related.length === 0) return null;
+                return (
+                  <div className="mt-4">
+                    <h4 className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-text-tertiary">
+                      🔗 Related Coverage
+                    </h4>
+                    <div className="space-y-1">
+                      {related.map((item) => {
+                        const icon = item.type === "newsletter" ? "📧" : item.type === "primary" ? "📄" : "📰";
+                        return (
+                          <button
+                            key={`${item.type}-${item.id}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (item.type === "article" || item.type === "primary") {
+                                onNavigateToArticle?.(item.id);
+                              } else if (item.sourceUrl) {
+                                window.open(item.sourceUrl, "_blank", "noopener,noreferrer");
+                              }
+                            }}
+                            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-text-secondary hover:bg-bg-hover transition-colors"
+                          >
+                            <span className="shrink-0">{icon}</span>
+                            <span className="font-medium text-text-primary shrink-0">{item.source}:</span>
+                            <span className="truncate">{item.title}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Toggle raw content */}
               <button
                 onClick={(e) => {
@@ -772,6 +817,8 @@ export function NewsletterView({
   onToggleSave,
   vipNewsletters,
   onToggleVip,
+  articles,
+  onNavigateToArticle,
 }: NewsletterViewProps) {
   const [ingestResult, setIngestResult] = useState<{
     fetched: number;
@@ -975,6 +1022,9 @@ export function NewsletterView({
               onToggleSave={onToggleSave}
               isVip={vipSet.has(nl.publication)}
               onToggleVip={onToggleVip}
+              articles={articles}
+              allNewsletters={newsletters}
+              onNavigateToArticle={onNavigateToArticle}
             />
           ))}
         </div>

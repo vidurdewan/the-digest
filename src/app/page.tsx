@@ -319,6 +319,7 @@ export default function Home() {
         return (
           <IntelligenceFeed
             articles={rankedArticles}
+            newsletters={newsletterData.newsletters}
             onSave={handleSave}
             onOpenReader={handleOpenReader}
             onRequestSummary={articleData.requestFullSummary}
@@ -360,6 +361,8 @@ export default function Home() {
               }
               preferences.save();
             }}
+            articles={articlesWithMatches}
+            onNavigateToArticle={handleNavigateToArticle}
           />
         );
       case "news":
@@ -409,6 +412,7 @@ export default function Home() {
         return (
           <IntelligenceFeed
             articles={rankedArticles}
+            newsletters={newsletterData.newsletters}
             onSave={handleSave}
             onOpenReader={handleOpenReader}
             onRequestSummary={articleData.requestFullSummary}
@@ -444,6 +448,7 @@ export default function Home() {
         isRefreshing: articleData.isIngesting,
       }}
       newsletters={newsletterData.newsletters}
+      articles={articlesWithMatches}
       dailyDigest={newsletterData.dailyDigest}
       isGeneratingDigest={newsletterData.isGeneratingDigest}
       onGenerateDigest={newsletterData.generateDigest}

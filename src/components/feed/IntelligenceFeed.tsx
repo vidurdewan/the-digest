@@ -15,12 +15,14 @@ import type {
   ArticleIntelligence,
   ArticleWithIntelligence,
   TopicCategory,
+  Newsletter,
 } from "@/types";
 import { topicLabels, topicDotColors } from "@/lib/mock-data";
 import { ExpandedArticleView } from "@/components/articles/ExpandedArticleView";
 import { useReadStateStore } from "@/lib/store";
 import { CheckCircle } from "lucide-react";
 import { getSourceType, getSourceTypeConfig, findCoverageDensity } from "@/lib/source-provenance";
+import { findRelatedForArticle, type RelatedItem } from "@/lib/cross-references";
 
 function formatArticleTime(dateString: string): string {
   const date = new Date(dateString);
@@ -58,6 +60,7 @@ interface IntelligenceFeedProps {
     summary?: Summary;
     intelligence?: ArticleIntelligence;
   })[];
+  newsletters?: Newsletter[];
   onSave: (id: string) => void;
   onOpenReader: (article: Article & { summary?: Summary }) => void;
   onRequestSummary?: (
@@ -76,6 +79,7 @@ const ITEMS_PER_PAGE = 20;
 
 export function IntelligenceFeed({
   articles,
+  newsletters = [],
   onSave,
   onOpenReader,
   onRequestSummary,
@@ -89,6 +93,7 @@ export function IntelligenceFeed({
   const [activeTab, setActiveTab] = useState<"all" | TopicCategory>("all");
   const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
   const [expandedArticleId, setExpandedArticleId] = useState<string | null>(null);
+  const [articleHistory, setArticleHistory] = useState<string[]>([]);
   const [isLoadingExpanded, setIsLoadingExpanded] = useState(false);
   const expandedRef = useRef<HTMLDivElement>(null);
   const markArticleRead = useReadStateStore((s) => s.markArticleRead);
@@ -99,8 +104,10 @@ export function IntelligenceFeed({
   const handleArticleClick = useCallback(async (article: Article & { summary?: Summary; intelligence?: ArticleIntelligence }) => {
     if (expandedArticleId === article.id) {
       setExpandedArticleId(null);
+      setArticleHistory([]);
       return;
     }
+    setArticleHistory([]);
     setExpandedArticleId(article.id);
     // Request summary if not available
     if (!article.summary?.theNews && onRequestSummary) {
@@ -124,6 +131,36 @@ export function IntelligenceFeed({
   const expandedArticle = expandedArticleId
     ? articles.find((a) => a.id === expandedArticleId)
     : null;
+
+  // Cross-reference: navigate to a different article from Related Coverage
+  const handleNavigateToArticle = useCallback((targetId: string) => {
+    if (expandedArticleId) {
+      setArticleHistory((prev) => [...prev, expandedArticleId]);
+    }
+    setExpandedArticleId(targetId);
+  }, [expandedArticleId]);
+
+  // Cross-reference: back navigation
+  const handleBack = useCallback(() => {
+    setArticleHistory((prev) => {
+      const next = [...prev];
+      const previousId = next.pop();
+      if (previousId) setExpandedArticleId(previousId);
+      return next;
+    });
+  }, []);
+
+  // Cross-reference: open newsletter modal via custom event
+  const handleOpenNewsletter = useCallback((nlId: string) => {
+    // Dispatch event for NewsletterRail to pick up
+    window.dispatchEvent(new CustomEvent("open-newsletter-modal", { detail: { id: nlId } }));
+  }, []);
+
+  // Compute related content for expanded article
+  const relatedContent = useMemo(() => {
+    if (!expandedArticle) return [];
+    return findRelatedForArticle(expandedArticle, articles, newsletters);
+  }, [expandedArticle, articles, newsletters]);
 
   // Keyboard: Esc closes expanded article
   useEffect(() => {
@@ -151,6 +188,23 @@ export function IntelligenceFeed({
     }, 2000);
     return () => clearTimeout(timer);
   }, [expandedArticleId, markArticleRead]);
+
+  // Listen for newsletter-hover events to highlight matching feed items
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const ids = (e as CustomEvent<string[]>).detail;
+      document.querySelectorAll("[data-article-id]").forEach((el) => {
+        const id = el.getAttribute("data-article-id");
+        if (ids.includes(id!)) {
+          el.classList.add("feed-item-highlight");
+        } else {
+          el.classList.remove("feed-item-highlight");
+        }
+      });
+    };
+    window.addEventListener("newsletter-hover", handler);
+    return () => window.removeEventListener("newsletter-hover", handler);
+  }, []);
 
   // Sort all articles by publishedAt descending
   const sortedArticles = useMemo(
@@ -380,6 +434,7 @@ export function IntelligenceFeed({
           return (
             <div
               key={article.id}
+              data-article-id={article.id}
               className={`border-b border-border-primary feed-item-row rounded-sm feed-item-enter transition-opacity duration-300 ${isRead ? "opacity-55" : ""} ${isPrimary ? "feed-item-primary" : ""}`}
               style={{ animationDelay: `${feedArticles.indexOf(article) * 50}ms` }}
             >
@@ -551,6 +606,14 @@ export function IntelligenceFeed({
             {/* Panel header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-border-primary">
               <div className="flex items-center gap-2">
+                {articleHistory.length > 0 && (
+                  <button
+                    onClick={handleBack}
+                    className="mr-1 text-xs font-medium text-accent-primary hover:text-accent-primary-hover transition-colors"
+                  >
+                    ← Back
+                  </button>
+                )}
                 <span
                   className="topic-dot"
                   style={{ backgroundColor: topicDotColors[expandedArticle.topic] }}
@@ -564,7 +627,7 @@ export function IntelligenceFeed({
                 </span>
               </div>
               <button
-                onClick={() => setExpandedArticleId(null)}
+                onClick={() => { setExpandedArticleId(null); setArticleHistory([]); }}
                 className="p-1.5 text-text-secondary hover:text-text-primary transition-colors"
                 aria-label="Close panel"
               >
@@ -659,6 +722,9 @@ export function IntelligenceFeed({
                   onSave={() => onSave(expandedArticle.id)}
                   onDismiss={() => setExpandedArticleId(null)}
                   isSaved={expandedArticle.isSaved}
+                  relatedContent={relatedContent}
+                  onNavigateToArticle={handleNavigateToArticle}
+                  onOpenNewsletter={handleOpenNewsletter}
                 />
               ) : (
                 <div className="py-4">

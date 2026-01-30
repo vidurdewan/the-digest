@@ -489,6 +489,14 @@
   padding-left: 1rem;
 }
 
+@keyframes feedItemPulse {
+  0%, 100% { background-color: transparent; }
+  50% { background-color: var(--bg-secondary); }
+}
+.feed-item-highlight {
+  animation: feedItemPulse 400ms ease-in-out;
+}
+
 .topic-dot-read {
   background-color: transparent !important;
   border-color: currentColor;

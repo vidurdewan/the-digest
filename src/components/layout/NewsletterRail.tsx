@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import type { Newsletter } from "@/types";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import type { Newsletter, Article, Summary } from "@/types";
 import { ScannableSection, CalloutBlock, SectionBody } from "@/components/ui/ScannableText";
 import { useReadStateStore } from "@/lib/store";
+import { findMatchingArticleIds } from "@/lib/cross-references";
 
 interface NewsletterRailProps {
   newsletters: Newsletter[];
+  articles?: (Article & { summary?: Summary })[];
   onNavigateToNewsletter?: (id: string) => void;
   dailyDigest: string | null;
   isGeneratingDigest: boolean;
@@ -308,6 +310,7 @@ function DigestModal({
 
 export function NewsletterRail({
   newsletters,
+  articles,
   dailyDigest,
   isGeneratingDigest,
   onGenerateDigest,
@@ -316,6 +319,36 @@ export function NewsletterRail({
   const [modalNewsletter, setModalNewsletter] = useState<Newsletter | null>(null);
   const [showDigestModal, setShowDigestModal] = useState(false);
   const readNewsletterIds = useReadStateStore((s) => s.readNewsletterIds);
+
+  // Listen for open-newsletter-modal events from IntelligenceFeed cross-references
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const nlId = (e as CustomEvent<{ id: string }>).detail.id;
+      const nl = newsletters.find((n) => n.id === nlId);
+      if (nl) setModalNewsletter(nl);
+    };
+    window.addEventListener("open-newsletter-modal", handler);
+    return () => window.removeEventListener("open-newsletter-modal", handler);
+  }, [newsletters]);
+
+  // Pre-compute matching article IDs for hover highlight
+  const hoverMatchMap = useMemo(() => {
+    if (!articles || articles.length === 0) return new Map<string, string[]>();
+    const map = new Map<string, string[]>();
+    for (const nl of recentNewsletters) {
+      map.set(nl.id, findMatchingArticleIds(nl, articles));
+    }
+    return map;
+  }, [recentNewsletters, articles]);
+
+  const handleHoverEnter = useCallback((nlId: string) => {
+    const ids = hoverMatchMap.get(nlId) ?? [];
+    window.dispatchEvent(new CustomEvent("newsletter-hover", { detail: ids }));
+  }, [hoverMatchMap]);
+
+  const handleHoverLeave = useCallback(() => {
+    window.dispatchEvent(new CustomEvent("newsletter-hover", { detail: [] }));
+  }, []);
 
   const handleOpenModal = useCallback((nl: Newsletter) => {
     setModalNewsletter(nl);
@@ -409,7 +442,12 @@ export function NewsletterRail({
           const bullets = extractBulletPoints(nl);
           const isNlRead = nl.isRead || readNewsletterIds.includes(nl.id);
           return (
-            <div key={nl.id} className={`my-6 pb-6 border-b border-border-primary/50 newsletter-card-hover transition-opacity duration-300 ${isNlRead ? "opacity-55" : ""}`}>
+            <div
+              key={nl.id}
+              className={`my-6 pb-6 border-b border-border-primary/50 newsletter-card-hover transition-opacity duration-300 ${isNlRead ? "opacity-55" : ""}`}
+              onMouseEnter={() => handleHoverEnter(nl.id)}
+              onMouseLeave={handleHoverLeave}
+            >
               <div className="px-5">
                 <p className="uppercase text-[11px] tracking-[0.1em] font-semibold text-text-secondary mb-2 flex items-center gap-2">
                   {nl.publication}
