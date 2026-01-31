@@ -97,7 +97,7 @@ export async function fetchRssFeed(source: NewsSource): Promise<RawArticle[]> {
       });
     }
 
-    return articles;
+    return articles.filter((a) => !isPromotionalContent(a.title, a.url));
   } catch (error) {
     console.error(`Failed to fetch RSS feed ${source.name}:`, error);
     return [];
@@ -126,6 +126,29 @@ export async function fetchAllRssFeeds(
   }
 
   return allArticles;
+}
+
+// ─── Promotional content filter ─────────────────────────
+
+const PROMO_TITLE_PATTERNS = [
+  /promo\s*code/i,
+  /coupon/i,
+  /\d+%\s*off\b/i,
+  /save\s*\$/i,
+  /discount\s*code/i,
+  /bundle\s*deal/i,
+  /best\s.*deals/i,
+  /price drop/i,
+  /flash sale/i,
+];
+
+const PROMO_URL_SEGMENTS = ["/coupons/", "/promo-codes/", "/deals/"];
+
+function isPromotionalContent(title: string, url: string): boolean {
+  if (PROMO_TITLE_PATTERNS.some((p) => p.test(title))) return true;
+  const lowerUrl = url.toLowerCase();
+  if (PROMO_URL_SEGMENTS.some((s) => lowerUrl.includes(s))) return true;
+  return false;
 }
 
 // ─── Helpers ─────────────────────────────────────────────
