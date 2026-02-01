@@ -6,6 +6,36 @@ import { estimateReadingTime } from "./article-utils";
 import { supabase, isSupabaseConfigured } from "./supabase";
 import { filterSECFilings } from "./sec-filter";
 
+// ─── Promo / Coupon Filter ────────────────────────────────────
+// Title-level keyword patterns that indicate promotional/deal content
+const PROMO_TITLE_PATTERNS = [
+  /\bpromo(?:tion(?:al)?)?\s*code/i,
+  /\bcoupon\s*code/i,
+  /\bdiscount\s*code/i,
+  /\breferral\s*code/i,
+  /\bvoucher\s*code/i,
+  /\b\d+%\s*off\b/i,
+  /\bdeal\s*(?:alert|of the day|round-?up)/i,
+  /\bbest\s+(?:deals|coupons|promo)/i,
+  /\bsave\s+\$?\d+/i,
+  /\bflash\s+sale\b/i,
+  /\bclearance\s+sale\b/i,
+  /\bbuy\s+one\s+get\s+one\b/i,
+  /\bBOGO\b/,
+  /\bfree\s+shipping\s+code/i,
+  /\bexclusive\s+(?:offer|discount|savings)\b/i,
+  /\blimited[\s-]+time\s+(?:offer|deal|discount)\b/i,
+  /\buse\s+code\b/i,
+  /\bapply\s+code\b/i,
+];
+
+/**
+ * Returns true if an article title matches known promo/coupon patterns.
+ */
+export function isPromoArticle(title: string): boolean {
+  return PROMO_TITLE_PATTERNS.some((pattern) => pattern.test(title));
+}
+
 export interface IngestionResult {
   totalFetched: number;
   totalStored: number;
@@ -49,8 +79,16 @@ export async function ingestAllNews(options?: {
   // Filter SEC filings to only relevant companies
   const filteredRssArticles = await filterSECFilings(rssArticles);
 
+  // Filter out promo/coupon articles by title keywords
+  const nonPromoRss = filteredRssArticles.filter((a) => !isPromoArticle(a.title));
+  const nonPromoApi = apiArticles.filter((a) => !isPromoArticle(a.title));
+  const promoFiltered = (filteredRssArticles.length - nonPromoRss.length) + (apiArticles.length - nonPromoApi.length);
+  if (promoFiltered > 0) {
+    console.log(`[Promo Filter] Dropped ${promoFiltered} promo/coupon articles`);
+  }
+
   // Combine all articles
-  const allArticles = [...filteredRssArticles, ...apiArticles];
+  const allArticles = [...nonPromoRss, ...nonPromoApi];
 
   // Deduplicate by content hash
   const seen = new Set<string>();
@@ -169,6 +207,9 @@ export async function getStoredArticles(options?: {
     .order("published_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
+  // Always exclude promo/deal articles from the feed
+  query = query.neq("topic", "promo-deals");
+
   if (topic) {
     query = query.eq("topic", topic);
   }
@@ -191,6 +232,8 @@ export async function getStoredArticles(options?: {
       )
       .order("published_at", { ascending: false })
       .range(offset, offset + limit - 1);
+
+    fallbackQuery = fallbackQuery.neq("topic", "promo-deals");
 
     if (topic) {
       fallbackQuery = fallbackQuery.eq("topic", topic);
