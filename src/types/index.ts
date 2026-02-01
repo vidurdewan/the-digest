@@ -9,7 +9,8 @@ export type TopicCategory =
   | "automotive"
   | "science-tech"
   | "local-news"
-  | "politics";
+  | "politics"
+  | "promo-deals";
 
 export type InterestLevel = "high" | "medium" | "low" | "hidden";
 

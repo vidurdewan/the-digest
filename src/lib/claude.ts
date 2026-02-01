@@ -540,6 +540,7 @@ const VALID_TOPICS = [
   "science-tech",
   "local-news",
   "politics",
+  "promo-deals",
 ] as const;
 
 export interface TopicClassificationResult {
@@ -586,6 +587,7 @@ Valid topics:
 - "science-tech" — Product launches, feature updates, AI/ML research, hardware, software, cybersecurity, space, consumer tech. This is the DEFAULT for tech news about established companies (Apple, Google, Meta, Samsung, Microsoft, Amazon, Spotify, etc.)
 - "local-news" — City/regional news, local government, community events
 - "politics" — Domestic politics, legislation, elections, government policy
+- "promo-deals" — Promotional content, coupon/promo/discount/referral codes, deal roundups, product sales, affiliate marketing, shopping guides focused on discounts. If the article's primary purpose is to promote a deal, discount, or coupon code, classify it here.
 
 IMPORTANT: Most tech news belongs in "science-tech", NOT "vc-startups". Only classify as "vc-startups" if the article is specifically about venture capital, startup founding/strategy, or the startup ecosystem. News about products, features, lawsuits, layoffs, or business operations of established tech companies should be "science-tech".
 

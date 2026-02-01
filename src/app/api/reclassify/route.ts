@@ -20,6 +20,8 @@ const TOPIC_KEYWORDS: Record<string, RegExp> = {
     /\b(congress|senate|white house|legislation|executive order|democrat|republican|election|bipartisan|bill pass)\b/i,
   "financial-markets":
     /\b(stock market|wall street|fed rate|interest rate|earnings|quarterly result|s&p 500|nasdaq|dow jones|treasury|inflation|gdp|economic data|sec fil|10-k|8-k)\b/i,
+  "promo-deals":
+    /\b(promo(?:tion(?:al)?)?\s*code|coupon\s*code|discount\s*code|referral\s*code|voucher\s*code|deal\s*(?:alert|of the day|round-?up)|best\s+(?:deals|coupons|promo)|flash\s+sale|clearance\s+sale|use\s+code|apply\s+code|exclusive\s+(?:offer|discount|savings)|limited[\s-]+time\s+(?:offer|deal|discount))\b/i,
 };
 
 function classifyByKeywords(
