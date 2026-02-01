@@ -2,6 +2,7 @@ import type { TopicCategory } from "@/types";
 import type { NewsSource } from "./sources";
 import { generateContentHash } from "./article-utils";
 import type { RawArticle } from "./rss-fetcher";
+import { isPromotionalContent } from "./rss-fetcher";
 import { getArticleSourceTier } from "./source-tiers";
 
 const NEWS_API_BASE = "https://newsapi.org/v2";
@@ -58,6 +59,7 @@ export async function fetchNewsApi(source: NewsSource): Promise<RawArticle[]> {
 
     return data.articles
       .filter((a) => a.title && a.url && a.title !== "[Removed]")
+      .filter((a) => !isPromotionalContent(a.title, a.url))
       .map((a) => {
         const sourceName = a.source.name || source.name;
         return {
@@ -107,6 +109,7 @@ export async function fetchTopHeadlines(
 
     return data.articles
       .filter((a) => a.title && a.url && a.title !== "[Removed]")
+      .filter((a) => !isPromotionalContent(a.title, a.url))
       .map((a) => {
         const sourceName = a.source.name || "NewsAPI";
         return {

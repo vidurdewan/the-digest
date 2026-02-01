@@ -9,6 +9,7 @@ import {
   type NewsletterSummaryResult,
 } from "@/lib/claude";
 import { getNewsletterSourceTier, type SourceTier } from "@/lib/source-tiers";
+import { isPromotionalContent } from "@/lib/rss-fetcher";
 
 export interface NewsletterIngestionResult {
   fetched: number;
@@ -111,8 +112,10 @@ export async function ingestNewsletters(
   // Filter to newsletters only
   const newsletterMessages = messages.filter(isNewsletter);
 
-  // Parse into newsletters
-  const parsed = newsletterMessages.map(parseNewsletter);
+  // Parse into newsletters and filter out promotional content
+  const parsed = newsletterMessages
+    .map(parseNewsletter)
+    .filter((nl) => !isPromotionalContent(nl.subject, ""));
 
   // VIP matching helper — fuzzy substring matching
   const vipLowerList = vipPublications.map((p) => p.toLowerCase().trim());

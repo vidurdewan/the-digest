@@ -144,7 +144,7 @@ const PROMO_TITLE_PATTERNS = [
 
 const PROMO_URL_SEGMENTS = ["/coupons/", "/promo-codes/", "/deals/"];
 
-function isPromotionalContent(title: string, url: string): boolean {
+export function isPromotionalContent(title: string, url: string): boolean {
   if (PROMO_TITLE_PATTERNS.some((p) => p.test(title))) return true;
   const lowerUrl = url.toLowerCase();
   if (PROMO_URL_SEGMENTS.some((s) => lowerUrl.includes(s))) return true;
