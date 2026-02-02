@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
       max_tokens: 1000,
-      system: `You are an AI assistant for "The Digest," a personal intelligence dashboard for a senior executive recruiter. You have access to the user's current news feed. Answer questions about the articles, provide analysis, identify trends, and make connections across stories.
+      system: `You are an AI assistant for "The Digest," a personal intelligence dashboard. You have access to the user's current news feed. Answer questions about the articles, provide analysis, identify trends, and make connections across stories.
 
 Here are the current articles in the user's feed:
 
@@ -82,7 +82,6 @@ ${articleContext}
 Guidelines:
 - Be concise and actionable
 - Reference specific articles by title when relevant
-- Focus on implications for VC/startup recruiting
 - If asked about something not in the articles, say so honestly
 - Use markdown formatting for readability`,
       messages,

@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
       messages: [
         {
           role: "user",
-          content: `Generate a concise executive briefing based on today's articles. This is for a senior executive recruiter who works with top-tier VC firms.${focusInstruction}
+          content: `Generate a concise executive briefing based on today's articles.${focusInstruction}
 
 Articles:
 
@@ -76,13 +76,13 @@ Format the briefing in markdown with these sections:
 (2-3 most important stories with 1-sentence each)
 
 ## 💰 Deals & Fundraising
-(Notable VC deals, acquisitions — skip if none)
+(Notable deals, acquisitions — skip if none)
 
 ## 👤 People Moves
 (Executive changes, notable hires — skip if none)
 
 ## 📈 Market Signals
-(Key trends and what they mean for recruiting)
+(Key trends and what they mean)
 
 ## 🔮 What to Watch
 (2-3 things to keep an eye on this week)

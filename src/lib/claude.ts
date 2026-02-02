@@ -125,7 +125,7 @@ export async function generateFullSummary(
       messages: [
         {
           role: "user",
-          content: `You are an intelligence briefing assistant for a senior executive recruiter at a firm partnering with top-tier VC firms (Sequoia, a16z, Lightspeed). Provide a structured summary of this article.
+          content: `You are an intelligence briefing assistant. Provide a structured summary of this article.
 
 Title: ${title}
 Source: ${source}
@@ -136,7 +136,7 @@ ${truncated}
 Respond in EXACTLY this JSON format (no markdown, no code fences):
 {
   "theNews": "What happened, factually and concisely. 2-3 sentences.",
-  "whyItMatters": "The significance, implications, who is affected. 2-3 sentences tailored to someone in VC/startup recruiting.",
+  "whyItMatters": "The significance, implications, who is affected. 2-3 sentences.",
   "theContext": "Background and how this connects to broader trends. 1-2 sentences.",
   "keyEntities": [
     {"name": "Entity Name", "type": "company|person|fund|keyword"}
@@ -218,7 +218,7 @@ export async function generateNewsletterSummary(
       messages: [
         {
           role: "user",
-          content: `You are a senior intelligence briefing analyst. Your reader is a well-connected professional who wants deep, actionable analysis across VC/tech, markets, geopolitics, and the business world.
+          content: `You are a senior intelligence briefing analyst. Your reader is a well-informed professional who wants deep, actionable analysis across markets, geopolitics, tech, science, and the business world.
 
 FORMATTING RULES:
 - Bold all **company names** and **people names** so they pop when scanning.
@@ -236,8 +236,7 @@ Respond in EXACTLY this JSON format (no markdown, no code fences):
   "whyItMatters": "Go DEEP. What are the second-order implications? Who wins and who loses? How does this affect the broader ecosystem? 3-4 sentences. Don't just restate the news — analyze it.",
   "theContext": "Connect to broader market trends, recent deals, or industry shifts. What pattern is this part of? 2-3 sentences.",
   "soWhat": "One bold, opinionated sentence: the single most important takeaway from this newsletter.",
-  "watchNext": "What should the reader watch for next? A specific development, announcement, or trend to monitor. 1 sentence.",
-  "recruiterRelevance": "Brief optional callout: any leadership changes, company scaling signals (funding/IPO), or talent availability (layoffs/reorgs)? If nothing: 'No direct signals.' 1 sentence max."
+  "watchNext": "What should the reader watch for next? A specific development, announcement, or trend to monitor. 1 sentence."
 }`,
         },
       ],
@@ -253,7 +252,7 @@ Respond in EXACTLY this JSON format (no markdown, no code fences):
       theContext: parsed.theContext || "",
       soWhat: parsed.soWhat || "",
       watchNext: parsed.watchNext || "",
-      recruiterRelevance: parsed.recruiterRelevance || "",
+      recruiterRelevance: "",
       inputTokens: response.usage.input_tokens,
       outputTokens: response.usage.output_tokens,
     };
@@ -289,7 +288,7 @@ export async function generateVIPNewsletterSummary(
           role: "user",
           content: `You are a senior intelligence briefing analyst. This newsletter is from a MUST-READ source. Distill it fully — preserve the complete reasoning, key arguments, and ALL important details. Same depth, fewer words, but nothing important lost.
 
-Your reader is a well-connected professional who wants deep, actionable analysis across VC/tech, markets, geopolitics, and the business world.
+Your reader is a well-informed professional who wants deep, actionable analysis across markets, geopolitics, tech, science, and the business world.
 
 FORMATTING RULES:
 - Bold all **company names** and **people names** so they pop when scanning.
@@ -308,8 +307,7 @@ Respond in EXACTLY this JSON format (no markdown, no code fences):
   "whyItMatters": "Go DEEP. What are the second-order and third-order implications? Who wins and who loses? How does this affect the broader ecosystem? 4-6 sentences. Preserve the author's key arguments and reasoning.",
   "theContext": "Connect to broader market trends, recent deals, or industry shifts. What pattern is this part of? What historical parallels exist? 3-4 sentences.",
   "soWhat": "The single most important takeaway — bold and opinionated. 1-2 sentences.",
-  "watchNext": "What should the reader watch for next? Be specific: name companies, people, dates, events. 2-3 sentences.",
-  "recruiterRelevance": "Leadership changes, company scaling signals (funding/IPO), or talent availability (layoffs/reorgs)? If nothing: 'No direct signals.' 1-2 sentences."
+  "watchNext": "What should the reader watch for next? Be specific: name companies, people, dates, events. 2-3 sentences."
 }`,
         },
       ],
@@ -325,7 +323,7 @@ Respond in EXACTLY this JSON format (no markdown, no code fences):
       theContext: parsed.theContext || "",
       soWhat: parsed.soWhat || "",
       watchNext: parsed.watchNext || "",
-      recruiterRelevance: parsed.recruiterRelevance || "",
+      recruiterRelevance: "",
       inputTokens: response.usage.input_tokens,
       outputTokens: response.usage.output_tokens,
     };
@@ -377,8 +375,7 @@ Respond in EXACTLY this JSON format (no markdown, no code fences):
     "whyItMatters": "Second-order implications, who wins/loses. 3-4 sentences.",
     "theContext": "Broader market trends. 2-3 sentences.",
     "soWhat": "Single bold takeaway.",
-    "watchNext": "What to monitor next. 1 sentence.",
-    "recruiterRelevance": "Leadership changes, scaling signals, or 'No direct signals.' 1 sentence."
+    "watchNext": "What to monitor next. 1 sentence."
   },
   ...
 ]`,
@@ -397,7 +394,7 @@ Respond in EXACTLY this JSON format (no markdown, no code fences):
           theContext: r.theContext || "",
           soWhat: r.soWhat || "",
           watchNext: r.watchNext || "",
-          recruiterRelevance: r.recruiterRelevance || "",
+          recruiterRelevance: "",
           inputTokens: 0,
           outputTokens: 0,
         }))
@@ -424,7 +421,6 @@ export interface DailyDigestResult {
     peopleMoves: string;
     trendsAndSignals: string;
     contrarianTake: string;
-    workRelevant: string;
   };
   inputTokens: number;
   outputTokens: number;
@@ -432,7 +428,7 @@ export interface DailyDigestResult {
 
 /**
  * Generate a consolidated daily digest from multiple newsletters.
- * Broad intelligence briefing covering VC/tech, markets, geopolitics, science.
+ * Broad intelligence briefing covering tech, markets, geopolitics, science.
  * Source-weighted, with "Bottom line" per section and tight formatting.
  */
 export async function generateDailyDigest(
@@ -460,7 +456,7 @@ export async function generateDailyDigest(
       messages: [
         {
           role: "user",
-          content: `You are a senior intelligence analyst writing a daily briefing. The reader is a well-connected professional who wants a BROAD overview of what's happening across VC/tech, financial markets, geopolitics, science, and the business world. They want to be the most informed person in any room.
+          content: `You are a senior intelligence analyst writing a daily briefing. The reader is a well-informed professional who wants a BROAD overview of what's happening across tech, financial markets, geopolitics, science, and the business world. They want to be the most informed person in any room.
 
 Source quality tiers are marked — prioritize Premium and Strong sources. Standard sources provide breadth.
 
@@ -485,9 +481,8 @@ Respond in EXACTLY this JSON format (no markdown code fences):
   "topStories": "The 3-5 most important stories across ALL topics (not just tech). Each bullet: 2 sentences max with **bold names**, then [Source1] [Source2] citations in square brackets. Then a LITERAL NEWLINE (\\n) followed by '→ So What: ' and a one-sentence implication. After all bullets, add a blank line then 'Bottom line: ' with one sentence.",
   "marketMoves": "Key funding rounds, acquisitions, IPO filings, market shifts, economic data. Each bullet = ONE deal/move with **bold names** and [Source] citation. Then \\n followed by '→ So What: ' takeaway. End with 'Bottom line: ' summary. Write 'No major deals reported.' if nothing.",
   "peopleMoves": "TIGHT FORMAT for each move:\n- **Name** (previous role at **Previous Co**) → **New Company**, New Role. One line on why it's notable. [Source]\nIf no significant moves: 'No significant moves detected today.'\nEnd with 'Bottom line: ' if there are moves.",
-  "trendsAndSignals": "The ANALYSIS section. Cover trends across ALL domains — VC/tech, markets, geopolitics, science, regulation. Don't just list — explain WHY each matters. Connect threads across newsletters. Cite sources with [Source Name]. What pattern are most people missing? 4-6 sentences. End with 'Bottom line: ' one-sentence theme.",
-  "contrarianTake": "A punchy hot take in 2-3 sentences MAX. Challenge conventional wisdom on today's biggest story. Be provocative but well-reasoned. No hedging. Cite [Source] if referencing specific info.",
-  "workRelevant": "SMALL optional callout: Flag 1-3 items relevant to executive recruiting — C-suite changes, companies scaling (new funding/IPO prep), layoffs creating talent availability, portfolio company news. Include [Source] citations. Keep it brief — 1-2 bullets max. If nothing: 'No direct signals today.'"
+  "trendsAndSignals": "The ANALYSIS section. Cover trends across ALL domains — tech, markets, geopolitics, science, regulation. Don't just list — explain WHY each matters. Connect threads across newsletters. Cite sources with [Source Name]. What pattern are most people missing? 4-6 sentences. End with 'Bottom line: ' one-sentence theme.",
+  "contrarianTake": "A punchy hot take in 2-3 sentences MAX. Challenge conventional wisdom on today's biggest story. Be provocative but well-reasoned. No hedging. Cite [Source] if referencing specific info."
 }`,
         },
       ],
@@ -505,7 +500,6 @@ Respond in EXACTLY this JSON format (no markdown code fences):
       `## People Moves\n${parsed.peopleMoves || ""}`,
       `## Trends & Signals\n${parsed.trendsAndSignals || ""}`,
       `## Contrarian Take\n${parsed.contrarianTake || ""}`,
-      `## Work Radar\n${parsed.workRelevant || "No direct signals today."}`,
     ].join("\n\n");
 
     return {
@@ -517,7 +511,6 @@ Respond in EXACTLY this JSON format (no markdown code fences):
         peopleMoves: parsed.peopleMoves || "",
         trendsAndSignals: parsed.trendsAndSignals || "",
         contrarianTake: parsed.contrarianTake || "",
-        workRelevant: parsed.workRelevant || "",
       },
       inputTokens: response.usage.input_tokens,
       outputTokens: response.usage.output_tokens,
