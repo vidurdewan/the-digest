@@ -533,7 +533,6 @@ const VALID_TOPICS = [
   "science-tech",
   "local-news",
   "politics",
-  "promo-deals",
 ] as const;
 
 export interface TopicClassificationResult {

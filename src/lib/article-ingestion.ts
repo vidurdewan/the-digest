@@ -207,9 +207,6 @@ export async function getStoredArticles(options?: {
     .order("published_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
-  // Always exclude promo/deal articles from the feed
-  query = query.neq("topic", "promo-deals");
-
   if (topic) {
     query = query.eq("topic", topic);
   }
@@ -232,8 +229,6 @@ export async function getStoredArticles(options?: {
       )
       .order("published_at", { ascending: false })
       .range(offset, offset + limit - 1);
-
-    fallbackQuery = fallbackQuery.neq("topic", "promo-deals");
 
     if (topic) {
       fallbackQuery = fallbackQuery.eq("topic", topic);
