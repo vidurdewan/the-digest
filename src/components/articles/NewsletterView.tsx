@@ -21,7 +21,6 @@ import {
   ChevronLeft,
   ChevronRight,
   AlertTriangle,
-  Briefcase,
   Star,
 } from "lucide-react";
 import type { Newsletter, Article, Summary } from "@/types";
@@ -234,17 +233,7 @@ function DigestContent({ content }: { content: string }) {
         if (trimmed === "") return <div key={i} className="h-3" />;
 
         // Section headers
-        if (trimmed.startsWith("## Work Radar")) {
-          return (
-            <div key={i} className="mt-6 mb-2 flex items-center gap-2">
-              <Briefcase size={15} className="text-text-tertiary" />
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-text-tertiary">
-                {trimmed.replace("## ", "")}
-              </h4>
-            </div>
-          );
-        }
-        if (trimmed.startsWith("## Contrarian Take")) {
+if (trimmed.startsWith("## Contrarian Take")) {
           return (
             <div key={i} className="mt-6 mb-2 flex items-center gap-2">
               <AlertTriangle size={16} className="text-accent-warning" />
@@ -717,16 +706,6 @@ function NewsletterItem({
                   <SubtleCallout label="Watch Next" text={stripMarkdown((summary as { watchNext: string }).watchNext)} />
                 )}
 
-              {/* Work Radar */}
-              {"recruiterRelevance" in summary &&
-                (summary as { recruiterRelevance?: string })
-                  .recruiterRelevance &&
-                (
-                  summary as { recruiterRelevance: string }
-                ).recruiterRelevance.toLowerCase() !==
-                  "no direct signals." && (
-                  <SubtleCallout label="Work Radar" text={stripMarkdown((summary as { recruiterRelevance: string }).recruiterRelevance)} />
-                )}
 
               {/* Related Coverage */}
               {articles && articles.length > 0 && (() => {

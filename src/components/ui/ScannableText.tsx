@@ -10,7 +10,6 @@ const SECTION_ICONS: Record<string, { icon: string; color: string }> = {
   "The Context": { icon: "🌐", color: "var(--accent-success)" },
   "So What": { icon: "⚡", color: "var(--accent-primary)" },
   "Watch Next": { icon: "👁", color: "var(--text-tertiary)" },
-  "Work Radar": { icon: "💼", color: "var(--text-tertiary)" },
   "Contrarian Take": { icon: "⚠️", color: "var(--accent-warning)" },
   "Top Stories": { icon: "📰", color: "var(--accent-primary)" },
   "Trends & Signals": { icon: "📊", color: "var(--accent-primary)" },
@@ -28,7 +27,6 @@ const CALLOUT_SECTIONS = new Set([
 // Sections that should use dashed-border subtle callout
 const SUBTLE_CALLOUT_SECTIONS = new Set([
   "Watch Next",
-  "Work Radar",
 ]);
 
 type SectionTier = "primary" | "secondary" | "tertiary";
@@ -182,7 +180,7 @@ export function CalloutBlock({
   );
 }
 
-// ─── Subtle Callout (Watch Next / Work Radar) ─────────────
+// ─── Subtle Callout (Watch Next) ─────────────
 export function SubtleCallout({
   label,
   text,
