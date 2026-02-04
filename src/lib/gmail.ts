@@ -55,6 +55,7 @@ export function getGmailClient(tokens: {
 
 /**
  * Refresh tokens if expired. Returns updated tokens.
+ * Throws a descriptive error on invalid_grant so callers can prompt re-auth.
  */
 export async function refreshTokensIfNeeded(tokens: {
   access_token?: string | null;
@@ -69,8 +70,18 @@ export async function refreshTokensIfNeeded(tokens: {
   const isExpired = expiryDate < Date.now() + 5 * 60 * 1000;
 
   if (isExpired && tokens.refresh_token) {
-    const { credentials } = await oauth2Client.refreshAccessToken();
-    return credentials;
+    try {
+      const { credentials } = await oauth2Client.refreshAccessToken();
+      return credentials;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (message.includes("invalid_grant")) {
+        throw new Error(
+          "Gmail refresh token expired or revoked. Please disconnect and reconnect Gmail in Settings."
+        );
+      }
+      throw err;
+    }
   }
 
   return tokens;

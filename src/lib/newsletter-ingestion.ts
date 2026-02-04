@@ -1,6 +1,6 @@
 import { getGmailClient, fetchEmails, refreshTokensIfNeeded } from "@/lib/gmail";
 import { parseNewsletter, isNewsletter } from "@/lib/newsletter-parser";
-import { getStoredTokens, storeTokens } from "@/lib/token-store";
+import { getStoredTokens, storeTokens, clearTokens } from "@/lib/token-store";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import {
   generateVIPNewsletterSummary,
@@ -86,8 +86,17 @@ export async function ingestNewsletters(
     throw new Error("Gmail not connected. Please connect Gmail first.");
   }
 
-  // Refresh tokens if needed
-  const freshTokens = await refreshTokensIfNeeded(tokens);
+  // Refresh tokens if needed — clear stale tokens on invalid_grant
+  let freshTokens;
+  try {
+    freshTokens = await refreshTokensIfNeeded(tokens);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message.includes("expired or revoked")) {
+      await clearTokens();
+    }
+    throw err;
+  }
   if (freshTokens !== tokens) {
     const updatedTokens = freshTokens as Record<string, unknown>;
     await storeTokens({
