@@ -189,26 +189,29 @@ export function isNewsletter(message: GmailMessage): boolean {
     return false;
   }
 
-  // 3. HARD BLOCK: transactional sender patterns (unless from known newsletter domain)
+  // 3. Evaluate newsletter signals (needed before transactional sender check)
   const isKnownDomain = KNOWN_NEWSLETTER_DOMAINS.some((d) => domain.includes(d));
-  if (TRANSACTIONAL_SENDERS.some((pattern) => pattern.test(email))) {
-    if (!isKnownDomain) {
-      return false;
-    }
-  }
-
-  // 4. REQUIRE at least one strong newsletter signal:
-  //    - List-Unsubscribe header
-  //    - List-Id header
-  //    - Known newsletter platform domain
-  //    - Body unsubscribe link + substantial content (1000+ chars)
   const hasListUnsubscribe = !!message.listUnsubscribe;
   const hasListId = !!message.listId;
   const hasBulkPrecedence = ["bulk", "list"].includes(message.precedence.toLowerCase());
 
+  // 4. BLOCK transactional sender patterns — but allow through if there are
+  //    strong newsletter signals (List-Unsubscribe, List-Id, known domain).
+  //    Many real newsletters send from noreply@ or updates@ addresses.
+  const matchesTransactionalSender = TRANSACTIONAL_SENDERS.some((pattern) => pattern.test(email));
+  if (matchesTransactionalSender && !isKnownDomain && !hasListUnsubscribe && !hasListId) {
+    return false;
+  }
+
+  // 5. REQUIRE at least one strong newsletter signal:
+  //    - List-Unsubscribe header
+  //    - List-Id header
+  //    - Known newsletter platform domain
+  //    - Bulk precedence (for non-transactional senders)
+  //    - Body unsubscribe link + substantial content (1000+ chars)
   if (hasListUnsubscribe || hasListId) return true;
   if (isKnownDomain) return true;
-  if (hasBulkPrecedence && !TRANSACTIONAL_SENDERS.some((p) => p.test(email))) return true;
+  if (hasBulkPrecedence && !matchesTransactionalSender) return true;
 
   // Body-based detection: must have unsubscribe text AND substantial content
   const bodyText = (message.htmlBody + message.textBody).toLowerCase();
