@@ -1117,6 +1117,32 @@ h1, h2, h3, h4, h5, h6 {
   pointer-events: auto;
 }
 
+/* ===== SAFE AREA INSETS (notched phones) ===== */
+.pb-safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.h-safe-bottom {
+  height: env(safe-area-inset-bottom, 0px);
+}
+.mb-safe-bottom {
+  margin-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ===== MOBILE SHEET ENTER (for More menu) ===== */
+@keyframes mobileSheetEnter {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.mobile-sheet-enter {
+  animation: mobileSheetEnter 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 /* ===== FEED ITEM HOVER STATES ===== */
 .feed-item-row {
   transition: background-color 150ms ease;
@@ -1360,7 +1386,7 @@ h1, h2, h3, h4, h5, h6 {
 /* ═══ Shortcut Hint Toast ══════════════════════════════════════ */
 .shortcut-hint-toast {
   position: fixed;
-  bottom: 1.5rem;
+  bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
   left: 50%;
   transform: translateX(-50%);
   z-index: 40;
