@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { rankRecentArticles, rankAllArticles } from "@/lib/story-ranker";
+import { validateApiRequest } from "@/lib/api-auth";
 
 // Allow up to 5 minutes for full re-rank
 export const maxDuration = 300;
@@ -10,6 +11,11 @@ export const maxDuration = 300;
  * Use ?all=true to re-score ALL articles (not just last 24h).
  */
 export async function POST(request: NextRequest) {
+  const auth = validateApiRequest(request);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error }, { status: 401 });
+  }
+
   try {
     const all = request.nextUrl.searchParams.get("all") === "true";
     const startTime = Date.now();

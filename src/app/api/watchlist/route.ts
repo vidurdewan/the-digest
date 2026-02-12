@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { supabaseAdmin as supabase, isSupabaseAdminConfigured as isSupabaseConfigured } from "@/lib/supabase";
+import { validateApiRequest } from "@/lib/api-auth";
 
 /**
  * GET /api/watchlist
@@ -41,6 +42,11 @@ export async function GET() {
  * Body: { name: string, type: "company" | "fund" | "person" | "keyword" }
  */
 export async function POST(request: NextRequest) {
+  const auth = validateApiRequest(request);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
     const { name, type } = body;
@@ -104,6 +110,11 @@ export async function POST(request: NextRequest) {
  * Body: { id: string }
  */
 export async function DELETE(request: NextRequest) {
+  const auth = validateApiRequest(request);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
     const { id } = body;

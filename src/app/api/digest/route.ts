@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateDailyDigest, isClaudeConfigured } from "@/lib/claude";
+import { validateApiRequest } from "@/lib/api-auth";
 
 /**
  * POST /api/digest
@@ -7,6 +8,11 @@ import { generateDailyDigest, isClaudeConfigured } from "@/lib/claude";
  * Body: { newsletters: Array<{ publication, subject, content }> }
  */
 export async function POST(request: NextRequest) {
+  const auth = validateApiRequest(request);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error }, { status: 401 });
+  }
+
   try {
     if (!isClaudeConfigured()) {
       return NextResponse.json(

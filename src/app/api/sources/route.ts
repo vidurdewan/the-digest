@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { defaultSources, type NewsSource } from "@/lib/sources";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { supabaseAdmin as supabase, isSupabaseAdminConfigured as isSupabaseConfigured } from "@/lib/supabase";
+import { validateApiRequest } from "@/lib/api-auth";
 
 /**
  * GET /api/sources
@@ -32,6 +33,11 @@ export async function GET() {
  * Add a new source.
  */
 export async function POST(request: NextRequest) {
+  const auth = validateApiRequest(request);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
     const { name, url, type, topic } = body as Partial<NewsSource>;
@@ -82,6 +88,11 @@ export async function POST(request: NextRequest) {
  * Remove a source by ID.
  */
 export async function DELETE(request: NextRequest) {
+  const auth = validateApiRequest(request);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error }, { status: 401 });
+  }
+
   try {
     const { id } = await request.json();
 

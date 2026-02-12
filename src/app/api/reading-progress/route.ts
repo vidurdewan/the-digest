@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { supabaseAdmin as supabase, isSupabaseAdminConfigured as isSupabaseConfigured } from "@/lib/supabase";
+import { validateApiRequest } from "@/lib/api-auth";
 
 /**
  * GET /api/reading-progress?date=YYYY-MM-DD
@@ -51,6 +52,11 @@ export async function GET(request: NextRequest) {
  * Body: { totalPriorityItems: number, itemsRead: number }
  */
 export async function POST(request: NextRequest) {
+  const auth = validateApiRequest(request);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error }, { status: 401 });
+  }
+
   try {
     if (!isSupabaseConfigured() || !supabase) {
       return NextResponse.json({ success: false, source: "none" });

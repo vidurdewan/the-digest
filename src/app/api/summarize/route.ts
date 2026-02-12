@@ -7,6 +7,7 @@ import {
   getCachedSummary,
 } from "@/lib/summarization";
 import { checkBudget, getDailyUsage } from "@/lib/cost-tracker";
+import { validateApiRequest } from "@/lib/api-auth";
 
 /**
  * POST /api/summarize
@@ -23,6 +24,11 @@ import { checkBudget, getDailyUsage } from "@/lib/cost-tracker";
  *   - articles: Array<{id, title, content}> (batch mode)
  */
 export async function POST(request: NextRequest) {
+  const auth = validateApiRequest(request);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error }, { status: 401 });
+  }
+
   try {
     if (!isClaudeConfigured()) {
       return NextResponse.json(

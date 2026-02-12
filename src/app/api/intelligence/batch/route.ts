@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { processIntelligenceBatch } from "@/lib/intelligence";
 import { isClaudeConfigured } from "@/lib/claude";
+import { validateApiRequest } from "@/lib/api-auth";
 
 /**
  * POST /api/intelligence/batch
@@ -8,6 +9,11 @@ import { isClaudeConfigured } from "@/lib/claude";
  * Body: { articles: [{ id, title, content, source, topic, entityNames? }] }
  */
 export async function POST(request: NextRequest) {
+  const auth = validateApiRequest(request);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error }, { status: 401 });
+  }
+
   try {
     if (!isClaudeConfigured()) {
       return NextResponse.json(

@@ -226,10 +226,15 @@ export default function Home() {
 
   const isLoading = articleData.isLoading && articleData.articles.length === 0;
 
-  const handleSave = (id: string) => {
+  const handleSave = useCallback((id: string) => {
+    // Toggle save state in the hook (persists to localStorage)
+    articleData.toggleSave(id);
+
+    // Find the article to determine current state for toast
     const article = articlesWithMatches.find((a) => a.id === id);
     if (article) {
       engagement.trackEvent(id, "save");
+      // Note: article.isSaved is the OLD state before toggle
       addToast(
         article.isSaved
           ? `Removed "${article.title.slice(0, 40)}..." from saved`
@@ -237,7 +242,7 @@ export default function Home() {
         article.isSaved ? "info" : "success"
       );
     }
-  };
+  }, [articleData, articlesWithMatches, engagement, addToast]);
 
   const handleMarkAllRead = useCallback((articleIds: string[]) => {
     const unreadIds = articleIds.filter(

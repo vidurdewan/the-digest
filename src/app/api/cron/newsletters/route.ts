@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ingestNewsletters } from "@/lib/newsletter-ingestion";
 import { isClaudeConfigured } from "@/lib/claude";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { supabaseAdmin as supabase, isSupabaseAdminConfigured as isSupabaseConfigured } from "@/lib/supabase";
 import { getStoredTokens } from "@/lib/token-store";
 
 // Allow up to 3 minutes for newsletter ingestion

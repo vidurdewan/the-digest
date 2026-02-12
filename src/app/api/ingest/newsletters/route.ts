@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ingestNewsletters } from "@/lib/newsletter-ingestion";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { supabaseAdmin as supabase, isSupabaseAdminConfigured as isSupabaseConfigured } from "@/lib/supabase";
+import { validateApiRequest } from "@/lib/api-auth";
 
 export const maxDuration = 300;
 
@@ -13,6 +14,11 @@ export const maxDuration = 300;
  *   - afterDate: only fetch emails after this ISO date
  */
 export async function GET(request: NextRequest) {
+  const auth = validateApiRequest(request);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error }, { status: 401 });
+  }
+
   try {
     // Parse query params
     const searchParams = request.nextUrl.searchParams;

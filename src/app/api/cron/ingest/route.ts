@@ -7,7 +7,7 @@ import { isClaudeConfigured } from "@/lib/claude";
 import { ingestNewsletters } from "@/lib/newsletter-ingestion";
 import { rankRecentArticles } from "@/lib/story-ranker";
 import { retierAllContent } from "@/lib/source-tiers";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { supabaseAdmin as supabase, isSupabaseAdminConfigured as isSupabaseConfigured } from "@/lib/supabase";
 import { getStoredTokens } from "@/lib/token-store";
 import { extractCompanyFromEdgarTitle } from "@/lib/sec-filter";
 import { detectSignals } from "@/lib/signal-detection";

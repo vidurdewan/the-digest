@@ -22,12 +22,13 @@ export function getOAuth2Client() {
 /**
  * Generate the URL for the user to authorize Gmail access.
  */
-export function getAuthUrl(): string {
+export function getAuthUrl(state: string): string {
   const oauth2Client = getOAuth2Client();
   return oauth2Client.generateAuthUrl({
     access_type: "offline",
     scope: SCOPES,
     prompt: "consent", // Force consent to always get refresh token
+    state,
   });
 }
 

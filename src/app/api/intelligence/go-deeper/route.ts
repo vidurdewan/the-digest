@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { isClaudeConfigured } from "@/lib/claude";
 import { checkBudget, recordUsage } from "@/lib/cost-tracker";
 import Anthropic from "@anthropic-ai/sdk";
+import { validateApiRequest } from "@/lib/api-auth";
 
 let client: Anthropic | null = null;
 function getClient(): Anthropic | null {
@@ -18,6 +19,11 @@ function getClient(): Anthropic | null {
  * Body: { articleId, title, content }
  */
 export async function POST(request: NextRequest) {
+  const auth = validateApiRequest(request);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error }, { status: 401 });
+  }
+
   try {
     if (!isClaudeConfigured()) {
       return NextResponse.json({ error: "AI not configured" }, { status: 503 });

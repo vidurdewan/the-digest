@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { supabaseAdmin as supabase, isSupabaseAdminConfigured as isSupabaseConfigured } from "@/lib/supabase";
+import { validateApiRequest } from "@/lib/api-auth";
 
 /**
  * POST /api/reminders
@@ -7,6 +8,11 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
  * Body: { articleId, remindAt, note? }
  */
 export async function POST(request: NextRequest) {
+  const auth = validateApiRequest(request);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error }, { status: 401 });
+  }
+
   try {
     const { articleId, remindAt, note } = await request.json();
 
@@ -110,6 +116,11 @@ export async function GET(request: NextRequest) {
  * Body: { id }
  */
 export async function PATCH(request: NextRequest) {
+  const auth = validateApiRequest(request);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error }, { status: 401 });
+  }
+
   try {
     const { id } = await request.json();
 
