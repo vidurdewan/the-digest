@@ -3,6 +3,36 @@
 import { useState, useEffect, useCallback } from "react";
 import type { Article, Summary, TopicCategory, Entity, ArticleIntelligence, ArticleConnection, SignificanceLevel, StoryType, ArticleSignal, DecipheringSummary } from "@/types";
 
+// Persistent saved article IDs in localStorage
+const SAVED_KEY = "the-digest-saved-articles";
+const READ_KEY = "the-digest-read-articles";
+
+function getSavedIds(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const stored = localStorage.getItem(SAVED_KEY);
+    return stored ? new Set(JSON.parse(stored)) : new Set();
+  } catch { return new Set(); }
+}
+
+function persistSavedIds(ids: Set<string>) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(SAVED_KEY, JSON.stringify([...ids]));
+}
+
+function getReadIds(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const stored = localStorage.getItem(READ_KEY);
+    return stored ? new Set(JSON.parse(stored)) : new Set();
+  } catch { return new Set(); }
+}
+
+function persistReadIds(ids: Set<string>) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(READ_KEY, JSON.stringify([...ids]));
+}
+
 interface UseArticlesReturn {
   articles: (Article & { summary?: Summary; intelligence?: ArticleIntelligence; signals?: ArticleSignal[] })[];
   isLoading: boolean;
@@ -17,6 +47,7 @@ interface UseArticlesReturn {
   ) => Promise<Summary | null>;
   isSummarizing: boolean;
   markAsRead: (articleIds: string[]) => void;
+  toggleSave: (articleId: string) => void;
 }
 
 // Map Supabase summary row to Summary type
@@ -128,6 +159,8 @@ export function useArticles(): UseArticlesReturn {
       const data = await res.json();
 
       if (data.articles && data.articles.length > 0) {
+        const readIds = getReadIds();
+        const savedIds = getSavedIds();
         const mapped: (Article & { summary?: Summary; intelligence?: ArticleIntelligence; signals?: ArticleSignal[] })[] =
           data.articles.map(
             (a: {
@@ -156,8 +189,8 @@ export function useArticles(): UseArticlesReturn {
               content: a.content || undefined,
               imageUrl: a.image_url || undefined,
               readingTimeMinutes: a.reading_time_minutes || 3,
-              isRead: false,
-              isSaved: false,
+              isRead: readIds.has(a.id),
+              isSaved: savedIds.has(a.id),
               watchlistMatches: [],
               sourceTier: (a.source_tier || 3) as Article["sourceTier"],
               documentType: a.document_type as Article["documentType"],
@@ -265,8 +298,31 @@ export function useArticles(): UseArticlesReturn {
 
   const markAsRead = useCallback((articleIds: string[]) => {
     const idSet = new Set(articleIds);
+    const readIds = getReadIds();
+    for (const id of articleIds) {
+      readIds.add(id);
+    }
+    persistReadIds(readIds);
     setArticles((prev) =>
       prev.map((a) => (idSet.has(a.id) ? { ...a, isRead: true } : a))
+    );
+  }, []);
+
+  const toggleSave = useCallback((articleId: string) => {
+    setArticles((prev) =>
+      prev.map((a) => {
+        if (a.id !== articleId) return a;
+        const newSaved = !a.isSaved;
+        // Update localStorage
+        const savedIds = getSavedIds();
+        if (newSaved) {
+          savedIds.add(articleId);
+        } else {
+          savedIds.delete(articleId);
+        }
+        persistSavedIds(savedIds);
+        return { ...a, isSaved: newSaved };
+      })
     );
   }, []);
 
@@ -284,6 +340,7 @@ export function useArticles(): UseArticlesReturn {
     requestFullSummary,
     isSummarizing,
     markAsRead,
+    toggleSave,
   };
 }
 

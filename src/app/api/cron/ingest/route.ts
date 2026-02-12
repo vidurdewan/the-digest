@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ingestAllNews, getStoredArticles } from "@/lib/article-ingestion";
-import { summarizeBatchBrief } from "@/lib/summarization";
+import { summarizeBatchBrief, preGenerateTopFullSummaries } from "@/lib/summarization";
 import { summarizeDecipheringBatch } from "@/lib/deciphering";
 import { processIntelligenceBatch } from "@/lib/intelligence";
 import { isClaudeConfigured } from "@/lib/claude";
 import { ingestNewsletters } from "@/lib/newsletter-ingestion";
 import { rankRecentArticles } from "@/lib/story-ranker";
 import { retierAllContent } from "@/lib/source-tiers";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { supabaseAdmin as supabase, isSupabaseAdminConfigured as isSupabaseConfigured } from "@/lib/supabase";
 import { getStoredTokens } from "@/lib/token-store";
 import { extractCompanyFromEdgarTitle } from "@/lib/sec-filter";
 import { detectSignals } from "@/lib/signal-detection";
@@ -24,13 +24,18 @@ export const maxDuration = 300;
  * Protected by CRON_SECRET in production.
  */
 export async function GET(request: NextRequest) {
-  // Verify cron secret in production
+  // Verify cron secret — always required to prevent unauthorized ingestion
   const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret) {
-    const authHeader = request.headers.get("authorization");
-    if (authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  if (!cronSecret) {
+    console.error("[Cron] CRON_SECRET is not set. Rejecting request.");
+    return NextResponse.json(
+      { error: "CRON_SECRET is not configured. Set it in environment variables." },
+      { status: 500 }
+    );
+  }
+  const authHeader = request.headers.get("authorization");
+  if (authHeader !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const startTime = Date.now();
@@ -210,6 +215,17 @@ export async function GET(request: NextRequest) {
       };
     }
 
+    // 4b. Pre-generate full summaries for top-ranked articles (instant load)
+    let preGenStats = null;
+    if (isClaudeConfigured()) {
+      try {
+        preGenStats = await preGenerateTopFullSummaries(15);
+      } catch (err) {
+        console.error("[Cron] Pre-generation error:", err);
+        preGenStats = { error: err instanceof Error ? err.message : "Pre-generation failed" };
+      }
+    }
+
     // 5. Ingest newsletters from Gmail (if connected)
     let newsletterStats = null;
     const gmailTokens = await getStoredTokens();
@@ -270,6 +286,7 @@ export async function GET(request: NextRequest) {
       intelligenceStats,
       signalStats,
       rankingStats,
+      preGenStats,
       newsletterStats,
       retierStats,
       timestamp: new Date().toISOString(),

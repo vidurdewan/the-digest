@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { classifyArticleTopics, isClaudeConfigured } from "@/lib/claude";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { supabaseAdmin as supabase, isSupabaseAdminConfigured as isSupabaseConfigured } from "@/lib/supabase";
+import { validateApiRequest } from "@/lib/api-auth";
 
 export const maxDuration = 300;
 
@@ -51,6 +52,11 @@ function classifyByKeywords(
  *   - mode: "ai" (default) or "keywords"
  */
 export async function POST(request: NextRequest) {
+  const auth = validateApiRequest(request);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error }, { status: 401 });
+  }
+
   if (!isSupabaseConfigured() || !supabase) {
     return NextResponse.json({ error: "Supabase not configured" }, { status: 500 });
   }

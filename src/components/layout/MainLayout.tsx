@@ -59,7 +59,7 @@ export function MainLayout({
   const showAside = !FULL_WIDTH_SECTIONS.has(activeSection);
 
   return (
-    <div className="min-h-screen bg-bg-primary transition-theme">
+    <div className="min-h-screen bg-bg-primary transition-theme pb-20 lg:pb-0">
       <Sidebar />
       <EditorialHeader {...headerProps} />
       <div

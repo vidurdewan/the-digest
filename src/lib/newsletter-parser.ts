@@ -231,9 +231,10 @@ export function isNewsletter(message: GmailMessage): boolean {
  */
 export function parseNewsletter(message: GmailMessage): ParsedNewsletter {
   const publication = extractPublicationName(message.from);
-  const contentHtml = message.htmlBody || "";
-  const contentText = contentHtml
-    ? cleanHtmlToText(contentHtml)
+  const rawHtml = message.htmlBody || "";
+  const contentHtml = rawHtml ? sanitizeHtml(rawHtml) : "";
+  const contentText = rawHtml
+    ? cleanHtmlToText(rawHtml)
     : message.textBody || message.snippet;
 
   return {
@@ -245,6 +246,40 @@ export function parseNewsletter(message: GmailMessage): ParsedNewsletter {
     contentText,
     contentHtml,
   };
+}
+
+/**
+ * Sanitize HTML content by removing scripts, event handlers, and dangerous elements.
+ * Defense-in-depth: contentHtml is currently only used server-side, but this
+ * prevents XSS if it's ever rendered in the browser.
+ */
+function sanitizeHtml(html: string): string {
+  const $ = cheerio.load(html);
+
+  // Remove dangerous elements
+  $("script, iframe, object, embed, form, input, textarea, button, link[rel='import']").remove();
+
+  // Remove all event handler attributes (onclick, onerror, onload, etc.)
+  $("*").each(function () {
+    const el = $(this);
+    const attribs = (el[0] as unknown as { attribs?: Record<string, string> }).attribs || {};
+    for (const attr of Object.keys(attribs)) {
+      if (attr.startsWith("on") || attr === "formaction") {
+        el.removeAttr(attr);
+      }
+    }
+    // Remove javascript: URLs
+    const href = el.attr("href");
+    if (href && /^\s*javascript:/i.test(href)) {
+      el.removeAttr("href");
+    }
+    const src = el.attr("src");
+    if (src && /^\s*javascript:/i.test(src)) {
+      el.removeAttr("src");
+    }
+  });
+
+  return $.html();
 }
 
 /**

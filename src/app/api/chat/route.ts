@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isClaudeConfigured } from "@/lib/claude";
 import Anthropic from "@anthropic-ai/sdk";
+import { validateApiRequest } from "@/lib/api-auth";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 let client: Anthropic | null = null;
 function getClient(): Anthropic | null {
@@ -17,6 +19,19 @@ function getClient(): Anthropic | null {
  * Body: { message: string, articles: { title, source, brief }[], history?: { role, content }[] }
  */
 export async function POST(request: NextRequest) {
+  const auth = validateApiRequest(request);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error }, { status: 401 });
+  }
+
+  const rateLimit = checkRateLimit(request);
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests", retryAfterMs: rateLimit.retryAfterMs },
+      { status: 429 }
+    );
+  }
+
   try {
     if (!isClaudeConfigured()) {
       return NextResponse.json(
@@ -39,9 +54,28 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { message, articles, history } = body;
 
-    if (!message) {
+    // Input validation
+    if (!message || typeof message !== "string") {
       return NextResponse.json(
-        { error: "message is required" },
+        { error: "message is required and must be a string" },
+        { status: 400 }
+      );
+    }
+    if (message.length > 5_000) {
+      return NextResponse.json(
+        { error: "message exceeds maximum of 5,000 characters" },
+        { status: 400 }
+      );
+    }
+    if (history && Array.isArray(history) && history.length > 20) {
+      return NextResponse.json(
+        { error: "history array exceeds maximum of 20 items" },
+        { status: 400 }
+      );
+    }
+    if (articles && Array.isArray(articles) && articles.length > 50) {
+      return NextResponse.json(
+        { error: "articles array exceeds maximum of 50 items" },
         { status: 400 }
       );
     }

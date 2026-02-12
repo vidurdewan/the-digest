@@ -3,7 +3,8 @@ import { ingestAllNews, getStoredArticles } from "@/lib/article-ingestion";
 import { summarizeBatchBrief } from "@/lib/summarization";
 import { processIntelligenceBatch } from "@/lib/intelligence";
 import { isClaudeConfigured, classifyArticleTopics } from "@/lib/claude";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { supabaseAdmin as supabase, isSupabaseAdminConfigured as isSupabaseConfigured } from "@/lib/supabase";
+import { validateApiRequest } from "@/lib/api-auth";
 import { scrapeImageUrl } from "@/lib/article-scraper";
 
 export const maxDuration = 300;
@@ -230,6 +231,11 @@ async function runPostIngestionWork(
  *   - summarize: "true" to generate brief AI summaries after ingestion
  */
 export async function GET(request: NextRequest) {
+  const auth = validateApiRequest(request);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error }, { status: 401 });
+  }
+
   try {
     const searchParams = request.nextUrl.searchParams;
     const scrapeContent = searchParams.get("scrape") === "true";

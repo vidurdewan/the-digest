@@ -342,7 +342,7 @@ export function IntelligenceFeed({
   }, [heroArticle]);
 
   return (
-    <div className="space-y-0">
+    <div className="space-y-0 pb-20 lg:pb-0">
       {/* "New stories" pill */}
       {newCount > 0 && onShowNew && (
         <button
@@ -361,7 +361,7 @@ export function IntelligenceFeed({
 
       {/* ═══ CAUGHT UP BANNER ═══ */}
       {isCaughtUp && (
-        <section className="pb-8 border-b border-border-primary">
+        <section className="pb-10 border-b border-border-primary">
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <CheckCircle size={40} className="text-accent-success mb-4" />
             <h2 className="font-serif text-2xl font-bold text-text-primary mb-2">
@@ -382,18 +382,18 @@ export function IntelligenceFeed({
 
       {/* ═══ HERO STORY ═══ */}
       {heroArticle && !isCaughtUp && (
-        <section className="pb-8 border-b border-border-primary">
+        <section className="pb-10 border-b border-border-primary">
           <div
             className="flex flex-col md:flex-row gap-6 md:gap-8 cursor-pointer group"
             onClick={() => onOpenReader(heroArticle)}
           >
             {/* Mobile: image on top */}
             {heroArticle.imageUrl && (
-              <div className="md:hidden w-full overflow-hidden">
+              <div className="md:hidden w-full overflow-hidden rounded-lg">
                 <img
                   src={heroArticle.imageUrl}
                   alt=""
-                  className="w-full max-h-[250px] object-cover hero-image-zoom"
+                  className="w-full max-h-[180px] object-cover hero-image-zoom"
                 />
               </div>
             )}
@@ -415,7 +415,7 @@ export function IntelligenceFeed({
                   {heroArticle.readingTimeMinutes} min read
                 </span>
               </div>
-              <h1 className="typo-hero text-3xl md:text-4xl lg:text-[3.5rem] xl:text-[4rem] text-text-primary mb-4 group-hover:text-accent-primary transition-colors">
+              <h1 className="typo-hero text-2xl sm:text-3xl md:text-4xl lg:text-[3.5rem] xl:text-[4rem] text-text-primary mb-4 group-hover:text-accent-primary transition-colors">
                 {heroArticle.title}
               </h1>
               {heroArticle.summary?.brief && (
@@ -451,7 +451,7 @@ export function IntelligenceFeed({
 
       {/* ═══ WHAT YOU'D MISS ═══ */}
       {whatYoudMiss.length > 0 && !isCaughtUp && (
-        <section className="py-4 border-b border-border-primary">
+        <section className="py-6 border-b border-border-primary">
           <button
             onClick={toggleWydmCollapse}
             className="flex w-full items-center justify-between text-left"
@@ -483,14 +483,14 @@ export function IntelligenceFeed({
       )}
 
       {/* ═══ TOPIC FILTER TABS ═══ */}
-      <section className="py-4 border-b border-border-primary relative">
-        <div className="flex items-center gap-6 overflow-x-auto scrollbar-hide tab-scroll-container">
+      <section className="border-b border-border-primary relative">
+        <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide tab-scroll-container -mx-1">
           <button
             onClick={() => {
               setActiveTab("all");
               setVisibleCount(ITEMS_PER_PAGE);
             }}
-            className={`pb-3 text-sm font-sans whitespace-nowrap transition-colors tab-underline ${
+            className={`min-h-[44px] px-3 text-sm font-sans whitespace-nowrap transition-colors tab-underline ${
               activeTab === "all"
                 ? "text-text-primary font-semibold tab-underline-active"
                 : "text-text-secondary hover:text-text-primary"
@@ -505,7 +505,7 @@ export function IntelligenceFeed({
                 setActiveTab(topic);
                 setVisibleCount(ITEMS_PER_PAGE);
               }}
-              className={`pb-3 text-sm font-sans whitespace-nowrap transition-colors tab-underline ${
+              className={`min-h-[44px] px-3 text-sm font-sans whitespace-nowrap transition-colors tab-underline ${
                 activeTab === topic
                   ? "text-text-primary font-semibold tab-underline-active"
                   : "text-text-secondary hover:text-text-primary"
@@ -518,7 +518,7 @@ export function IntelligenceFeed({
       </section>
 
       {/* ═══ FEED LIST ═══ */}
-      <section key={activeTab} className="content-crossfade">
+      <section key={activeTab} className="content-crossfade divide-y divide-border-primary">
         {visibleFeedArticles.map((article, idx) => {
           const curation = getCurationReason(article);
           const isExpanded = expandedArticleId === article.id;
@@ -545,11 +545,11 @@ export function IntelligenceFeed({
               )}
               <div
                 data-article-id={article.id}
-                className={`border-b border-border-primary feed-item-row rounded-sm feed-item-enter transition-opacity duration-300 ${isRead ? "opacity-55" : ""} ${isPrimary ? "feed-item-primary" : ""}`}
+                className={`feed-item-row rounded-sm feed-item-enter transition-opacity duration-300 ${isRead ? "opacity-55" : ""} ${isPrimary ? "feed-item-primary" : ""}`}
                 style={{ animationDelay: `${idx * 50}ms` }}
               >
                 <div
-                  className="flex items-start gap-4 py-6 px-4 md:py-8 md:px-0 cursor-pointer group"
+                  className="flex items-start gap-4 py-7 px-4 md:py-9 md:px-0 cursor-pointer group"
                   onClick={() => handleArticleClick(article)}
                   data-feed-index={idx}
                 >
@@ -749,24 +749,24 @@ export function IntelligenceFeed({
         {expandedArticle && (
           <div className="h-full flex flex-col">
             {/* Panel header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-border-primary">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between px-4 md:px-6 py-3 border-b border-border-primary">
+              <div className="flex items-center gap-2 min-w-0">
                 {articleHistory.length > 0 && (
                   <button
                     onClick={handleBack}
-                    className="mr-1 text-xs font-medium text-accent-primary hover:text-accent-primary-hover transition-colors"
+                    className="mr-1 flex items-center gap-1 min-h-[44px] px-2 text-sm font-medium text-accent-primary hover:text-accent-primary-hover transition-colors"
                   >
                     ← Back
                   </button>
                 )}
                 <span
-                  className="topic-dot"
+                  className="topic-dot shrink-0"
                   style={{ backgroundColor: topicDotColors[expandedArticle.topic] }}
                 />
-                <span className="typo-section-label text-text-secondary">
+                <span className="typo-section-label text-text-secondary truncate">
                   {topicLabels[expandedArticle.topic]}
                 </span>
-                <span className="text-xs text-text-tertiary">·</span>
+                <span className="text-xs text-text-tertiary hidden sm:inline">·</span>
                 {(() => {
                   const f = formatFreshness(expandedArticle.publishedAt);
                   return (
@@ -778,10 +778,10 @@ export function IntelligenceFeed({
               </div>
               <button
                 onClick={() => { setExpandedArticleId(null); setArticleHistory([]); }}
-                className="p-1.5 text-text-secondary hover:text-text-primary transition-colors"
+                className="flex items-center justify-center min-h-[44px] min-w-[44px] -mr-2 rounded-lg text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-colors"
                 aria-label="Close panel"
               >
-                <X size={18} />
+                <X size={20} />
               </button>
             </div>
 

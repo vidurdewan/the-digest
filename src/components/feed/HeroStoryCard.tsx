@@ -16,7 +16,6 @@ import { topicLabels, getRelativeTime } from "@/lib/mock-data";
 import { QuickReactions } from "@/components/intelligence/QuickReactions";
 import { GoDeeper } from "@/components/intelligence/GoDeeper";
 import { RemindMeButton } from "@/components/intelligence/RemindMeButton";
-import { SignalBadges } from "@/components/intelligence/SignalBadge";
 
 interface HeroStoryCardProps {
   article: ArticleWithIntelligence;
@@ -120,39 +119,82 @@ export function HeroStoryCard({
 
       {/* Content */}
       <div className={`px-5 pb-4 pl-7 ${article.imageUrl ? "pt-3" : "pt-5"}`}>
-        {/* Badges */}
+        {/* Badges — max 3 visible */}
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <span className="rounded-full bg-accent-primary px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-text-inverse">
-            Top Story
-          </span>
-          {article.sourceTier === 1 && (
-            <span className="rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-700">
-              Primary Source
-            </span>
-          )}
-          {article.documentType && (
-            <span className="rounded-full bg-slate-100 border border-slate-200 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-slate-600">
-              {article.documentType}
-            </span>
-          )}
-          <span
-            className="rounded-full px-2.5 py-0.5 text-xs font-medium"
-            style={topicStyle}
-          >
-            {topicLabels[article.topic]}
-          </span>
-          {storyType && (
-            <span className="pill-outlined">
-              {STORY_TYPE_STYLES[storyType].label}
-            </span>
-          )}
-          {article.watchlistMatches.length > 0 && (
-            <span className="flex items-center gap-1 rounded-full bg-accent-warning/15 px-2 py-0.5 text-xs font-medium text-accent-warning">
-              <Eye size={10} />
-              Watchlist
-            </span>
-          )}
-          <SignalBadges signals={article.signals} max={2} />
+          {(() => {
+            const badges: { key: string; el: React.ReactNode }[] = [];
+            badges.push({
+              key: "top",
+              el: (
+                <span className="rounded-full bg-accent-primary px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-text-inverse">
+                  Top Story
+                </span>
+              ),
+            });
+            if (article.sourceTier === 1) {
+              badges.push({
+                key: "primary",
+                el: (
+                  <span className="rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-700">
+                    Primary Source
+                  </span>
+                ),
+              });
+            }
+            badges.push({
+              key: "topic",
+              el: (
+                <span
+                  className="rounded-full px-2.5 py-0.5 text-xs font-medium"
+                  style={topicStyle}
+                >
+                  {topicLabels[article.topic]}
+                </span>
+              ),
+            });
+            if (storyType) {
+              badges.push({
+                key: "storyType",
+                el: <span className="pill-outlined">{STORY_TYPE_STYLES[storyType].label}</span>,
+              });
+            }
+            if (article.documentType) {
+              badges.push({
+                key: "docType",
+                el: (
+                  <span className="rounded-full bg-slate-100 border border-slate-200 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-slate-600">
+                    {article.documentType}
+                  </span>
+                ),
+              });
+            }
+            if (article.watchlistMatches.length > 0) {
+              badges.push({
+                key: "watchlist",
+                el: (
+                  <span className="flex items-center gap-1 rounded-full bg-accent-warning/15 px-2 py-0.5 text-xs font-medium text-accent-warning">
+                    <Eye size={10} />
+                    Watchlist
+                  </span>
+                ),
+              });
+            }
+            const MAX_BADGES = 3;
+            const visible = badges.slice(0, MAX_BADGES);
+            const overflow = badges.length - MAX_BADGES;
+            return (
+              <>
+                {visible.map((b) => (
+                  <span key={b.key}>{b.el}</span>
+                ))}
+                {overflow > 0 && (
+                  <span className="rounded-full bg-bg-tertiary px-2 py-0.5 text-[10px] font-medium text-text-tertiary">
+                    +{overflow} more
+                  </span>
+                )}
+              </>
+            );
+          })()}
           {significance >= 7 && (
             <span
               className="ml-auto rounded-full px-2 py-0.5 text-[10px] font-bold"

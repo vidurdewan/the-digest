@@ -188,6 +188,32 @@ function isSummarizingOthers(title: string, content: string): boolean {
   return hasSummarizing && !hasOriginal;
 }
 
+// ─── Step 3b: Volume Penalty ────────────────────────────────
+// High-volume publications (>5 articles/day) get a small penalty
+// to prevent any single source from dominating the top stories.
+
+function computePublicationVolume(
+  articles: { url: string }[]
+): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const a of articles) {
+    const pub = extractPublication(a.url);
+    counts.set(pub, (counts.get(pub) || 0) + 1);
+  }
+  return counts;
+}
+
+function getVolumePenalty(
+  url: string,
+  volumeMap: Map<string, number>
+): number {
+  const pub = extractPublication(url);
+  const count = volumeMap.get(pub) || 0;
+  if (count > 10) return 10; // very high volume → -10
+  if (count > 5) return 5;   // high volume → -5
+  return 0;
+}
+
 // ─── Core Ranking Types ─────────────────────────────────────
 
 export interface RankableArticle {
@@ -215,6 +241,7 @@ export interface RankingResult {
     firstToReportBonus: number;
     derivativePenalty: number;
     summarizingPenalty: number;
+    volumePenalty: number;
   };
 }
 
@@ -225,6 +252,11 @@ export interface RankingResult {
  * ranking_score = base_score + bonuses - penalties
  */
 export function rankArticles(articles: RankableArticle[]): RankingResult[] {
+  // Pre-compute publication volume for the entire batch
+  const volumeMap = computePublicationVolume(
+    articles.map((a) => ({ url: a.url }))
+  );
+
   return articles.map((article) => {
     // Step 1: Base score by source tier
     const baseScore = getBaseScore(article.sourceTier);
@@ -241,11 +273,12 @@ export function rankArticles(articles: RankableArticle[]): RankingResult[] {
     // Step 3: Penalties
     const derivativePenalty = hasDerivativeHeadline(article.title) ? 15 : 0;
     const summarizingPenalty = isSummarizingOthers(article.title, article.content || "") ? 10 : 0;
+    const volumePenalty = getVolumePenalty(article.url, volumeMap);
 
     // Step 4: Final score
     const totalBonuses = exclusiveBonus + authorityVoiceBonus + financialMagnitudeBonus +
       broadImpactBonus + recencyBonus + vipBonus + firstToReportBonus;
-    const totalPenalties = derivativePenalty + summarizingPenalty;
+    const totalPenalties = derivativePenalty + summarizingPenalty + volumePenalty;
 
     const rankingScore = baseScore + totalBonuses - totalPenalties;
 
@@ -263,6 +296,7 @@ export function rankArticles(articles: RankableArticle[]): RankingResult[] {
         firstToReportBonus,
         derivativePenalty,
         summarizingPenalty,
+        volumePenalty,
       },
     };
   });
@@ -480,7 +514,7 @@ export async function getTopStories(
 
   const {
     count = 5,
-    maxPerPublication = 2,
+    maxPerPublication = 1,
     maxPerTopic = 2,
     hoursBack = 24,
   } = options || {};

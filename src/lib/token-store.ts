@@ -11,10 +11,14 @@ interface StoredTokens {
 }
 
 const COOKIE_NAME = "gmail-tokens";
+const TOKEN_ROW_ID = "default-user";
 
 // Derive a 32-byte key from the Google client secret
 function getEncryptionKey(): Buffer {
-  const secret = process.env.GOOGLE_CLIENT_SECRET || "fallback-dev-secret";
+  const secret = process.env.GOOGLE_CLIENT_SECRET;
+  if (!secret) {
+    throw new Error("GOOGLE_CLIENT_SECRET must be set for token encryption");
+  }
   return crypto.scryptSync(secret, "the-digest-salt", 32);
 }
 
@@ -50,7 +54,7 @@ export async function storeTokens(tokens: StoredTokens): Promise<void> {
   if (isSupabaseConfigured() && supabase) {
     const { error } = await supabase.from("gmail_tokens").upsert(
       {
-        id: "default",
+        id: TOKEN_ROW_ID,
         access_token: tokens.access_token,
         refresh_token: tokens.refresh_token,
         expiry_date: tokens.expiry_date,
@@ -76,8 +80,12 @@ export async function storeTokens(tokens: StoredTokens): Promise<void> {
       path: "/",
       maxAge: 60 * 60 * 24 * 365, // 1 year
     });
-  } catch {
-    // cookies() may not be available in all contexts
+  } catch (e) {
+    // cookies() may not be available, or encryption may fail if
+    // GOOGLE_CLIENT_SECRET is not set
+    if (e instanceof Error && e.message.includes("GOOGLE_CLIENT_SECRET")) {
+      console.warn("Skipping cookie token storage: GOOGLE_CLIENT_SECRET is not configured");
+    }
   }
 }
 
@@ -107,7 +115,7 @@ export async function getStoredTokens(): Promise<StoredTokens | null> {
     const { data, error } = await supabase
       .from("gmail_tokens")
       .select("*")
-      .eq("id", "default")
+      .eq("id", TOKEN_ROW_ID)
       .single();
 
     if (data && !error) {
@@ -128,8 +136,11 @@ export async function getStoredTokens(): Promise<StoredTokens | null> {
     if (cookie?.value) {
       return JSON.parse(decrypt(cookie.value));
     }
-  } catch {
-    // Cookie not available or decryption failed
+  } catch (e) {
+    // Cookie not available, decryption failed, or GOOGLE_CLIENT_SECRET not set
+    if (e instanceof Error && e.message.includes("GOOGLE_CLIENT_SECRET")) {
+      console.warn("Skipping cookie token retrieval: GOOGLE_CLIENT_SECRET is not configured");
+    }
   }
 
   return null;
@@ -148,7 +159,7 @@ export async function isGmailConnected(): Promise<boolean> {
  */
 export async function clearTokens(): Promise<void> {
   if (isSupabaseConfigured() && supabase) {
-    await supabase.from("gmail_tokens").delete().eq("id", "default");
+    await supabase.from("gmail_tokens").delete().eq("id", TOKEN_ROW_ID);
   }
 
   // Clear cookie

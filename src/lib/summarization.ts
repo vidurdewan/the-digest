@@ -298,6 +298,95 @@ export async function summarizeFull(
 }
 
 /**
+ * TIER 2 BATCH: Pre-generate full summaries for top-ranked articles.
+ * Called during cron after ranking — ensures top stories load instantly.
+ */
+export async function preGenerateTopFullSummaries(
+  maxArticles: number = 15
+): Promise<{
+  generated: number;
+  skipped: number;
+  errors: number;
+}> {
+  const stats = { generated: 0, skipped: 0, errors: 0 };
+
+  if (!isClaudeConfigured() || !isSupabaseConfigured() || !supabase) {
+    return stats;
+  }
+
+  // Check budget before starting
+  const { allowed } = await checkBudget();
+  if (!allowed) {
+    console.log("[Summarization] Over budget, skipping full summary pre-generation");
+    return stats;
+  }
+
+  // Fetch top-ranked articles from last 24h that don't already have full summaries
+  const since = new Date();
+  since.setHours(since.getHours() - 24);
+
+  const { data: topArticles } = await supabase
+    .from("articles")
+    .select("id, title, content, url, source_tier, summaries(the_news)")
+    .gte("published_at", since.toISOString())
+    .gt("ranking_score", 0)
+    .order("ranking_score", { ascending: false })
+    .limit(maxArticles * 2); // fetch extra to account for ones already summarized
+
+  if (!topArticles || topArticles.length === 0) {
+    return stats;
+  }
+
+  // Filter to articles that need full summaries
+  const needsFull = topArticles.filter((a) => {
+    const summaries = a.summaries as { the_news: string | null }[] | null;
+    const hasFull = summaries && summaries.length > 0 && summaries[0]?.the_news;
+    return !hasFull && a.content && (a.content as string).length > 50;
+  }).slice(0, maxArticles);
+
+  if (needsFull.length === 0) {
+    stats.skipped = topArticles.length;
+    return stats;
+  }
+
+  // Generate full summaries sequentially to stay within budget
+  for (const article of needsFull) {
+    // Re-check budget each iteration
+    const { allowed: stillAllowed } = await checkBudget();
+    if (!stillAllowed) {
+      console.log("[Summarization] Budget hit during pre-generation, stopping");
+      break;
+    }
+
+    try {
+      // Extract source from URL for the prompt
+      let source = "";
+      try {
+        source = new URL(article.url as string).hostname.replace(/^www\./, "");
+      } catch { /* ignore */ }
+
+      const result = await summarizeFull(
+        article.id as string,
+        article.title as string,
+        article.content as string,
+        source
+      );
+
+      if (result) {
+        stats.generated++;
+      } else {
+        stats.errors++;
+      }
+    } catch {
+      stats.errors++;
+    }
+  }
+
+  stats.skipped = topArticles.length - needsFull.length;
+  return stats;
+}
+
+/**
  * Generate a brief summary for a single article (fallback for non-batch use).
  */
 export async function summarizeBrief(

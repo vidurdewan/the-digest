@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { isClaudeConfigured } from "@/lib/claude";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { supabaseAdmin as supabase, isSupabaseAdminConfigured as isSupabaseConfigured } from "@/lib/supabase";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const maxDuration = 60;
 import { getStoredArticles } from "@/lib/article-ingestion";
@@ -25,7 +26,15 @@ function getTodayKey(): string {
  * Now includes VIP newsletter content prominently.
  * Caches in Supabase `daily_briefs` table (keyed by date).
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const rateLimit = checkRateLimit(request, { maxRequests: 5, windowMs: 60_000 });
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests", retryAfterMs: rateLimit.retryAfterMs },
+      { status: 429 }
+    );
+  }
+
   try {
     if (!isClaudeConfigured()) {
       return NextResponse.json(

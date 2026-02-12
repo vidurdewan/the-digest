@@ -11,8 +11,6 @@ import {
   Rss,
   Eye,
   Mail,
-  Menu,
-  X,
   CheckCheck,
   RefreshCw,
   Loader2,
@@ -158,7 +156,7 @@ export function EditorialHeader({
   const [themeOpen, setThemeOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [readNotifIds, setReadNotifIds] = useState<Set<string>>(new Set());
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   const themeRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
 
@@ -221,16 +219,8 @@ export function EditorialHeader({
 
   const handleNavClick = (section: string) => {
     setActiveSection(section);
-    setMobileMenuOpen(false);
   };
 
-  // Lock body scroll when mobile menu is open
-  useEffect(() => {
-    if (mobileMenuOpen) {
-      document.body.style.overflow = "hidden";
-      return () => { document.body.style.overflow = ""; };
-    }
-  }, [mobileMenuOpen]);
 
   return (
     <>
@@ -241,7 +231,7 @@ export function EditorialHeader({
           The Digest
         </h1>
 
-        {/* Right: Nav links + theme + notifications + hamburger */}
+        {/* Right: Nav links + theme + notifications */}
         <div className="flex items-center gap-6">
           {/* Nav links — hidden below lg */}
           <nav className="hidden items-center gap-5 lg:flex">
@@ -440,48 +430,11 @@ export function EditorialHeader({
               </div>
             )}
           </div>
-          {/* Hamburger — visible below lg */}
-          <button
-            onClick={() => setMobileMenuOpen(true)}
-            className="rounded-lg p-2 text-text-tertiary hover:bg-bg-hover hover:text-text-primary transition-colors lg:hidden"
-            aria-label="Open menu"
-          >
-            <Menu size={20} />
-          </button>
+
         </div>
       </div>
     </header>
 
-    {/* Full-screen mobile nav overlay */}
-    {mobileMenuOpen && (
-      <div className="fixed inset-0 z-[60] bg-bg-primary flex flex-col items-center justify-center lg:hidden mobile-menu-enter">
-        <button
-          onClick={() => setMobileMenuOpen(false)}
-          className="absolute top-4 right-4 rounded-lg p-2 text-text-tertiary hover:text-text-primary transition-colors"
-          aria-label="Close menu"
-        >
-          <X size={24} />
-        </button>
-        <nav className="flex flex-col items-center gap-8">
-          {NAV_LINKS.map((link) => {
-            const isActive = activeSection === link.section;
-            return (
-              <button
-                key={link.id}
-                onClick={() => handleNavClick(link.section)}
-                className={`text-3xl font-serif font-bold transition-colors ${
-                  isActive
-                    ? "text-accent-primary"
-                    : "text-text-secondary hover:text-text-primary"
-                }`}
-              >
-                {link.label}
-              </button>
-            );
-          })}
-        </nav>
-      </div>
-    )}
     </>
   );
 }

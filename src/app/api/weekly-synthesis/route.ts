@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { supabaseAdmin as supabase, isSupabaseAdminConfigured as isSupabaseConfigured } from "@/lib/supabase";
 import { isClaudeConfigured } from "@/lib/claude";
 import {
   generateWeeklySynthesis,
   storeWeeklySynthesis,
 } from "@/lib/intelligence";
+import { validateApiRequest } from "@/lib/api-auth";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 /**
  * GET /api/weekly-synthesis?week=YYYY-MM-DD
@@ -67,6 +69,19 @@ export async function GET(request: NextRequest) {
  * Generate a new weekly synthesis for the current or specified week.
  */
 export async function POST(request: NextRequest) {
+  const auth = validateApiRequest(request);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error }, { status: 401 });
+  }
+
+  const rateLimit = checkRateLimit(request, { maxRequests: 3, windowMs: 60_000 });
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests", retryAfterMs: rateLimit.retryAfterMs },
+      { status: 429 }
+    );
+  }
+
   try {
     if (!isClaudeConfigured()) {
       return NextResponse.json(

@@ -1,0 +1,5 @@
+-- Rollback: 20260127040000_update_vip_defaults.sql
+-- This was a data-only migration (UPDATE settings SET vip_newsletters).
+-- The original default value was '["Stratechery"]'.
+-- No reliable automatic rollback — data may have been modified by users.
+-- Manual intervention: UPDATE settings SET vip_newsletters = '["Stratechery"]';

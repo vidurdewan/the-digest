@@ -5,10 +5,7 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { BackToTop } from "@/components/ui/BackToTop";
 import { useSidebarStore } from "@/lib/store";
 import { useToastStore } from "@/components/ui/Toast";
-import {
-  topicLabels,
-} from "@/lib/mock-data";
-import type { Article, Summary, TopicCategory } from "@/types";
+import type { Article, Summary } from "@/types";
 import { useNewsletters } from "@/hooks/useNewsletters";
 import { useGmailStatus } from "@/hooks/useGmailStatus";
 import { useArticles } from "@/hooks/useArticles";
@@ -16,12 +13,12 @@ import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { useWatchlist } from "@/hooks/useWatchlist";
 import { useEngagement } from "@/hooks/useEngagement";
 import { usePreferences } from "@/hooks/usePreferences";
+import { useHomeShortcuts } from "@/hooks/useHomeShortcuts";
 import { rankArticles } from "@/lib/ranking";
 
 // Section components
 import { IntelligenceFeed } from "@/components/feed/IntelligenceFeed";
-import { ArticleCard } from "@/components/articles/ArticleCard";
-import { TopicSection } from "@/components/articles/TopicSection";
+import { NewsByTopicSection } from "@/components/articles/NewsByTopicSection";
 import { ReadingPane } from "@/components/articles/ReadingPane";
 import { NewsletterView } from "@/components/articles/NewsletterView";
 import { SavedView } from "@/components/articles/SavedView";
@@ -42,118 +39,6 @@ import { useServiceWorker } from "@/hooks/useServiceWorker";
 import { KeyboardShortcutHandler } from "@/components/ui/KeyboardShortcutHandler";
 import { ShortcutHintToast } from "@/components/ui/ShortcutHintToast";
 import { BriefingOverlay } from "@/components/intelligence/BriefingOverlay";
-import { useFeedNavigationStore } from "@/lib/store";
-
-import {
-  RefreshCw,
-  Search,
-} from "lucide-react";
-
-// ─── News by Topic ──────────────────────────────────────────
-function NewsByTopicSection({
-  articles,
-  onSave,
-  onOpenReader,
-  onRequestSummary,
-  onExpand,
-  onIngest,
-  isIngesting,
-}: {
-  articles: (Article & { summary?: Summary })[];
-  onSave: (id: string) => void;
-  onOpenReader: (article: Article & { summary?: Summary }) => void;
-  onRequestSummary?: (
-    article: Article & { summary?: Summary }
-  ) => Promise<Summary | null>;
-  onExpand?: (articleId: string) => void;
-  onIngest?: () => void;
-  isIngesting?: boolean;
-}) {
-  const [searchTerm, setSearchTerm] = useState("");
-  const topics = Object.keys(topicLabels) as TopicCategory[];
-
-  const filteredArticles = useMemo(() => {
-    if (!searchTerm.trim()) return articles;
-    const term = searchTerm.toLowerCase();
-    return articles.filter(
-      (a) =>
-        a.title.toLowerCase().includes(term) ||
-        a.source.toLowerCase().includes(term) ||
-        (a.author && a.author.toLowerCase().includes(term))
-    );
-  }, [articles, searchTerm]);
-
-  const grouped = topics.reduce(
-    (acc, topic) => {
-      acc[topic] = filteredArticles.filter((a) => a.topic === topic);
-      return acc;
-    },
-    {} as Record<TopicCategory, (Article & { summary?: Summary })[]>
-  );
-
-  return (
-    <div className="space-y-0">
-      <div className="flex items-end justify-between pb-8">
-        <div>
-          <h2 className="font-serif text-3xl font-bold text-text-primary">
-            News by Topic
-          </h2>
-          <p className="mt-1 text-sm text-text-tertiary">
-            Browse by category
-          </p>
-        </div>
-        {onIngest && (
-          <button
-            onClick={onIngest}
-            disabled={isIngesting}
-            className="pill-outlined flex items-center gap-1.5 transition-colors hover:bg-bg-hover disabled:opacity-50"
-          >
-            <RefreshCw
-              size={14}
-              className={isIngesting ? "animate-spin" : ""}
-            />
-            {isIngesting ? "Fetching..." : "Fetch News"}
-          </button>
-        )}
-      </div>
-
-      {/* Search filter */}
-      <div className="relative border-b border-border-primary pb-6">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
-        <input
-          type="text"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="Filter articles by title, source, or author..."
-          className="w-full border-b border-border-secondary bg-transparent pl-9 pr-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent-primary focus:outline-none transition-colors"
-        />
-      </div>
-
-      <div className="space-y-0">
-        {topics
-          .filter((t) => grouped[t].length > 0)
-          .map((topic) => (
-            <TopicSection
-              key={topic}
-              topic={topic}
-              articles={grouped[topic]}
-              onSave={onSave}
-              onOpenReader={onOpenReader}
-              onRequestSummary={onRequestSummary}
-              onExpand={onExpand}
-              defaultOpen={true}
-            />
-          ))}
-      </div>
-
-      {searchTerm && filteredArticles.length === 0 && (
-        <p className="text-center text-sm text-text-tertiary py-8">
-          No articles match &ldquo;{searchTerm}&rdquo;
-        </p>
-      )}
-    </div>
-  );
-}
 
 // ─── Main Page ──────────────────────────────────────────────
 export default function Home() {
@@ -226,7 +111,8 @@ export default function Home() {
 
   const isLoading = articleData.isLoading && articleData.articles.length === 0;
 
-  const handleSave = (id: string) => {
+  const handleSave = useCallback((id: string) => {
+    articleData.toggleSave(id);
     const article = articlesWithMatches.find((a) => a.id === id);
     if (article) {
       engagement.trackEvent(id, "save");
@@ -237,7 +123,7 @@ export default function Home() {
         article.isSaved ? "info" : "success"
       );
     }
-  };
+  }, [articleData, articlesWithMatches, engagement, addToast]);
 
   const handleMarkAllRead = useCallback((articleIds: string[]) => {
     const unreadIds = articleIds.filter(
@@ -248,7 +134,6 @@ export default function Home() {
     for (const id of unreadIds) {
       engagement.trackEvent(id, "read");
     }
-    // Trigger unread dot fade via DOM
     for (const id of unreadIds) {
       const dots = document.querySelectorAll(`[data-unread-dot="${id}"]`);
       dots.forEach((dot) => dot.classList.add("unread-dot-fade"));
@@ -277,64 +162,17 @@ export default function Home() {
     engagement.trackEvent(articleId, "expand");
   };
 
-  // Keyboard shortcut callbacks
-  const handleSaveFocused = useCallback(() => {
-    const idx = useFeedNavigationStore.getState().focusedIndex;
-    if (idx < 0 || idx >= rankedArticles.length) return;
-    handleSave(rankedArticles[idx].id);
-  }, [rankedArticles]);
-
-  const handleExpandFocused = useCallback(() => {
-    const idx = useFeedNavigationStore.getState().focusedIndex;
-    if (idx < 0) return;
-    const elements = document.querySelectorAll("[data-feed-index]");
-    const el = elements[idx] as HTMLElement | undefined;
-    if (el) el.click();
-  }, []);
-
-  const handleOpenReaderFocused = useCallback(() => {
-    // Enter key now triggers inline expansion via click on feed item
-    const idx = useFeedNavigationStore.getState().focusedIndex;
-    if (idx < 0) return;
-    const elements = document.querySelectorAll("[data-feed-index]");
-    const el = elements[idx] as HTMLElement | undefined;
-    if (el) el.click();
-  }, []);
-
-  const handleCloseReader = useCallback(() => {
-    setReaderArticle(null);
-  }, []);
-
-  const handleMarkReadFocused = useCallback(() => {
-    const idx = useFeedNavigationStore.getState().focusedIndex;
-    if (idx < 0 || idx >= rankedArticles.length) return;
-    const article = rankedArticles[idx];
-    if (!article.isRead) {
-      handleMarkAllRead([article.id]);
-    }
-  }, [rankedArticles, handleMarkAllRead]);
+  // Keyboard shortcuts (extracted to hook)
+  const shortcuts = useHomeShortcuts({
+    rankedArticles,
+    handleSave,
+    handleMarkAllRead,
+    setReaderArticle,
+  });
 
   // Briefing mode state
   const [briefingMode, setBriefingMode] = useState(false);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
-
-  const handleDismissFocused = useCallback(() => {
-    const idx = useFeedNavigationStore.getState().focusedIndex;
-    if (idx < 0 || idx >= rankedArticles.length) return;
-    const article = rankedArticles[idx];
-    if (!article.isRead) {
-      handleMarkAllRead([article.id]);
-    }
-  }, [rankedArticles, handleMarkAllRead]);
-
-  const handleOpenSourceUrlFocused = useCallback(() => {
-    const idx = useFeedNavigationStore.getState().focusedIndex;
-    if (idx < 0 || idx >= rankedArticles.length) return;
-    const article = rankedArticles[idx];
-    if (article.sourceUrl) {
-      window.open(article.sourceUrl, "_blank", "noopener,noreferrer");
-    }
-  }, [rankedArticles]);
 
   const handleToggleBriefing = useCallback(() => {
     setBriefingMode((prev) => !prev);
@@ -344,8 +182,15 @@ export default function Home() {
     setIsPanelOpen(isOpen);
   }, []);
 
+  const handleNavigateToArticle = useCallback(
+    (articleId: string) => {
+      const article = articlesWithMatches.find((a) => a.id === articleId);
+      if (article) handleOpenReader(article);
+    },
+    [articlesWithMatches]
+  );
+
   const renderSection = () => {
-    // Only show full-page skeleton for feed sections that depend on articles
     if (isLoading && (activeSection === "priority-feed" || activeSection === "news" || activeSection === "intelligence" || activeSection === "saved")) {
       return <PageSkeleton />;
     }
@@ -466,14 +311,6 @@ export default function Home() {
     }
   };
 
-  const handleNavigateToArticle = useCallback(
-    (articleId: string) => {
-      const article = articlesWithMatches.find((a) => a.id === articleId);
-      if (article) handleOpenReader(article);
-    },
-    [articlesWithMatches]
-  );
-
   return (
     <MainLayout
       headerProps={{
@@ -494,11 +331,10 @@ export default function Home() {
       <div key={activeSection} className="section-enter mx-auto max-w-5xl pb-8">
         {renderSection()}
       </div>
-      {/* Reading pane — slides in as drawer from right */}
       {readerArticle && (
         <ReadingPane
           article={readerArticle}
-          onClose={handleCloseReader}
+          onClose={shortcuts.handleCloseReader}
           onSave={handleSave}
           onRequestSummary={articleData.requestFullSummary}
         />
@@ -517,12 +353,12 @@ export default function Home() {
         onExpand={handleExpand}
       />
       <KeyboardShortcutHandler
-        onSaveFocused={handleSaveFocused}
-        onExpandFocused={handleExpandFocused}
-        onOpenSourceUrlFocused={handleOpenSourceUrlFocused}
-        onCloseReader={handleCloseReader}
-        onMarkReadFocused={handleMarkReadFocused}
-        onDismissFocused={handleDismissFocused}
+        onSaveFocused={shortcuts.handleSaveFocused}
+        onExpandFocused={shortcuts.handleExpandFocused}
+        onOpenSourceUrlFocused={shortcuts.handleOpenSourceUrlFocused}
+        onCloseReader={shortcuts.handleCloseReader}
+        onMarkReadFocused={shortcuts.handleMarkReadFocused}
+        onDismissFocused={shortcuts.handleDismissFocused}
         onToggleBriefing={handleToggleBriefing}
         isPanelOpen={isPanelOpen}
       />
