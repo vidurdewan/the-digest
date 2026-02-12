@@ -361,7 +361,7 @@ export function IntelligenceFeed({
 
       {/* ═══ CAUGHT UP BANNER ═══ */}
       {isCaughtUp && (
-        <section className="pb-8 border-b border-border-primary">
+        <section className="pb-10 border-b border-border-primary">
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <CheckCircle size={40} className="text-accent-success mb-4" />
             <h2 className="font-serif text-2xl font-bold text-text-primary mb-2">
@@ -382,7 +382,7 @@ export function IntelligenceFeed({
 
       {/* ═══ HERO STORY ═══ */}
       {heroArticle && !isCaughtUp && (
-        <section className="pb-8 border-b border-border-primary">
+        <section className="pb-10 border-b border-border-primary">
           <div
             className="flex flex-col md:flex-row gap-6 md:gap-8 cursor-pointer group"
             onClick={() => onOpenReader(heroArticle)}
@@ -451,7 +451,7 @@ export function IntelligenceFeed({
 
       {/* ═══ WHAT YOU'D MISS ═══ */}
       {whatYoudMiss.length > 0 && !isCaughtUp && (
-        <section className="py-4 border-b border-border-primary">
+        <section className="py-6 border-b border-border-primary">
           <button
             onClick={toggleWydmCollapse}
             className="flex w-full items-center justify-between text-left"
@@ -518,7 +518,7 @@ export function IntelligenceFeed({
       </section>
 
       {/* ═══ FEED LIST ═══ */}
-      <section key={activeTab} className="content-crossfade">
+      <section key={activeTab} className="content-crossfade divide-y divide-border-primary">
         {visibleFeedArticles.map((article, idx) => {
           const curation = getCurationReason(article);
           const isExpanded = expandedArticleId === article.id;
@@ -545,11 +545,11 @@ export function IntelligenceFeed({
               )}
               <div
                 data-article-id={article.id}
-                className={`border-b border-border-primary feed-item-row rounded-sm feed-item-enter transition-opacity duration-300 ${isRead ? "opacity-55" : ""} ${isPrimary ? "feed-item-primary" : ""}`}
+                className={`feed-item-row rounded-sm feed-item-enter transition-opacity duration-300 ${isRead ? "opacity-55" : ""} ${isPrimary ? "feed-item-primary" : ""}`}
                 style={{ animationDelay: `${idx * 50}ms` }}
               >
                 <div
-                  className="flex items-start gap-4 py-6 px-4 md:py-8 md:px-0 cursor-pointer group"
+                  className="flex items-start gap-4 py-7 px-4 md:py-9 md:px-0 cursor-pointer group"
                   onClick={() => handleArticleClick(article)}
                   data-feed-index={idx}
                 >

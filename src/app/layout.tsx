@@ -1,10 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Libre_Baskerville, Geist_Mono } from "next/font/google";
+import { Literata, Libre_Baskerville, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/layout/ThemeProvider";
 import "./globals.css";
 
-const inter = Inter({
-  variable: "--font-inter",
+const literata = Literata({
+  variable: "--font-literata",
   subsets: ["latin"],
 });
 
@@ -43,7 +43,7 @@ export default function RootLayout({
   return (
     <html lang="en" data-theme="light" suppressHydrationWarning>
       <body
-        className={`${inter.variable} ${libreBaskerville.variable} ${geistMono.variable} antialiased`}
+        className={`${literata.variable} ${libreBaskerville.variable} ${geistMono.variable} antialiased`}
       >
         <ThemeProvider>{children}</ThemeProvider>
       </body>
