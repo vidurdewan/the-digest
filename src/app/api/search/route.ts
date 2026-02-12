@@ -2,6 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin as supabase, isSupabaseAdminConfigured as isSupabaseConfigured } from "@/lib/supabase";
 
 /**
+ * Sanitize a string for use in PostgREST filter expressions.
+ * Escapes characters that have special meaning in PostgREST syntax:
+ * periods, commas, parentheses, backslashes, and percent signs.
+ */
+function sanitizeForPostgrest(input: string): string {
+  return input.replace(/[\\.,()%]/g, (ch) => `\\${ch}`);
+}
+
+/**
  * GET /api/search?q=query&topic=all&dateRange=all&date=YYYY-MM-DD&source=&limit=50
  * Full-text search across articles with intelligence data.
  * Supports full-text search via search_vector with ilike fallback.
@@ -42,6 +51,9 @@ export async function GET(request: NextRequest) {
         .filter(Boolean)
         .join(" & ");
 
+      // Sanitize for PostgREST .or() filter expressions
+      const safeQ = sanitizeForPostgrest(q);
+
       // Try full-text search via search_vector column
       // Falls back to ilike if search_vector doesn't exist
       try {
@@ -58,7 +70,7 @@ export async function GET(request: NextRequest) {
             { count: "exact" }
           )
           .or(
-            `title.ilike.%${q}%,content.ilike.%${q}%,author.ilike.%${q}%`
+            `title.ilike.%${safeQ}%,content.ilike.%${safeQ}%,author.ilike.%${safeQ}%`
           )
           .order("published_at", { ascending: false })
           .limit(limit);
@@ -72,7 +84,8 @@ export async function GET(request: NextRequest) {
 
     // Source filter
     if (source) {
-      query = query.ilike("url", `%${source}%`);
+      const safeSource = sanitizeForPostgrest(source);
+      query = query.ilike("url", `%${safeSource}%`);
     }
 
     // Specific date filter (takes precedence over dateRange)
@@ -99,6 +112,7 @@ export async function GET(request: NextRequest) {
     if (error) {
       // If the full-text search column doesn't exist, retry with ilike
       if (error.message.includes("search_vector") && q.trim()) {
+        const safeQ = sanitizeForPostgrest(q);
         const fallbackQuery = supabase
           .from("articles")
           .select(
@@ -106,7 +120,7 @@ export async function GET(request: NextRequest) {
             { count: "exact" }
           )
           .or(
-            `title.ilike.%${q}%,content.ilike.%${q}%,author.ilike.%${q}%`
+            `title.ilike.%${safeQ}%,content.ilike.%${safeQ}%,author.ilike.%${safeQ}%`
           )
           .order("published_at", { ascending: false })
           .limit(limit);
@@ -159,9 +173,8 @@ function mapArticles(data: any[]) {
       content: row.content || "",
       imageUrl: row.image_url || null,
       readingTimeMinutes: row.reading_time_minutes || 3,
-      isRead: false,
-      isSaved: false,
-      watchlistMatches: [],
+      // isRead and isSaved are client-side state (localStorage).
+      // The API cannot know them; the client must overlay these.
       summary: row.summaries?.[0]
         ? {
             id: row.summaries[0].id,

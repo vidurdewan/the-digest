@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { isClaudeConfigured } from "@/lib/claude";
 import Anthropic from "@anthropic-ai/sdk";
 import { validateApiRequest } from "@/lib/api-auth";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 let client: Anthropic | null = null;
 function getClient(): Anthropic | null {
@@ -21,6 +22,14 @@ export async function POST(request: NextRequest) {
   const auth = validateApiRequest(request);
   if (!auth.authorized) {
     return NextResponse.json({ error: auth.error }, { status: 401 });
+  }
+
+  const rateLimit = checkRateLimit(request, { maxRequests: 5, windowMs: 60_000 });
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests", retryAfterMs: rateLimit.retryAfterMs },
+      { status: 429 }
+    );
   }
 
   try {

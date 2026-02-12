@@ -3,6 +3,7 @@ import { isClaudeConfigured } from "@/lib/claude";
 import { checkBudget, recordUsage } from "@/lib/cost-tracker";
 import Anthropic from "@anthropic-ai/sdk";
 import { validateApiRequest } from "@/lib/api-auth";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 let client: Anthropic | null = null;
 function getClient(): Anthropic | null {
@@ -24,6 +25,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: auth.error }, { status: 401 });
   }
 
+  const rateLimit = checkRateLimit(request);
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests", retryAfterMs: rateLimit.retryAfterMs },
+      { status: 429 }
+    );
+  }
+
   try {
     if (!isClaudeConfigured()) {
       return NextResponse.json({ error: "AI not configured" }, { status: 503 });
@@ -37,9 +46,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { title, content } = await request.json();
-    if (!title) {
-      return NextResponse.json({ error: "title required" }, { status: 400 });
+    const body = await request.json();
+    const { title, content } = body;
+
+    // Input validation
+    if (!title || typeof title !== "string") {
+      return NextResponse.json(
+        { error: "title is required and must be a string" },
+        { status: 400 }
+      );
+    }
+    if (content !== undefined && typeof content !== "string") {
+      return NextResponse.json(
+        { error: "content must be a string" },
+        { status: 400 }
+      );
+    }
+    if (title.length > 100_000) {
+      return NextResponse.json(
+        { error: "title exceeds maximum of 100,000 characters" },
+        { status: 400 }
+      );
+    }
+    if (typeof content === "string" && content.length > 100_000) {
+      return NextResponse.json(
+        { error: "content exceeds maximum of 100,000 characters" },
+        { status: 400 }
+      );
     }
 
     const anthropic = getClient();

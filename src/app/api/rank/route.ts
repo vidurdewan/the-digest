@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { rankRecentArticles, rankAllArticles } from "@/lib/story-ranker";
 import { validateApiRequest } from "@/lib/api-auth";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 // Allow up to 5 minutes for full re-rank
 export const maxDuration = 300;
@@ -14,6 +15,14 @@ export async function POST(request: NextRequest) {
   const auth = validateApiRequest(request);
   if (!auth.authorized) {
     return NextResponse.json({ error: auth.error }, { status: 401 });
+  }
+
+  const rateLimit = checkRateLimit(request);
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests", retryAfterMs: rateLimit.retryAfterMs },
+      { status: 429 }
+    );
   }
 
   try {

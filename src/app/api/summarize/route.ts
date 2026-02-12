@@ -8,6 +8,7 @@ import {
 } from "@/lib/summarization";
 import { checkBudget, getDailyUsage } from "@/lib/cost-tracker";
 import { validateApiRequest } from "@/lib/api-auth";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 /**
  * POST /api/summarize
@@ -27,6 +28,14 @@ export async function POST(request: NextRequest) {
   const auth = validateApiRequest(request);
   if (!auth.authorized) {
     return NextResponse.json({ error: auth.error }, { status: 401 });
+  }
+
+  const rateLimit = checkRateLimit(request);
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests", retryAfterMs: rateLimit.retryAfterMs },
+      { status: 429 }
+    );
   }
 
   try {
@@ -53,6 +62,21 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+
+    // Input validation
+    if (body.articles && Array.isArray(body.articles)) {
+      if (body.articles.length > 50) {
+        return NextResponse.json(
+          { error: "articles array exceeds maximum of 50 items" },
+          { status: 400 }
+        );
+      }
+    } else if (body.content && typeof body.content === "string" && body.content.length > 100_000) {
+      return NextResponse.json(
+        { error: "content exceeds maximum of 100,000 characters" },
+        { status: 400 }
+      );
+    }
 
     // Batch mode
     if (body.articles && Array.isArray(body.articles)) {
