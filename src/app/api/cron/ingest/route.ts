@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ingestAllNews, getStoredArticles } from "@/lib/article-ingestion";
-import { summarizeBatchBrief } from "@/lib/summarization";
+import { summarizeBatchBrief, preGenerateTopFullSummaries } from "@/lib/summarization";
 import { summarizeDecipheringBatch } from "@/lib/deciphering";
 import { processIntelligenceBatch } from "@/lib/intelligence";
 import { isClaudeConfigured } from "@/lib/claude";
@@ -210,6 +210,17 @@ export async function GET(request: NextRequest) {
       };
     }
 
+    // 4b. Pre-generate full summaries for top-ranked articles (instant load)
+    let preGenStats = null;
+    if (isClaudeConfigured()) {
+      try {
+        preGenStats = await preGenerateTopFullSummaries(15);
+      } catch (err) {
+        console.error("[Cron] Pre-generation error:", err);
+        preGenStats = { error: err instanceof Error ? err.message : "Pre-generation failed" };
+      }
+    }
+
     // 5. Ingest newsletters from Gmail (if connected)
     let newsletterStats = null;
     const gmailTokens = await getStoredTokens();
@@ -270,6 +281,7 @@ export async function GET(request: NextRequest) {
       intelligenceStats,
       signalStats,
       rankingStats,
+      preGenStats,
       newsletterStats,
       retierStats,
       timestamp: new Date().toISOString(),
