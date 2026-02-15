@@ -135,6 +135,12 @@ export async function ingestAllNews(options?: {
   }
 
   // Store in Supabase — parallel batch upserts
+  if (!isSupabaseConfigured() || !supabase) {
+    console.error(
+      "[Ingest] Supabase admin client is NOT configured — articles will not be stored. " +
+        "Ensure NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are set in environment variables."
+    );
+  }
   if (isSupabaseConfigured() && supabase) {
     const rows = uniqueArticles.map((article) => ({
       title: article.title,
@@ -159,11 +165,12 @@ export async function ingestAllNews(options?: {
 
     const batchResults = await Promise.allSettled(
       batches.map(async (batch) => {
-        const { error, count } = await supabase!
+        const { data, error } = await supabase!
           .from("articles")
-          .upsert(batch, { onConflict: "content_hash", count: "exact" });
+          .upsert(batch, { onConflict: "content_hash" })
+          .select("content_hash");
         if (error) throw error;
-        return count ?? batch.length;
+        return data?.length ?? batch.length;
       })
     );
 

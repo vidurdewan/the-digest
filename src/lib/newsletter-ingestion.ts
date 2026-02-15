@@ -231,11 +231,12 @@ export async function ingestNewsletters(
 
     const batchResults = await Promise.allSettled(
       batches.map(async (batch) => {
-        const { error, count } = await supabase!
+        const { data, error } = await supabase!
           .from("newsletters")
-          .upsert(batch, { onConflict: "gmail_message_id", count: "exact" });
+          .upsert(batch, { onConflict: "gmail_message_id" })
+          .select("gmail_message_id");
         if (error) throw error;
-        return count ?? batch.length;
+        return data?.length ?? batch.length;
       })
     );
 
