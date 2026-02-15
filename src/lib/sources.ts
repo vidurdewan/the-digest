@@ -128,7 +128,7 @@ export const defaultSources: NewsSource[] = [
   {
     id: "sec-edgar-8k",
     name: "SEC EDGAR 8-K",
-    url: "https://efts.sec.gov/LATEST/search-index?q=%228-K%22&dateRange=custom&startdt=2026-01-20&enddt=2026-01-27&forms=8-K&from=0&size=40",
+    url: "https://efts.sec.gov/LATEST/search-index?q=%228-K%22&forms=8-K&from=0&size=40",
     type: "rss",
     topic: "financial-markets",
     isActive: true,

@@ -1,7 +1,7 @@
 import { getGmailClient, fetchEmails, refreshTokensIfNeeded } from "@/lib/gmail";
 import { parseNewsletter, isNewsletter } from "@/lib/newsletter-parser";
 import { getStoredTokens, storeTokens } from "@/lib/token-store";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { supabaseAdmin as supabase, isSupabaseAdminConfigured as isSupabaseConfigured } from "@/lib/supabase";
 import {
   generateVIPNewsletterSummary,
   generateBatchNewsletterSummaries,
