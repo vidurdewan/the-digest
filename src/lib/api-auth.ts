@@ -27,6 +27,13 @@ export function validateApiRequest(
     return { authorized: true };
   }
 
+  // Allow same-origin requests from the app's own frontend.
+  // Browsers set sec-fetch-site automatically and it cannot be spoofed cross-origin.
+  const secFetchSite = request.headers.get("sec-fetch-site");
+  if (secFetchSite === "same-origin") {
+    return { authorized: true };
+  }
+
   const authHeader = request.headers.get("authorization");
 
   if (!authHeader) {

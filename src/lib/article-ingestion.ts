@@ -3,7 +3,7 @@ import { fetchAllRssFeeds, type RawArticle } from "./rss-fetcher";
 import { fetchNewsApi } from "./news-api";
 import { scrapeArticle } from "./article-scraper";
 import { estimateReadingTime } from "./article-utils";
-import { supabase, isSupabaseConfigured } from "./supabase";
+import { supabaseAdmin as supabase, isSupabaseAdminConfigured as isSupabaseConfigured } from "./supabase";
 import { filterSECFilings } from "./sec-filter";
 
 // ─── Promo / Coupon Filter ────────────────────────────────────
