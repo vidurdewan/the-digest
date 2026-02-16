@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ingestNewsletters } from "@/lib/newsletter-ingestion";
-import { isClaudeConfigured } from "@/lib/claude";
 import { supabaseAdmin as supabase, isSupabaseAdminConfigured as isSupabaseConfigured } from "@/lib/supabase";
 import { getStoredTokens } from "@/lib/token-store";
 

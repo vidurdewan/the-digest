@@ -47,12 +47,17 @@ export function MainLayout({
   useEffect(() => {
     if (activeSection !== prevSection.current) {
       prevSection.current = activeSection;
-      setIsExiting(true);
+      const startTimer = setTimeout(() => {
+        setIsExiting(true);
+      }, 0);
       const timer = setTimeout(() => {
         setAnimKey(activeSection);
         setIsExiting(false);
       }, 100);
-      return () => clearTimeout(timer);
+      return () => {
+        clearTimeout(startTimer);
+        clearTimeout(timer);
+      };
     }
   }, [activeSection]);
 

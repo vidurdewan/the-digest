@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getAuthUrl } from "@/lib/gmail";
 import * as crypto from "crypto";
 
@@ -8,7 +8,7 @@ const STATE_COOKIE = "gmail-oauth-state";
  * GET /api/auth/gmail
  * Redirects the user to Google's OAuth consent screen.
  */
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const state = crypto.randomBytes(32).toString("hex");
     const url = getAuthUrl(state);

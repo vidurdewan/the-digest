@@ -45,18 +45,23 @@ export function SearchOverlay({
   const [selectedTopic, setSelectedTopic] = useState<TopicCategory | "all">("all");
   const [dateRange, setDateRange] = useState<"today" | "week" | "month" | "all">("all");
   const [specificDate, setSpecificDate] = useState("");
+  const [referenceTime] = useState(() => Date.now());
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Focus input on open
   useEffect(() => {
-    if (searchOverlayOpen) {
+    if (!searchOverlayOpen) return;
+
+    const timer = setTimeout(() => {
       setQuery("");
       setShowFilters(false);
       setSelectedTopic("all");
       setDateRange("all");
       setSpecificDate("");
-      setTimeout(() => inputRef.current?.focus(), 10);
-    }
+      inputRef.current?.focus();
+    }, 10);
+
+    return () => clearTimeout(timer);
   }, [searchOverlayOpen]);
 
   // Esc to close
@@ -98,7 +103,7 @@ export function SearchOverlay({
         return articleDate === specificDate;
       });
     } else if (dateRange !== "all") {
-      const now = Date.now();
+      const now = referenceTime;
       const cutoffs: Record<string, number> = {
         today: 24 * 60 * 60 * 1000,
         week: 7 * 24 * 60 * 60 * 1000,
@@ -113,7 +118,7 @@ export function SearchOverlay({
     }
 
     return results;
-  }, [articles, query, selectedTopic, dateRange, specificDate]);
+  }, [articles, query, selectedTopic, dateRange, specificDate, referenceTime]);
 
   const handleClearDate = useCallback(() => {
     setSpecificDate("");

@@ -66,11 +66,12 @@ export default function Home() {
   }, [autoRefresh.setRefreshFn, articleData.refresh]);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const hasOnboarded = localStorage.getItem("the-digest-onboarded");
-      if (!hasOnboarded) {
-        setShowOnboarding(true);
-      }
+    if (typeof window === "undefined") return;
+
+    const hasOnboarded = localStorage.getItem("the-digest-onboarded");
+    if (!hasOnboarded) {
+      const frame = requestAnimationFrame(() => setShowOnboarding(true));
+      return () => cancelAnimationFrame(frame);
     }
   }, []);
 
@@ -153,10 +154,10 @@ export default function Home() {
     }
   };
 
-  const handleOpenReader = (article: Article & { summary?: Summary }) => {
+  const handleOpenReader = useCallback((article: Article & { summary?: Summary }) => {
     engagement.trackEvent(article.id, "read");
     setReaderArticle(article);
-  };
+  }, [engagement]);
 
   const handleExpand = (articleId: string) => {
     engagement.trackEvent(articleId, "expand");
@@ -187,7 +188,7 @@ export default function Home() {
       const article = articlesWithMatches.find((a) => a.id === articleId);
       if (article) handleOpenReader(article);
     },
-    [articlesWithMatches]
+    [articlesWithMatches, handleOpenReader]
   );
 
   const renderSection = () => {

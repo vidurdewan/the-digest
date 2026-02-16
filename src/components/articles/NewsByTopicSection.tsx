@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { topicLabels } from "@/lib/mock-data";
 import type { Article, Summary, TopicCategory } from "@/types";
 import { TopicSection } from "@/components/articles/TopicSection";
@@ -30,16 +30,14 @@ export function NewsByTopicSection({
   const [searchTerm, setSearchTerm] = useState("");
   const topics = Object.keys(topicLabels) as TopicCategory[];
 
-  const filteredArticles = useMemo(() => {
-    if (!searchTerm.trim()) return articles;
-    const term = searchTerm.toLowerCase();
-    return articles.filter(
-      (a) =>
-        a.title.toLowerCase().includes(term) ||
-        a.source.toLowerCase().includes(term) ||
-        (a.author && a.author.toLowerCase().includes(term))
-    );
-  }, [articles, searchTerm]);
+  const normalizedSearchTerm = searchTerm.trim().toLowerCase();
+  const filteredArticles = !normalizedSearchTerm
+    ? articles
+    : articles.filter((a) =>
+        a.title.toLowerCase().includes(normalizedSearchTerm) ||
+        a.source.toLowerCase().includes(normalizedSearchTerm) ||
+        (a.author && a.author.toLowerCase().includes(normalizedSearchTerm))
+      );
 
   const grouped = topics.reduce(
     (acc, topic) => {

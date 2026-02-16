@@ -23,7 +23,7 @@ export async function GET() {
 
     // Fall back to default sources
     return NextResponse.json({ sources: defaultSources, origin: "default" });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ sources: defaultSources, origin: "default" });
   }
 }

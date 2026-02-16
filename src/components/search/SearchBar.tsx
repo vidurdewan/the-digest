@@ -35,6 +35,7 @@ export function SearchView({ articles, onSave, onOpenReader, onRequestSummary, o
     "all"
   );
   const [specificDate, setSpecificDate] = useState("");
+  const [referenceTime] = useState(() => Date.now());
 
   const filteredArticles = useMemo(() => {
     let results = articles;
@@ -68,7 +69,7 @@ export function SearchView({ articles, onSave, onOpenReader, onRequestSummary, o
         return articleDate === specificDate;
       });
     } else if (dateRange !== "all") {
-      const now = Date.now();
+      const now = referenceTime;
       const cutoffs: Record<string, number> = {
         today: 24 * 60 * 60 * 1000,
         week: 7 * 24 * 60 * 60 * 1000,
@@ -83,7 +84,7 @@ export function SearchView({ articles, onSave, onOpenReader, onRequestSummary, o
     }
 
     return results;
-  }, [articles, query, selectedTopic, dateRange, specificDate]);
+  }, [articles, query, selectedTopic, dateRange, specificDate, referenceTime]);
 
   const handleClearDate = useCallback(() => {
     setSpecificDate("");
