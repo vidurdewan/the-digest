@@ -45,6 +45,65 @@ export interface IngestionResult {
   articles: RawArticle[];
 }
 
+interface ArticleInsertRow {
+  title: string;
+  url: string;
+  author: string | null;
+  content: string | null;
+  image_url: string | null;
+  published_at: string | null;
+  topic: string;
+  reading_time_minutes: number;
+  content_hash: string;
+  source_tier?: number;
+  document_type?: string | null;
+}
+
+function normalizePublishedAt(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return date.toISOString();
+}
+
+function buildInsertRows(articles: RawArticle[]): ArticleInsertRow[] {
+  return articles.map((article) => ({
+    title: article.title,
+    url: article.url,
+    author: article.author,
+    content: article.content,
+    image_url: article.imageUrl,
+    published_at: normalizePublishedAt(article.publishedAt),
+    topic: article.topic,
+    reading_time_minutes: estimateReadingTime(article.content || ""),
+    content_hash: article.contentHash,
+    source_tier: article.sourceTier,
+    document_type: article.documentType || null,
+  }));
+}
+
+function removeColumns(rows: ArticleInsertRow[], columns: string[]): ArticleInsertRow[] {
+  if (columns.length === 0) return rows;
+  return rows.map((row) => {
+    const nextRow = { ...row };
+    for (const col of columns) {
+      delete nextRow[col as keyof ArticleInsertRow];
+    }
+    return nextRow;
+  });
+}
+
+function extractMissingColumn(error: unknown): string | null {
+  const message =
+    error && typeof error === "object" && "message" in error
+      ? String((error as { message?: string }).message)
+      : "";
+  const match = message.match(/column\s+"([a-z_]+)"\s+of relation\s+"articles"\s+does not exist/i);
+  return match?.[1] || null;
+}
+
 /**
  * Main ingestion function: fetches articles from all active sources,
  * deduplicates, optionally scrapes full content, and stores in Supabase.
@@ -142,19 +201,7 @@ export async function ingestAllNews(options?: {
     );
   }
   if (isSupabaseConfigured() && supabase) {
-    const rows = uniqueArticles.map((article) => ({
-      title: article.title,
-      url: article.url,
-      author: article.author,
-      content: article.content,
-      image_url: article.imageUrl,
-      published_at: article.publishedAt,
-      topic: article.topic,
-      reading_time_minutes: estimateReadingTime(article.content || ""),
-      content_hash: article.contentHash,
-      source_tier: article.sourceTier,
-      document_type: article.documentType || null,
-    }));
+    const rows = buildInsertRows(uniqueArticles);
 
     // Batch in groups of 50, run all batches in parallel
     const BATCH_SIZE = 50;
@@ -163,14 +210,37 @@ export async function ingestAllNews(options?: {
       batches.push(rows.slice(i, i + BATCH_SIZE));
     }
 
+    const missingColumns = new Set<string>();
+
     const batchResults = await Promise.allSettled(
       batches.map(async (batch) => {
-        const { data, error } = await supabase!
-          .from("articles")
-          .upsert(batch, { onConflict: "content_hash" })
-          .select("content_hash");
-        if (error) throw error;
-        return data?.length ?? batch.length;
+        let currentBatch = batch;
+
+        // Retry upserts when an environment has not yet applied newer schema columns.
+        for (let attempt = 0; attempt < 3; attempt++) {
+          const { data, error } = await supabase!
+            .from("articles")
+            .upsert(currentBatch, { onConflict: "content_hash" })
+            .select("content_hash");
+
+          if (!error) {
+            return data?.length ?? currentBatch.length;
+          }
+
+          const missingColumn = extractMissingColumn(error);
+          if (!missingColumn) {
+            throw error;
+          }
+
+          missingColumns.add(missingColumn);
+          currentBatch = removeColumns(batch, [...missingColumns]);
+          console.warn(
+            `[Ingest] Retrying upsert without missing column "${missingColumn}". ` +
+              "Run pending database migrations to restore full schema support."
+          );
+        }
+
+        throw new Error("Upsert failed after retrying with fallback columns");
       })
     );
 
