@@ -1,14 +1,15 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Eye, UserCheck, Building2 } from "lucide-react";
+import { Eye, UserCheck, Building2, Sparkles } from "lucide-react";
 import type { Article, Summary, WatchlistItem } from "@/types";
 import { WatchlistView } from "@/components/watchlist/WatchlistView";
 import { PeopleMovesView } from "@/components/intelligence/PeopleMovesView";
 import { CompanyView } from "@/components/intelligence/CompanyView";
+import { MorningBriefingView } from "@/components/intelligence/MorningBriefingView";
 import { detectAllMovements, aggregateByCompany } from "@/lib/people-movements";
 
-type IntelligenceTab = "watchlist" | "people" | "companies";
+type IntelligenceTab = "briefing" | "watchlist" | "people" | "companies";
 
 interface IntelligenceViewProps {
   watchlist: WatchlistItem[];
@@ -24,6 +25,7 @@ interface IntelligenceViewProps {
 }
 
 const tabs: { id: IntelligenceTab; label: string; icon: typeof Eye }[] = [
+  { id: "briefing", label: "Briefing", icon: Sparkles },
   { id: "watchlist", label: "Watchlist", icon: Eye },
   { id: "people", label: "People", icon: UserCheck },
   { id: "companies", label: "Companies", icon: Building2 },
@@ -39,7 +41,7 @@ export function IntelligenceView({
   onRemoveItem,
   onExpand,
 }: IntelligenceViewProps) {
-  const [activeTab, setActiveTab] = useState<IntelligenceTab>("watchlist");
+  const [activeTab, setActiveTab] = useState<IntelligenceTab>("briefing");
 
   const matchCount = useMemo(
     () => articles.filter((a) => a.watchlistMatches.length > 0).length,
@@ -92,6 +94,7 @@ export function IntelligenceView({
 
       {/* Tab panels */}
       <div key={activeTab} className="section-enter">
+        {activeTab === "briefing" && <MorningBriefingView />}
         {activeTab === "watchlist" && (
           <WatchlistView
             watchlist={watchlist}
