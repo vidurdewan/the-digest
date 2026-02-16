@@ -229,14 +229,20 @@ export function useArticles(): UseArticlesReturn {
           return null;
         }
 
-        // Surface storage errors to the caller
-        if (data.totalStored === 0 && data.totalErrors > 0) {
-          const detail = data.errorMessages?.[0] || "Unknown database error";
-          setError(`Storage failed: ${detail}`);
+        // Capture storage error before refreshing articles
+        // (fetchArticles clears error state, so we must restore it after)
+        let storageError: string | null = null;
+        if (data.totalStored === 0 && (data.totalErrors > 0 || data.errorMessages?.length > 0)) {
+          storageError = data.errorMessages?.[0] || "Unknown database error";
         }
 
         // Refresh article list after ingestion
         await fetchArticles();
+
+        // Restore the storage error that fetchArticles cleared
+        if (storageError) {
+          setError(`Storage failed: ${storageError}`);
+        }
 
         return {
           totalFetched: data.totalFetched as number,

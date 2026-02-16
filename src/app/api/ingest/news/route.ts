@@ -250,7 +250,7 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json({
-      success: result.totalErrors === 0,
+      success: result.totalErrors === 0 && result.errorMessages.length === 0,
       totalFetched: result.totalFetched,
       totalStored: result.totalStored,
       totalDuplicates: result.totalDuplicates,
