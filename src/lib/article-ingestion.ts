@@ -41,6 +41,7 @@ export interface IngestionResult {
   totalStored: number;
   totalDuplicates: number;
   totalErrors: number;
+  errorMessages: string[];
   bySource: Record<string, number>;
   articles: RawArticle[];
 }
@@ -119,6 +120,7 @@ export async function ingestAllNews(options?: {
     totalStored: 0,
     totalDuplicates: 0,
     totalErrors: 0,
+    errorMessages: [],
     bySource: {},
     articles: [],
   };
@@ -195,10 +197,10 @@ export async function ingestAllNews(options?: {
 
   // Store in Supabase — parallel batch upserts
   if (!isSupabaseConfigured() || !supabase) {
-    console.error(
-      "[Ingest] Supabase admin client is NOT configured — articles will not be stored. " +
-        "Ensure NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are set in environment variables."
-    );
+    const msg = "Supabase admin client is NOT configured — articles will not be stored. " +
+      "Ensure NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are set in environment variables.";
+    console.error(`[Ingest] ${msg}`);
+    result.errorMessages.push(msg);
   }
   if (isSupabaseConfigured() && supabase) {
     const rows = buildInsertRows(uniqueArticles);
@@ -229,7 +231,19 @@ export async function ingestAllNews(options?: {
 
           const missingColumn = extractMissingColumn(error);
           if (!missingColumn) {
-            throw error;
+            // Not a missing-column error — try fallback plain insert
+            console.warn(`[Ingest] Upsert failed: ${error.message}. Trying plain insert as fallback.`);
+            const { data: insertData, error: insertError } = await supabase!
+              .from("articles")
+              .insert(currentBatch)
+              .select("content_hash");
+
+            if (!insertError) {
+              return insertData?.length ?? currentBatch.length;
+            }
+
+            // Plain insert also failed — throw with details
+            throw new Error(`Upsert: ${error.message} | Insert fallback: ${insertError.message}`);
           }
 
           missingColumns.add(missingColumn);
@@ -249,7 +263,12 @@ export async function ingestAllNews(options?: {
         result.totalStored += r.value;
       } else {
         result.totalErrors += BATCH_SIZE;
-        console.error("Batch upsert error:", r.reason);
+        const errMsg = r.reason instanceof Error ? r.reason.message : String(r.reason);
+        console.error("Batch upsert error:", errMsg);
+        // Capture unique error messages (avoid duplicating the same error for every batch)
+        if (result.errorMessages.length < 3 && !result.errorMessages.includes(errMsg)) {
+          result.errorMessages.push(errMsg);
+        }
       }
     }
   }

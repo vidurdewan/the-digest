@@ -145,10 +145,23 @@ export default function Home() {
   const handleForceRefresh = async () => {
     const result = await articleData.ingest();
     if (result) {
-      addToast(
-        `Fetched ${result.totalFetched} articles, stored ${result.totalStored}`,
-        "success"
-      );
+      if (result.totalErrors > 0 && result.totalStored === 0) {
+        const detail = result.errorMessages[0] || "Unknown database error";
+        addToast(
+          `Fetched ${result.totalFetched} articles but failed to store: ${detail}`,
+          "error"
+        );
+      } else if (result.totalErrors > 0) {
+        addToast(
+          `Fetched ${result.totalFetched} articles, stored ${result.totalStored} (${result.totalErrors} errors)`,
+          "info"
+        );
+      } else {
+        addToast(
+          `Fetched ${result.totalFetched} articles, stored ${result.totalStored}`,
+          "success"
+        );
+      }
     } else if (articleData.error) {
       addToast(`Refresh failed: ${articleData.error}`, "error");
     }
