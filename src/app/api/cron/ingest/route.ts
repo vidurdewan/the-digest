@@ -274,6 +274,18 @@ export async function GET(request: NextRequest) {
 
     const duration = Date.now() - startTime;
 
+    // Surface configuration warnings in the response
+    const warnings: string[] = [];
+    if (!isSupabaseConfigured() || !supabase) {
+      warnings.push("SUPABASE_SERVICE_ROLE_KEY is not set — articles cannot be stored");
+    }
+    if (!isClaudeConfigured()) {
+      warnings.push("ANTHROPIC_API_KEY is not set — summaries and intelligence will be skipped");
+    }
+    if (result.totalFetched > 0 && result.totalStored === 0 && result.totalErrors === 0) {
+      warnings.push("Articles were fetched but none stored and no errors reported — check Supabase configuration");
+    }
+
     return NextResponse.json({
       success: true,
       duration: `${duration}ms`,
@@ -281,6 +293,7 @@ export async function GET(request: NextRequest) {
       totalStored: result.totalStored,
       totalDuplicates: result.totalDuplicates,
       totalErrors: result.totalErrors,
+      ...(warnings.length > 0 && { warnings }),
       summaryStats,
       decipheringStats,
       intelligenceStats,
