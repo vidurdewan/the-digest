@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   Search,
-  X,
   Zap,
   Mail,
   Newspaper,
@@ -139,17 +138,16 @@ export function CommandPalette({ articles, onOpenReader }: CommandPaletteProps) 
 
   // Reset on open
   useEffect(() => {
-    if (commandPaletteOpen) {
+    if (!commandPaletteOpen) return;
+
+    const timer = setTimeout(() => {
       setQuery("");
       setSelectedIndex(0);
-      setTimeout(() => inputRef.current?.focus(), 10);
-    }
-  }, [commandPaletteOpen]);
+      inputRef.current?.focus();
+    }, 10);
 
-  // Clamp selectedIndex when filtered list changes
-  useEffect(() => {
-    setSelectedIndex((prev) => Math.min(prev, Math.max(0, flatFiltered.length - 1)));
-  }, [flatFiltered.length]);
+    return () => clearTimeout(timer);
+  }, [commandPaletteOpen]);
 
   // Scroll selected item into view
   useEffect(() => {
@@ -179,6 +177,11 @@ export function CommandPalette({ articles, onOpenReader }: CommandPaletteProps) 
     [closeCommandPalette, openSearchOverlay, openChatPanel, setActiveSection, onOpenReader]
   );
 
+  const clampedSelectedIndex = Math.min(
+    selectedIndex,
+    Math.max(0, flatFiltered.length - 1)
+  );
+
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       switch (e.key) {
@@ -192,8 +195,8 @@ export function CommandPalette({ articles, onOpenReader }: CommandPaletteProps) 
           break;
         case "Enter":
           e.preventDefault();
-          if (flatFiltered[selectedIndex]) {
-            selectItem(flatFiltered[selectedIndex]);
+          if (flatFiltered[clampedSelectedIndex]) {
+            selectItem(flatFiltered[clampedSelectedIndex]);
           }
           break;
         case "Escape":
@@ -202,7 +205,7 @@ export function CommandPalette({ articles, onOpenReader }: CommandPaletteProps) 
           break;
       }
     },
-    [flatFiltered, selectedIndex, selectItem, closeCommandPalette]
+    [flatFiltered, clampedSelectedIndex, selectItem, closeCommandPalette]
   );
 
   // Global Cmd+K / Ctrl+K listener
@@ -219,8 +222,6 @@ export function CommandPalette({ articles, onOpenReader }: CommandPaletteProps) 
 
   if (!commandPaletteOpen) return null;
 
-  let flatIndex = 0;
-
   const renderSection = (
     label: string,
     items: PaletteItem[],
@@ -234,7 +235,7 @@ export function CommandPalette({ articles, onOpenReader }: CommandPaletteProps) 
         </div>
         {items.map((item, i) => {
           const idx = startIndex + i;
-          const isSelected = idx === selectedIndex;
+          const isSelected = idx === clampedSelectedIndex;
           return (
             <button
               key={item.id}

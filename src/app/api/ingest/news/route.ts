@@ -61,7 +61,7 @@ async function runPostIngestionWork(
               .filter((a) => a.requiresClassification && a.content && a.content.length > 50)
               .map((a) => a.contentHash);
 
-            let toClassify: { id: string; title: string; content: string; currentTopic: string }[] = [];
+            const toClassify: { id: string; title: string; content: string; currentTopic: string }[] = [];
             const seenIds = new Set<string>();
 
             if (flaggedHashes.length > 0) {
