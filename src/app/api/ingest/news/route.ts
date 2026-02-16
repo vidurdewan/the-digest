@@ -250,11 +250,12 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json({
-      success: true,
+      success: result.totalErrors === 0,
       totalFetched: result.totalFetched,
       totalStored: result.totalStored,
       totalDuplicates: result.totalDuplicates,
       totalErrors: result.totalErrors,
+      errorMessages: result.errorMessages,
       bySource: result.bySource,
       articleCount: result.articles.length,
       // Return lightweight article previews

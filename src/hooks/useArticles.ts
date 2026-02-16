@@ -40,7 +40,7 @@ interface UseArticlesReturn {
   refresh: () => Promise<void>;
   ingest: (options?: {
     scrape?: boolean;
-  }) => Promise<{ totalFetched: number; totalStored: number } | null>;
+  }) => Promise<{ totalFetched: number; totalStored: number; totalErrors: number; errorMessages: string[] } | null>;
   isIngesting: boolean;
   requestFullSummary: (
     article: Article & { summary?: Summary }
@@ -229,12 +229,20 @@ export function useArticles(): UseArticlesReturn {
           return null;
         }
 
+        // Surface storage errors to the caller
+        if (data.totalStored === 0 && data.totalErrors > 0) {
+          const detail = data.errorMessages?.[0] || "Unknown database error";
+          setError(`Storage failed: ${detail}`);
+        }
+
         // Refresh article list after ingestion
         await fetchArticles();
 
         return {
           totalFetched: data.totalFetched as number,
           totalStored: data.totalStored as number,
+          totalErrors: (data.totalErrors as number) || 0,
+          errorMessages: (data.errorMessages as string[]) || [],
         };
       } catch (err) {
         const message =
