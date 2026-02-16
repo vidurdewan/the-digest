@@ -145,13 +145,14 @@ export default function Home() {
   const handleForceRefresh = async () => {
     const result = await articleData.ingest();
     if (result) {
-      if (result.totalErrors > 0 && result.totalStored === 0) {
+      const hasErrors = result.totalErrors > 0 || result.errorMessages.length > 0;
+      if (hasErrors && result.totalStored === 0) {
         const detail = result.errorMessages[0] || "Unknown database error";
         addToast(
           `Fetched ${result.totalFetched} articles but failed to store: ${detail}`,
           "error"
         );
-      } else if (result.totalErrors > 0) {
+      } else if (hasErrors) {
         addToast(
           `Fetched ${result.totalFetched} articles, stored ${result.totalStored} (${result.totalErrors} errors)`,
           "info"
@@ -226,6 +227,7 @@ export default function Home() {
             isRefreshing={articleData.isIngesting}
             onMarkAllRead={handleMarkAllRead}
             onPanelStateChange={handlePanelStateChange}
+            error={articleData.error}
           />
         );
       case "newsletters":
@@ -320,6 +322,7 @@ export default function Home() {
             isRefreshing={articleData.isIngesting}
             onMarkAllRead={handleMarkAllRead}
             onPanelStateChange={handlePanelStateChange}
+            error={articleData.error}
           />
         );
     }

@@ -69,6 +69,7 @@ interface IntelligenceFeedProps {
   isRefreshing?: boolean;
   onMarkAllRead?: (articleIds: string[]) => void;
   onPanelStateChange?: (isOpen: boolean) => void;
+  error?: string | null;
 }
 
 const ITEMS_PER_PAGE = 20;
@@ -86,6 +87,7 @@ export function IntelligenceFeed({
   isRefreshing,
   onMarkAllRead,
   onPanelStateChange,
+  error,
 }: IntelligenceFeedProps) {
   const [activeTab, setActiveTab] = useState<"all" | TopicCategory>("all");
   const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
@@ -706,12 +708,19 @@ export function IntelligenceFeed({
       {articles.length === 0 && (
         <div className="p-16 text-center">
           <h3 className="text-xl font-bold text-text-primary mb-2">
-            Setting up your feed
+            {error ? "Unable to load articles" : "Setting up your feed"}
           </h3>
+          {error && (
+            <p className="text-sm text-red-600 dark:text-red-400 mb-4 max-w-md mx-auto font-mono bg-red-50 dark:bg-red-950/30 rounded-lg px-4 py-2">
+              {error}
+            </p>
+          )}
           <p className="text-sm text-text-tertiary mb-6 max-w-sm mx-auto">
             {isRefreshing
               ? "Fetching articles from your sources..."
-              : "Your feed will populate automatically. You can also refresh manually."}
+              : error
+                ? "Check your environment variables and database configuration, then try again."
+                : "Your feed will populate automatically. You can also refresh manually."}
           </p>
           {isRefreshing ? (
             <div className="flex items-center justify-center gap-2 text-accent-primary">
@@ -725,7 +734,7 @@ export function IntelligenceFeed({
                 className="inline-flex items-center gap-1.5 rounded-xl bg-accent-primary px-5 py-2.5 text-sm font-medium text-text-inverse hover:bg-accent-primary-hover transition-colors"
               >
                 <RefreshCw size={14} />
-                Refresh Now
+                {error ? "Try Again" : "Refresh Now"}
               </button>
             )
           )}
