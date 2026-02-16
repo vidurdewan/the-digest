@@ -167,6 +167,22 @@ export interface WeeklySynthesis {
   generatedAt: string;
 }
 
+export interface MorningBriefingThread {
+  title: string;
+  summary: string;
+  articleCount: number;
+  urgency: "high" | "medium" | "low";
+}
+
+export interface MorningBriefing {
+  since: string;
+  generatedAt: string;
+  summary: string;
+  whatChanged: string[];
+  actionItems: string[];
+  threads: MorningBriefingThread[];
+}
+
 export type FeedTier = 'start-here' | 'also-notable' | 'everything-else';
 
 // ─── Signal Detection Types ──────────────────────────────────

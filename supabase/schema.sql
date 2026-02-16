@@ -203,6 +203,24 @@ create table if not exists daily_briefs (
   generated_at timestamptz default now()
 );
 
+
+
+-- ============================================
+-- MORNING BRIEFINGS (cached since-last-seen updates)
+-- ============================================
+create table if not exists morning_briefings (
+  id uuid primary key default gen_random_uuid(),
+  since_marker text not null unique,
+  summary text not null,
+  what_changed jsonb not null default '[]',
+  action_items jsonb not null default '[]',
+  threads jsonb not null default '[]',
+  generated_at timestamptz not null default now(),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_morning_briefings_generated on morning_briefings(generated_at desc);
+
 -- ============================================
 -- ENTITY HISTORY (signal detection)
 -- ============================================

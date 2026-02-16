@@ -325,6 +325,17 @@ interface WeeklySynthesisInput {
   significanceScore?: number;
 }
 
+interface MorningBriefingInput {
+  id: string;
+  title: string;
+  topic: string;
+  source: string;
+  sourceTier?: number;
+  brief: string;
+  watchlistMatches?: string[];
+  significanceScore?: number;
+}
+
 /**
  * Generate a weekly synthesis summarizing the week's top threads,
  * emerging patterns, and narrative arc.
@@ -454,6 +465,120 @@ export async function storeWeeklySynthesis(
     return true;
   } catch {
     return false;
+  }
+}
+
+/**
+ * Generate a "since last seen" morning briefing for new developments.
+ */
+export async function generateMorningBriefing(
+  articles: MorningBriefingInput[],
+  sinceIso: string
+): Promise<{
+  summary: string;
+  whatChanged: string[];
+  actionItems: string[];
+  threads: Array<{
+    title: string;
+    summary: string;
+    articleCount: number;
+    urgency: "high" | "medium" | "low";
+  }>;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+} | null> {
+  const anthropic = getClient();
+  if (!anthropic || articles.length === 0) return null;
+
+  const { allowed } = await checkBudget();
+  if (!allowed) {
+    console.log("[Intelligence] Over budget, skipping morning briefing");
+    return null;
+  }
+
+  const articlesText = articles
+    .slice(0, 40)
+    .map(
+      (a, i) =>
+        `[${i + 1}] ${a.title} (${a.source}, ${a.topic}${a.sourceTier ? `, tier ${a.sourceTier}` : ""}${a.significanceScore ? `, significance: ${a.significanceScore}/10` : ""})\nWatchlist matches: ${(a.watchlistMatches || []).join(", ") || "none"}\nBrief: ${a.brief}`
+    )
+    .join("\n\n");
+
+  try {
+    const response = await anthropic.messages.create({
+      model: SUMMARIZATION_MODEL,
+      max_tokens: 1800,
+      messages: [
+        {
+          role: "user",
+          content: `You are generating a "since last seen" morning intelligence briefing.
+
+Since marker: ${sinceIso}
+New article count: ${articles.length}
+
+Articles:
+${articlesText}
+
+Return valid JSON only:
+{
+  "summary": "2-3 concise paragraphs: what changed since the user last checked and why it matters now.",
+  "whatChanged": ["3-6 bullets of concrete deltas, with specificity"],
+  "actionItems": ["3-5 specific things to watch/do next"],
+  "threads": [
+    {
+      "title": "Thread title",
+      "summary": "What changed in this thread",
+      "articleCount": 3,
+      "urgency": "high"
+    }
+  ]
+}
+
+Guidelines:
+- Prioritize meaningful changes over repetition.
+- Prefer source tier 1/2 and high-significance updates.
+- Threads should cluster related updates.
+- urgency must be one of: high, medium, low.`,
+        },
+      ],
+    });
+
+    const text =
+      response.content[0].type === "text" ? response.content[0].text : "";
+
+    await recordUsage(response.usage.input_tokens, response.usage.output_tokens);
+    const parsed = JSON.parse(text.trim());
+
+    return {
+      summary: parsed.summary || "",
+      whatChanged: Array.isArray(parsed.whatChanged) ? parsed.whatChanged : [],
+      actionItems: Array.isArray(parsed.actionItems) ? parsed.actionItems : [],
+      threads: Array.isArray(parsed.threads)
+        ? parsed.threads.map(
+            (thread: {
+              title?: string;
+              summary?: string;
+              articleCount?: number;
+              urgency?: string;
+            }) => ({
+              title: thread.title || "Untitled thread",
+              summary: thread.summary || "",
+              articleCount: Math.max(1, Math.round(thread.articleCount || 1)),
+              urgency:
+                thread.urgency === "high" ||
+                thread.urgency === "medium" ||
+                thread.urgency === "low"
+                  ? thread.urgency
+                  : "medium",
+            })
+          )
+        : [],
+      totalInputTokens: response.usage.input_tokens,
+      totalOutputTokens: response.usage.output_tokens,
+    };
+  } catch (error) {
+    console.error("[Intelligence] Morning briefing error:", error);
+    return null;
   }
 }
 
