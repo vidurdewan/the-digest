@@ -145,7 +145,7 @@ function mapSignals(
 export function useArticles(): UseArticlesReturn {
   const [articles, setArticles] =
     useState<(Article & { summary?: Summary; intelligence?: ArticleIntelligence; signals?: ArticleSignal[] })[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isIngesting, setIsIngesting] = useState(false);
   const [isSummarizing, setIsSummarizing] = useState(false);
@@ -156,6 +156,11 @@ export function useArticles(): UseArticlesReturn {
 
     try {
       const res = await fetch("/api/articles?limit=100");
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        setError(errData.error || `Failed to fetch articles (${res.status})`);
+        return;
+      }
       const data = await res.json();
 
       if (data.articles && data.articles.length > 0) {
@@ -201,8 +206,9 @@ export function useArticles(): UseArticlesReturn {
           );
         setArticles(mapped);
       }
-    } catch {
-      // API unavailable — keep current state
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to fetch articles";
+      setError(message);
     } finally {
       setIsLoading(false);
     }
@@ -214,8 +220,8 @@ export function useArticles(): UseArticlesReturn {
       setError(null);
 
       try {
-        const scrapeParam = options?.scrape ? "&scrape=true" : "";
-        const res = await fetch(`/api/ingest/news?${scrapeParam}`);
+        const scrapeParam = options?.scrape ? "?scrape=true" : "";
+        const res = await fetch(`/api/ingest/news${scrapeParam}`);
         const data = await res.json();
 
         if (!res.ok) {

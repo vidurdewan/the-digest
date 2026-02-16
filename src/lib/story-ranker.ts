@@ -13,7 +13,7 @@
  *   - Max 2 articles from the same topic category
  */
 
-import { supabase, isSupabaseConfigured } from "./supabase";
+import { supabaseAdmin as supabase, isSupabaseAdminConfigured as isSupabaseConfigured } from "./supabase";
 import { retierAllContent } from "./source-tiers";
 
 // ─── Step 1: Base Score by Source Tier ──────────────────────
