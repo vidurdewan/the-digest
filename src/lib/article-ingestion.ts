@@ -195,7 +195,7 @@ export async function ingestAllNews(options?: {
       (result.bySource[article.sourceName] || 0) + 1;
   }
 
-  // Store in Supabase — parallel batch upserts
+  // Store in Supabase
   if (!isSupabaseConfigured() || !supabase) {
     const msg = "Supabase admin client is NOT configured — articles will not be stored. " +
       "Ensure NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are set in environment variables.";
@@ -205,69 +205,92 @@ export async function ingestAllNews(options?: {
   if (isSupabaseConfigured() && supabase) {
     const rows = buildInsertRows(uniqueArticles);
 
-    // Batch in groups of 50, run all batches in parallel
-    const BATCH_SIZE = 50;
-    const batches: (typeof rows)[] = [];
-    for (let i = 0; i < rows.length; i += BATCH_SIZE) {
-      batches.push(rows.slice(i, i + BATCH_SIZE));
+    // Step 1: Check which content_hashes already exist in the DB.
+    // This avoids relying on upsert/onConflict which requires a unique constraint.
+    const existingHashes = new Set<string>();
+    const allHashes = rows.map((r) => r.content_hash);
+    const HASH_CHUNK = 500;
+    for (let i = 0; i < allHashes.length; i += HASH_CHUNK) {
+      const chunk = allHashes.slice(i, i + HASH_CHUNK);
+      try {
+        const { data: existingRows } = await supabase
+          .from("articles")
+          .select("content_hash")
+          .in("content_hash", chunk);
+        if (existingRows) {
+          for (const r of existingRows) {
+            existingHashes.add(r.content_hash as string);
+          }
+        }
+      } catch (err) {
+        // If we can't check for existing hashes, proceed with all rows
+        // (inserts may fail for duplicates, but at least new articles get through)
+        console.warn("[Ingest] Could not check existing hashes:", err);
+      }
     }
 
+    // Step 2: Filter to only new articles
+    const newRows = rows.filter((r) => !existingHashes.has(r.content_hash));
+    result.totalDuplicates += rows.length - newRows.length;
+
+    if (newRows.length === 0) {
+      console.log("[Ingest] All articles already exist in database — nothing to insert.");
+    }
+
+    // Step 3: Insert new articles in sequential batches
+    const BATCH_SIZE = 50;
     const missingColumns = new Set<string>();
 
-    const batchResults = await Promise.allSettled(
-      batches.map(async (batch) => {
-        let currentBatch = batch;
+    for (let i = 0; i < newRows.length; i += BATCH_SIZE) {
+      let currentBatch = newRows.slice(i, i + BATCH_SIZE);
 
-        // Retry upserts when an environment has not yet applied newer schema columns.
-        for (let attempt = 0; attempt < 3; attempt++) {
-          const { data, error } = await supabase!
-            .from("articles")
-            .upsert(currentBatch, { onConflict: "content_hash" })
-            .select("content_hash");
+      // Remove any columns already known to be missing from the DB schema
+      if (missingColumns.size > 0) {
+        currentBatch = removeColumns(currentBatch, [...missingColumns]);
+      }
 
-          if (!error) {
-            return data?.length ?? currentBatch.length;
-          }
+      let stored = false;
+      let batchErrorCounted = false;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const { data, error } = await supabase
+          .from("articles")
+          .insert(currentBatch)
+          .select("content_hash");
 
-          const missingColumn = extractMissingColumn(error);
-          if (!missingColumn) {
-            // Not a missing-column error — try fallback plain insert
-            console.warn(`[Ingest] Upsert failed: ${error.message}. Trying plain insert as fallback.`);
-            const { data: insertData, error: insertError } = await supabase!
-              .from("articles")
-              .insert(currentBatch)
-              .select("content_hash");
-
-            if (!insertError) {
-              return insertData?.length ?? currentBatch.length;
-            }
-
-            // Plain insert also failed — throw with details
-            throw new Error(`Upsert: ${error.message} | Insert fallback: ${insertError.message}`);
-          }
-
-          missingColumns.add(missingColumn);
-          currentBatch = removeColumns(batch, [...missingColumns]);
-          console.warn(
-            `[Ingest] Retrying upsert without missing column "${missingColumn}". ` +
-              "Run pending database migrations to restore full schema support."
-          );
+        if (!error) {
+          result.totalStored += data?.length ?? currentBatch.length;
+          stored = true;
+          break;
         }
 
-        throw new Error("Upsert failed after retrying with fallback columns");
-      })
-    );
+        const missingColumn = extractMissingColumn(error);
+        if (!missingColumn) {
+          // Not a missing-column error — log and move to next batch
+          const errMsg = error.message;
+          console.error(`[Ingest] Batch insert error: ${errMsg}`);
+          if (result.errorMessages.length < 3 && !result.errorMessages.includes(errMsg)) {
+            result.errorMessages.push(errMsg);
+          }
+          result.totalErrors += currentBatch.length;
+          batchErrorCounted = true;
+          break;
+        }
 
-    for (const r of batchResults) {
-      if (r.status === "fulfilled") {
-        result.totalStored += r.value;
-      } else {
-        result.totalErrors += BATCH_SIZE;
-        const errMsg = r.reason instanceof Error ? r.reason.message : String(r.reason);
-        console.error("Batch upsert error:", errMsg);
-        // Capture unique error messages (avoid duplicating the same error for every batch)
-        if (result.errorMessages.length < 3 && !result.errorMessages.includes(errMsg)) {
-          result.errorMessages.push(errMsg);
+        missingColumns.add(missingColumn);
+        currentBatch = removeColumns(
+          newRows.slice(i, i + BATCH_SIZE),
+          [...missingColumns]
+        );
+        console.warn(
+          `[Ingest] Retrying insert without column "${missingColumn}". ` +
+            "Run pending database migrations to restore full schema support."
+        );
+      }
+
+      if (!stored && !batchErrorCounted) {
+        result.totalErrors += currentBatch.length;
+        if (result.errorMessages.length < 3) {
+          result.errorMessages.push("Insert failed after retrying with fallback columns");
         }
       }
     }
@@ -313,33 +336,47 @@ export async function getStoredArticles(options?: {
     return { articles: (data as Record<string, unknown>[]) || [], count: count || 0 };
   }
 
-  // If the error is about a missing relationship, retry without intelligence join
-  if (error.message.includes("relationship")) {
-    console.warn("Falling back to query without article_intelligence join");
+  // Fallback 1: retry without article_intelligence + article_signals joins
+  console.warn(`[getStoredArticles] Full query failed: ${error.message}. Trying without intelligence/signals joins.`);
 
-    let fallbackQuery = supabase
-      .from("articles")
-      .select(
-        "*, summaries(id, brief, the_news, why_it_matters, the_context, key_entities, deciphering, generated_at)",
-        { count: "exact" }
-      )
-      .order("published_at", { ascending: false })
-      .range(offset, offset + limit - 1);
+  let fb1Query = supabase
+    .from("articles")
+    .select(
+      "*, summaries(id, brief, the_news, why_it_matters, the_context, key_entities, deciphering, generated_at)",
+      { count: "exact" }
+    )
+    .order("published_at", { ascending: false })
+    .range(offset, offset + limit - 1);
 
-    if (topic) {
-      fallbackQuery = fallbackQuery.eq("topic", topic);
-    }
-
-    const { data: fbData, error: fbError, count: fbCount } = await fallbackQuery;
-
-    if (!fbError) {
-      return { articles: (fbData as Record<string, unknown>[]) || [], count: fbCount || 0 };
-    }
-
-    console.error("Fallback query also failed:", fbError.message);
-    return { articles: [], count: 0 };
+  if (topic) {
+    fb1Query = fb1Query.eq("topic", topic);
   }
 
-  console.error("Failed to fetch articles:", error.message);
+  const { data: fb1Data, error: fb1Error, count: fb1Count } = await fb1Query;
+
+  if (!fb1Error) {
+    return { articles: (fb1Data as Record<string, unknown>[]) || [], count: fb1Count || 0 };
+  }
+
+  // Fallback 2: retry with just the articles table, no joins at all
+  console.warn(`[getStoredArticles] Summaries join also failed: ${fb1Error.message}. Trying articles-only query.`);
+
+  let fb2Query = supabase
+    .from("articles")
+    .select("*", { count: "exact" })
+    .order("published_at", { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (topic) {
+    fb2Query = fb2Query.eq("topic", topic);
+  }
+
+  const { data: fb2Data, error: fb2Error, count: fb2Count } = await fb2Query;
+
+  if (!fb2Error) {
+    return { articles: (fb2Data as Record<string, unknown>[]) || [], count: fb2Count || 0 };
+  }
+
+  console.error("[getStoredArticles] All queries failed:", fb2Error.message);
   return { articles: [], count: 0 };
 }
