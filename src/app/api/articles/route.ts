@@ -54,6 +54,7 @@ export async function GET(request: NextRequest) {
       count,
       limit,
       offset,
+      configured: isSupabaseConfigured(),
     });
   } catch (error) {
     const message =

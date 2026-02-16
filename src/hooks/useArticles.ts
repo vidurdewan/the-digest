@@ -163,6 +163,11 @@ export function useArticles(): UseArticlesReturn {
       }
       const data = await res.json();
 
+      // Surface configuration issues so the user sees them immediately
+      if (data.configured === false && (!data.articles || data.articles.length === 0)) {
+        setError("Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in your environment variables.");
+      }
+
       if (data.articles && data.articles.length > 0) {
         const readIds = getReadIds();
         const savedIds = getSavedIds();
