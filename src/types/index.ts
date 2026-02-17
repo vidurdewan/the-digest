@@ -185,6 +185,60 @@ export interface MorningBriefing {
 
 export type FeedTier = 'start-here' | 'also-notable' | 'everything-else';
 
+// ─── Since Last Read Types ───────────────────────────────────
+
+export type ContinuityDepth = '2m' | '10m' | 'deep';
+
+export interface SinceLastReadHighlight {
+  articleId: string;
+  title: string;
+  source: string;
+  sourceUrl: string;
+  topic: TopicCategory;
+  publishedAt: string;
+  significanceScore: number;
+  watchlistMatches: string[];
+  reason: string;
+  watchForNext?: string;
+}
+
+export interface SinceLastReadCitation {
+  articleId: string;
+  title: string;
+  source: string;
+  sourceUrl: string;
+  publishedAt: string;
+}
+
+export interface SinceLastReadBrief {
+  headline: string;
+  summary: string;
+  changed: string[];
+  unchanged: string[];
+  watchNext: string[];
+}
+
+export interface SinceLastReadPayload {
+  state: {
+    clientId: string;
+    depth: ContinuityDepth;
+    lastSeenAt: string | null;
+    sinceAt: string;
+    untilAt: string;
+    isFirstVisit: boolean;
+    cached: boolean;
+    snapshotHash: string;
+  };
+  counts: {
+    newArticles: number;
+    newThreads: number;
+    watchlistHits: number;
+  };
+  highlights: SinceLastReadHighlight[];
+  brief: SinceLastReadBrief;
+  citations: SinceLastReadCitation[];
+}
+
 // ─── Signal Detection Types ──────────────────────────────────
 
 export type SignalType =

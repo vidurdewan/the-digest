@@ -47,7 +47,10 @@ export default function Home() {
   const [readerArticle, setReaderArticle] = useState<
     (Article & { summary?: Summary }) | null
   >(null);
-  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return !localStorage.getItem("the-digest-onboarded");
+  });
 
   useServiceWorker();
 
@@ -59,22 +62,11 @@ export default function Home() {
   const watchlist = useWatchlist();
   const engagement = useEngagement();
   const preferences = usePreferences();
-
-  const setAutoRefreshFn = autoRefresh.setRefreshFn;
-
-  useEffect(() => {
-    setAutoRefreshFn(articleData.refresh);
-  }, [setAutoRefreshFn, articleData.refresh]);
+  const { setRefreshFn } = autoRefresh;
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const hasOnboarded = localStorage.getItem("the-digest-onboarded");
-    if (!hasOnboarded) {
-      const frame = requestAnimationFrame(() => setShowOnboarding(true));
-      return () => cancelAnimationFrame(frame);
-    }
-  }, []);
+    setRefreshFn(articleData.refresh);
+  }, [setRefreshFn, articleData.refresh]);
 
   const handleOnboardingComplete = async (data: OnboardingData) => {
     for (const [topic, level] of Object.entries(data.topicPreferences)) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { Search, X, SlidersHorizontal, Calendar, Tag } from "lucide-react";
 import type { Article, Summary, TopicCategory, ArticleIntelligence } from "@/types";
 import { topicLabels } from "@/lib/mock-data";
@@ -35,7 +35,14 @@ export function SearchView({ articles, onSave, onOpenReader, onRequestSummary, o
     "all"
   );
   const [specificDate, setSpecificDate] = useState("");
-  const [referenceTime] = useState(() => Date.now());
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 60000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const filteredArticles = useMemo(() => {
     let results = articles;
@@ -69,7 +76,6 @@ export function SearchView({ articles, onSave, onOpenReader, onRequestSummary, o
         return articleDate === specificDate;
       });
     } else if (dateRange !== "all") {
-      const now = referenceTime;
       const cutoffs: Record<string, number> = {
         today: 24 * 60 * 60 * 1000,
         week: 7 * 24 * 60 * 60 * 1000,
@@ -78,13 +84,13 @@ export function SearchView({ articles, onSave, onOpenReader, onRequestSummary, o
       const cutoff = cutoffs[dateRange];
       if (cutoff) {
         results = results.filter(
-          (a) => now - new Date(a.publishedAt).getTime() < cutoff
+          (a) => currentTime - new Date(a.publishedAt).getTime() < cutoff
         );
       }
     }
 
     return results;
-  }, [articles, query, selectedTopic, dateRange, specificDate, referenceTime]);
+  }, [articles, query, selectedTopic, dateRange, specificDate, currentTime]);
 
   const handleClearDate = useCallback(() => {
     setSpecificDate("");

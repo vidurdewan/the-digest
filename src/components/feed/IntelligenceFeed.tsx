@@ -34,6 +34,8 @@ import {
 } from "@/lib/surfacing";
 import { getSourceType, getSourceTypeConfig, findCoverageDensity } from "@/lib/source-provenance";
 import { findRelatedForArticle } from "@/lib/cross-references";
+import { useSinceLastRead } from "@/hooks/useSinceLastRead";
+import { SinceLastReadCard } from "./SinceLastReadCard";
 
 
 function getCurationReason(
@@ -110,6 +112,7 @@ export function IntelligenceFeed({
     return false;
   });
   const [expandedStoryId, setExpandedStoryId] = useState<string | null>(null);
+  const sinceLastRead = useSinceLastRead();
 
   const handleArticleClick = useCallback(async (article: Article & { summary?: Summary; intelligence?: ArticleIntelligence }) => {
     if (expandedArticleId === article.id) {
@@ -339,6 +342,15 @@ export function IntelligenceFeed({
     return [label];
   }, [heroArticle]);
 
+  const handleOpenContinuityArticle = useCallback(
+    (articleId: string) => {
+      const article = articles.find((item) => item.id === articleId);
+      if (!article) return;
+      void handleArticleClick(article);
+    },
+    [articles, handleArticleClick]
+  );
+
   return (
     <div className="space-y-0 pb-20 lg:pb-0">
       {/* "New stories" pill */}
@@ -356,6 +368,19 @@ export function IntelligenceFeed({
       )}
 
       {/* Feed action buttons are now in the header nav bar */}
+
+      {/* ═══ SINCE YOU LAST READ ═══ */}
+      <SinceLastReadCard
+        payload={sinceLastRead.payload}
+        depth={sinceLastRead.depth}
+        isLoading={sinceLastRead.isLoading}
+        isAcknowledging={sinceLastRead.isAcknowledging}
+        error={sinceLastRead.error}
+        onDepthChange={sinceLastRead.setDepth}
+        onRefresh={sinceLastRead.refresh}
+        onMarkCaughtUp={sinceLastRead.markCaughtUp}
+        onOpenArticle={handleOpenContinuityArticle}
+      />
 
       {/* ═══ CAUGHT UP BANNER ═══ */}
       {isCaughtUp && (

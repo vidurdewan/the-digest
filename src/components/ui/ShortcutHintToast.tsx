@@ -6,7 +6,6 @@ const STORAGE_KEY = "the-digest-shortcut-hint-seen";
 
 export function ShortcutHintToast() {
   const [visible, setVisible] = useState(false);
-
   const dismiss = useCallback(() => {
     setVisible(false);
     if (typeof window !== "undefined") {
