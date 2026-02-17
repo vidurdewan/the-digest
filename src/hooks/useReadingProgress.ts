@@ -13,6 +13,7 @@ interface ReadingProgressData {
  */
 export function useReadingProgress(data: ReadingProgressData) {
   const lastSaved = useRef<string>("");
+  const { totalPriorityItems, itemsRead } = data;
 
   const save = useCallback(async (progress: ReadingProgressData) => {
     const key = `${progress.totalPriorityItems}-${progress.itemsRead}`;
@@ -32,7 +33,7 @@ export function useReadingProgress(data: ReadingProgressData) {
 
   // Persist whenever data changes (debounced via ref check)
   useEffect(() => {
-    if (data.totalPriorityItems === 0) return;
-    save(data);
-  }, [data, save]);
+    if (totalPriorityItems === 0) return;
+    save({ totalPriorityItems, itemsRead });
+  }, [totalPriorityItems, itemsRead, save]);
 }

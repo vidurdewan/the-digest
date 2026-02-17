@@ -5,6 +5,7 @@ import { EditorialHeader, type EditorialHeaderProps } from "./Header";
 import { ToastContainer } from "@/components/ui/Toast";
 import { NewsletterRail } from "./NewsletterRail";
 import { useSidebarStore } from "@/lib/store";
+import { useRef, useEffect, useState } from "react";
 import type { Newsletter, Article, Summary } from "@/types";
 
 // Sections where the aside rail should be hidden (full-width main)
@@ -39,6 +40,26 @@ export function MainLayout({
   onGenerateDigest?: () => Promise<void>;
 }) {
   const activeSection = useSidebarStore((s) => s.activeSection);
+  const [animKey, setAnimKey] = useState(activeSection);
+  const [isExiting, setIsExiting] = useState(false);
+  const prevSection = useRef(activeSection);
+
+  useEffect(() => {
+    if (activeSection !== prevSection.current) {
+      prevSection.current = activeSection;
+      const startTimer = setTimeout(() => {
+        setIsExiting(true);
+      }, 0);
+      const timer = setTimeout(() => {
+        setAnimKey(activeSection);
+        setIsExiting(false);
+      }, 100);
+      return () => {
+        clearTimeout(startTimer);
+        clearTimeout(timer);
+      };
+    }
+  }, [activeSection]);
 
   const showAside = !FULL_WIDTH_SECTIONS.has(activeSection);
 
@@ -53,8 +74,10 @@ export function MainLayout({
       >
         <main>
           <div
-            key={activeSection}
-            className={`mx-auto ${showAside ? "max-w-4xl" : "max-w-5xl"} page-enter`}
+            key={animKey}
+            className={`mx-auto ${showAside ? "max-w-4xl" : "max-w-5xl"} ${
+              isExiting ? "page-exit" : "page-enter"
+            }`}
           >
             {children}
           </div>

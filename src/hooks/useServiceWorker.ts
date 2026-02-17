@@ -11,12 +11,11 @@ interface UseServiceWorkerReturn {
 
 export function useServiceWorker(): UseServiceWorkerReturn {
   const [isRegistered, setIsRegistered] = useState(false);
-  const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
-    if (typeof window === "undefined" || !("Notification" in window)) {
-      return false;
-    }
-    return Notification.permission === "granted";
-  });
+  const [notificationsEnabled, setNotificationsEnabled] = useState(() =>
+    typeof window !== "undefined" && "Notification" in window
+      ? Notification.permission === "granted"
+      : false
+  );
   const isSupported =
     typeof window !== "undefined" && "serviceWorker" in navigator;
 

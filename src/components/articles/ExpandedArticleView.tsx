@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Share2, ScrollText, Bookmark, X } from "lucide-react";
+import { BookOpen, ExternalLink, Share2, ScrollText, Bookmark, X, Newspaper, FileText, Mail } from "lucide-react";
 import type { Summary, ArticleIntelligence, ArticleSignal } from "@/types";
 import type { RelatedItem } from "@/lib/cross-references";
 import { SignalBadges } from "@/components/intelligence/SignalBadge";
@@ -28,8 +28,11 @@ interface ExpandedArticleViewProps {
 
 export function ExpandedArticleView({
   summary,
+  onOpenFull,
+  onOpenSource,
   sourceUrl,
   articleId,
+  intelligence,
   signals,
   articleTitle,
   articleContent,
@@ -78,6 +81,18 @@ export function ExpandedArticleView({
       {signals && signals.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           <SignalBadges signals={signals} max={3} />
+        </div>
+      )}
+
+      {/* Intelligence context */}
+      {intelligence && (
+        <div className="rounded-lg border border-border-primary/70 bg-bg-secondary/30 px-3 py-2">
+          <p className="text-[11px] uppercase tracking-[0.08em] text-text-tertiary">
+            Significance
+          </p>
+          <p className="text-sm text-text-secondary">
+            Score {intelligence.significanceScore}/10{intelligence.storyType ? ` · ${intelligence.storyType}` : ""}
+          </p>
         </div>
       )}
 
@@ -213,11 +228,15 @@ export function ExpandedArticleView({
       {relatedContent && relatedContent.length > 0 && (
         <div>
           <h4 className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-text-tertiary">
-            🔗 Related Coverage
+            Related Coverage
           </h4>
           <div className="space-y-1">
             {relatedContent.map((item) => {
-              const icon = item.type === "newsletter" ? "📧" : item.type === "primary" ? "📄" : "📰";
+              const icon = item.type === "newsletter"
+                ? <Mail size={13} />
+                : item.type === "primary"
+                  ? <FileText size={13} />
+                  : <Newspaper size={13} />;
               return (
                 <button
                   key={`${item.type}-${item.id}`}
@@ -246,6 +265,35 @@ export function ExpandedArticleView({
       {/* ── Action Bar ── */}
       {articleId && (
         <div className="flex items-center gap-1 border-t border-border-primary pt-4">
+          {onOpenFull && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenFull(e);
+              }}
+              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-text-secondary hover:bg-bg-secondary hover:text-text-primary transition-colors"
+              title="Open full reader"
+            >
+              <BookOpen size={14} />
+              Open Reader
+            </button>
+          )}
+          {sourceUrl && (
+            <a
+              href={sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenSource?.();
+              }}
+              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-text-secondary hover:bg-bg-secondary hover:text-text-primary transition-colors"
+              title="Open source article"
+            >
+              <ExternalLink size={14} />
+              Source
+            </a>
+          )}
           <button
             onClick={(e) => { e.stopPropagation(); onSave?.(); }}
             className={`p-2 rounded-md transition-colors ${isSaved ? "text-accent-primary" : "text-text-tertiary hover:text-text-primary hover:bg-bg-secondary"}`}

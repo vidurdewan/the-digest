@@ -40,7 +40,7 @@ interface UseArticlesReturn {
   refresh: () => Promise<void>;
   ingest: (options?: {
     scrape?: boolean;
-  }) => Promise<{ totalFetched: number; totalStored: number } | null>;
+  }) => Promise<{ totalFetched: number; totalStored: number; totalErrors: number; errorMessages: string[] } | null>;
   isIngesting: boolean;
   requestFullSummary: (
     article: Article & { summary?: Summary }
@@ -145,7 +145,7 @@ function mapSignals(
 export function useArticles(): UseArticlesReturn {
   const [articles, setArticles] =
     useState<(Article & { summary?: Summary; intelligence?: ArticleIntelligence; signals?: ArticleSignal[] })[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isIngesting, setIsIngesting] = useState(false);
   const [isSummarizing, setIsSummarizing] = useState(false);
@@ -156,6 +156,11 @@ export function useArticles(): UseArticlesReturn {
 
     try {
       const res = await fetch("/api/articles?limit=100");
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        setError(errData.error || `Failed to fetch articles (${res.status})`);
+        return;
+      }
       const data = await res.json();
 
       if (data.articles && data.articles.length > 0) {
@@ -201,8 +206,9 @@ export function useArticles(): UseArticlesReturn {
           );
         setArticles(mapped);
       }
-    } catch {
-      // API unavailable — keep current state
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to fetch articles";
+      setError(message);
     } finally {
       setIsLoading(false);
     }
@@ -214,8 +220,8 @@ export function useArticles(): UseArticlesReturn {
       setError(null);
 
       try {
-        const scrapeParam = options?.scrape ? "&scrape=true" : "";
-        const res = await fetch(`/api/ingest/news?${scrapeParam}`);
+        const scrapeParam = options?.scrape ? "?scrape=true" : "";
+        const res = await fetch(`/api/ingest/news${scrapeParam}`);
         const data = await res.json();
 
         if (!res.ok) {
@@ -223,12 +229,26 @@ export function useArticles(): UseArticlesReturn {
           return null;
         }
 
+        // Capture storage error before refreshing articles
+        // (fetchArticles clears error state, so we must restore it after)
+        let storageError: string | null = null;
+        if (data.totalStored === 0 && (data.totalErrors > 0 || data.errorMessages?.length > 0)) {
+          storageError = data.errorMessages?.[0] || "Unknown database error";
+        }
+
         // Refresh article list after ingestion
         await fetchArticles();
+
+        // Restore the storage error that fetchArticles cleared
+        if (storageError) {
+          setError(`Storage failed: ${storageError}`);
+        }
 
         return {
           totalFetched: data.totalFetched as number,
           totalStored: data.totalStored as number,
+          totalErrors: (data.totalErrors as number) || 0,
+          errorMessages: (data.errorMessages as string[]) || [],
         };
       } catch (err) {
         const message =

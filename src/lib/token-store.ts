@@ -11,7 +11,8 @@ interface StoredTokens {
 }
 
 const COOKIE_NAME = "gmail-tokens";
-const TOKEN_ROW_ID = "default-user";
+const TOKEN_ROW_ID: string = "default-user";
+const LEGACY_TOKEN_ROW_ID: string = "default";
 
 // Derive a 32-byte key from the Google client secret
 function getEncryptionKey(): Buffer {
@@ -67,6 +68,14 @@ export async function storeTokens(tokens: StoredTokens): Promise<void> {
     if (error) {
       console.error("Failed to store tokens in Supabase:", error.message);
     }
+
+    // Clean up legacy token row once we've successfully written the canonical row.
+    if (!error && TOKEN_ROW_ID !== LEGACY_TOKEN_ROW_ID) {
+      await supabase
+        .from("gmail_tokens")
+        .delete()
+        .eq("id", LEGACY_TOKEN_ROW_ID);
+    }
   }
 
   // Always store in cookie as well for serverless environments
@@ -112,13 +121,16 @@ export function buildClearTokenCookieHeader(): string {
 export async function getStoredTokens(): Promise<StoredTokens | null> {
   // Try Supabase first
   if (isSupabaseConfigured() && supabase) {
-    const { data, error } = await supabase
-      .from("gmail_tokens")
-      .select("*")
-      .eq("id", TOKEN_ROW_ID)
-      .single();
+    const supabaseClient = supabase;
 
-    if (data && !error) {
+    const loadById = async (id: string): Promise<StoredTokens | null> => {
+      const { data, error } = await supabaseClient
+        .from("gmail_tokens")
+        .select("*")
+        .eq("id", id)
+        .maybeSingle();
+
+      if (!data || error) return null;
       return {
         access_token: data.access_token,
         refresh_token: data.refresh_token,
@@ -126,6 +138,31 @@ export async function getStoredTokens(): Promise<StoredTokens | null> {
         scope: data.scope,
         token_type: data.token_type,
       };
+    };
+
+    const canonical = await loadById(TOKEN_ROW_ID);
+    if (canonical) {
+      return canonical;
+    }
+
+    // Backward-compatibility for legacy rows created before TOKEN_ROW_ID changed.
+    if (TOKEN_ROW_ID !== LEGACY_TOKEN_ROW_ID) {
+      const legacy = await loadById(LEGACY_TOKEN_ROW_ID);
+      if (legacy) {
+        await supabaseClient.from("gmail_tokens").upsert(
+          {
+            id: TOKEN_ROW_ID,
+            access_token: legacy.access_token,
+            refresh_token: legacy.refresh_token,
+            expiry_date: legacy.expiry_date,
+            scope: legacy.scope,
+            token_type: legacy.token_type,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "id" }
+        );
+        return legacy;
+      }
     }
   }
 
@@ -159,7 +196,8 @@ export async function isGmailConnected(): Promise<boolean> {
  */
 export async function clearTokens(): Promise<void> {
   if (isSupabaseConfigured() && supabase) {
-    await supabase.from("gmail_tokens").delete().eq("id", TOKEN_ROW_ID);
+    const ids = Array.from(new Set([TOKEN_ROW_ID, LEGACY_TOKEN_ROW_ID]));
+    await supabase.from("gmail_tokens").delete().in("id", ids);
   }
 
   // Clear cookie

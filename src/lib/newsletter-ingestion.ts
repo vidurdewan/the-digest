@@ -1,7 +1,7 @@
 import { getGmailClient, fetchEmails, refreshTokensIfNeeded } from "@/lib/gmail";
 import { parseNewsletter, isNewsletter } from "@/lib/newsletter-parser";
 import { getStoredTokens, storeTokens } from "@/lib/token-store";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { supabaseAdmin as supabase, isSupabaseAdminConfigured as isSupabaseConfigured } from "@/lib/supabase";
 import {
   generateVIPNewsletterSummary,
   generateBatchNewsletterSummaries,
@@ -231,11 +231,12 @@ export async function ingestNewsletters(
 
     const batchResults = await Promise.allSettled(
       batches.map(async (batch) => {
-        const { error, count } = await supabase!
+        const { data, error } = await supabase!
           .from("newsletters")
-          .upsert(batch, { onConflict: "gmail_message_id", count: "exact" });
+          .upsert(batch, { onConflict: "gmail_message_id" })
+          .select("gmail_message_id");
         if (error) throw error;
-        return count ?? batch.length;
+        return data?.length ?? batch.length;
       })
     );
 

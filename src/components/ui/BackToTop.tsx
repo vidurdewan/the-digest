@@ -1,6 +1,6 @@
 "use client";
 
 export function BackToTop() {
-  // Hidden — floating buttons removed for clean editorial aesthetic
+  // Intentionally disabled in the current editorial layout.
   return null;
 }

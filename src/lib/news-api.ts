@@ -36,8 +36,9 @@ export async function fetchNewsApi(source: NewsSource): Promise<RawArticle[]> {
   }
 
   try {
-    const query = encodeURIComponent(source.url);
-    const url = `${NEWS_API_BASE}/everything?q=${query}&language=en&sortBy=publishedAt&pageSize=10&apiKey=${apiKey}`;
+    // source.url is already formatted as a URL-safe query string (e.g. "term+OR+%22phrase%22")
+    // so we must NOT re-encode it — that would double-encode %22 → %2522 and + → %2B
+    const url = `${NEWS_API_BASE}/everything?q=${source.url}&language=en&sortBy=publishedAt&pageSize=10&apiKey=${apiKey}`;
 
     const response = await fetch(url, {
       headers: { "User-Agent": "TheDigest/1.0" },

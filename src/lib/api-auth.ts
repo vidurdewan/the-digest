@@ -14,16 +14,24 @@ export function validateApiRequest(
   request: NextRequest
 ): { authorized: true } | { authorized: false; error: string } {
   const apiSecret = process.env.API_SECRET;
+  const cronSecret = process.env.CRON_SECRET;
 
   // Dev mode: no secret configured — allow all requests with a one-time warning
-  if (!apiSecret) {
+  if (!apiSecret && !cronSecret) {
     if (!devWarningLogged) {
       console.warn(
-        "[api-auth] WARNING: API_SECRET is not set. All API requests are allowed without authentication. " +
-          "Set API_SECRET in your environment variables to enable auth."
+        "[api-auth] WARNING: API_SECRET and CRON_SECRET are not set. All API requests are allowed without authentication. " +
+          "Set API_SECRET (and optionally CRON_SECRET for scheduled jobs) in your environment variables to enable auth."
       );
       devWarningLogged = true;
     }
+    return { authorized: true };
+  }
+
+  // Allow same-origin requests from the app's own frontend.
+  // Browsers set sec-fetch-site automatically and it cannot be spoofed cross-origin.
+  const secFetchSite = request.headers.get("sec-fetch-site");
+  if (secFetchSite === "same-origin") {
     return { authorized: true };
   }
 
@@ -43,7 +51,7 @@ export function validateApiRequest(
   }
 
   const token = parts[1];
-  if (token !== apiSecret) {
+  if (token !== apiSecret && token !== cronSecret) {
     return { authorized: false, error: "Invalid API token" };
   }
 

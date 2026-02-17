@@ -29,15 +29,14 @@ export function NewsByTopicSection({
 }: NewsByTopicSectionProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const topics = Object.keys(topicLabels) as TopicCategory[];
-  const normalizedSearchTerm = searchTerm.trim().toLowerCase();
 
+  const normalizedSearchTerm = searchTerm.trim().toLowerCase();
   const filteredArticles = !normalizedSearchTerm
     ? articles
-    : articles.filter(
-        (a) =>
-          a.title.toLowerCase().includes(normalizedSearchTerm) ||
-          a.source.toLowerCase().includes(normalizedSearchTerm) ||
-          (a.author && a.author.toLowerCase().includes(normalizedSearchTerm))
+    : articles.filter((a) =>
+        a.title.toLowerCase().includes(normalizedSearchTerm) ||
+        a.source.toLowerCase().includes(normalizedSearchTerm) ||
+        (a.author && a.author.toLowerCase().includes(normalizedSearchTerm))
       );
 
   const grouped = topics.reduce(

@@ -9,7 +9,7 @@
  * Lookup order: exact name → fuzzy name (substring) → domain match → default (tier 3)
  */
 
-import { supabase, isSupabaseConfigured } from "./supabase";
+import { supabaseAdmin as supabase, isSupabaseAdminConfigured as isSupabaseConfigured } from "./supabase";
 
 export type SourceTier = 1 | 2 | 3;
 

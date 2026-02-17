@@ -141,6 +141,7 @@ export function SurpriseMe({
     <div className="relative rounded-2xl border border-border-secondary bg-gradient-to-br from-accent-primary/[0.04] via-transparent to-accent-primary/[0.02] p-4 sm:p-5">
       {/* Dismiss button */}
       <button
+        type="button"
         onClick={handleDismiss}
         className="absolute right-3 top-3 text-xs text-text-tertiary hover:text-text-secondary transition-colors"
       >
@@ -161,7 +162,20 @@ export function SurpriseMe({
       </div>
 
       {/* Article preview */}
-      <div className="cursor-pointer" onClick={handleExpand}>
+      <div
+        className="cursor-pointer"
+        onClick={handleExpand}
+        role="button"
+        tabIndex={0}
+        aria-expanded={isExpanded}
+        aria-label={`Expand article: ${surpriseArticle.title}`}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            handleExpand();
+          }
+        }}
+      >
         <div className="mb-1.5 flex items-center gap-2">
           <span className="rounded-full bg-bg-secondary px-2 py-0.5 text-xs font-medium text-text-secondary">
             {topicLabels[surpriseArticle.topic]}
@@ -186,6 +200,7 @@ export function SurpriseMe({
           </div>
           <div className="flex items-center gap-1.5">
             <button
+              type="button"
               onClick={handleSave}
               className="rounded-md p-1 text-text-tertiary hover:text-accent-primary transition-colors"
               aria-label={isSaved ? "Unsave" : "Save"}
@@ -197,6 +212,7 @@ export function SurpriseMe({
               )}
             </button>
             <button
+              type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 handleExpand();

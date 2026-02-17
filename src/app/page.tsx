@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
-import { BackToTop } from "@/components/ui/BackToTop";
 import { useSidebarStore } from "@/lib/store";
 import { useToastStore } from "@/components/ui/Toast";
 import type { Article, Summary } from "@/types";
@@ -139,10 +138,24 @@ export default function Home() {
   const handleForceRefresh = async () => {
     const result = await articleData.ingest();
     if (result) {
-      addToast(
-        `Fetched ${result.totalFetched} articles, stored ${result.totalStored}`,
-        "success"
-      );
+      const hasErrors = result.totalErrors > 0 || result.errorMessages.length > 0;
+      if (hasErrors && result.totalStored === 0) {
+        const detail = result.errorMessages[0] || "Unknown database error";
+        addToast(
+          `Fetched ${result.totalFetched} articles but failed to store: ${detail}`,
+          "error"
+        );
+      } else if (hasErrors) {
+        addToast(
+          `Fetched ${result.totalFetched} articles, stored ${result.totalStored} (${result.totalErrors} errors)`,
+          "info"
+        );
+      } else {
+        addToast(
+          `Fetched ${result.totalFetched} articles, stored ${result.totalStored}`,
+          "success"
+        );
+      }
     } else if (articleData.error) {
       addToast(`Refresh failed: ${articleData.error}`, "error");
     }
@@ -202,11 +215,10 @@ export default function Home() {
             onExpand={handleExpand}
             newCount={autoRefresh.newCount}
             onShowNew={autoRefresh.showNew}
-            lastUpdated={autoRefresh.lastUpdated}
             onForceRefresh={handleForceRefresh}
             isRefreshing={articleData.isIngesting}
-            onMarkAllRead={handleMarkAllRead}
             onPanelStateChange={handlePanelStateChange}
+            error={articleData.error}
           />
         );
       case "newsletters":
@@ -296,11 +308,10 @@ export default function Home() {
             onExpand={handleExpand}
             newCount={autoRefresh.newCount}
             onShowNew={autoRefresh.showNew}
-            lastUpdated={autoRefresh.lastUpdated}
             onForceRefresh={handleForceRefresh}
             isRefreshing={articleData.isIngesting}
-            onMarkAllRead={handleMarkAllRead}
             onPanelStateChange={handlePanelStateChange}
+            error={articleData.error}
           />
         );
     }
@@ -312,7 +323,6 @@ export default function Home() {
         articles: articlesWithMatches,
         newsletters: newsletterData.newsletters,
         onNavigateToArticle: handleNavigateToArticle,
-        unreadNewsletterCount: newsletterData.newsletters.filter((n) => !n.isRead).length,
         onMarkAllRead: handleMarkAllRead,
         onForceRefresh: handleForceRefresh,
         isRefreshing: articleData.isIngesting,
@@ -334,7 +344,6 @@ export default function Home() {
           onRequestSummary={articleData.requestFullSummary}
         />
       )}
-      <BackToTop />
       <CommandPalette
         articles={rankedArticles}
         onOpenReader={handleOpenReader}

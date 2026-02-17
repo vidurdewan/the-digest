@@ -24,18 +24,17 @@ export const maxDuration = 300;
  * Protected by CRON_SECRET in production.
  */
 export async function GET(request: NextRequest) {
-  // Verify cron secret — always required to prevent unauthorized ingestion
+  // Verify cron secret when configured.
   const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) {
-    console.error("[Cron] CRON_SECRET is not set. Rejecting request.");
-    return NextResponse.json(
-      { error: "CRON_SECRET is not configured. Set it in environment variables." },
-      { status: 500 }
+  if (cronSecret) {
+    const authHeader = request.headers.get("authorization");
+    if (authHeader !== `Bearer ${cronSecret}`) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+  } else {
+    console.warn(
+      "[Cron] CRON_SECRET is not configured. Allowing unauthenticated cron request."
     );
-  }
-  const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const startTime = Date.now();
@@ -274,6 +273,18 @@ export async function GET(request: NextRequest) {
 
     const duration = Date.now() - startTime;
 
+    // Surface configuration warnings in the response
+    const warnings: string[] = [];
+    if (!isSupabaseConfigured() || !supabase) {
+      warnings.push("SUPABASE_SERVICE_ROLE_KEY is not set — articles cannot be stored");
+    }
+    if (!isClaudeConfigured()) {
+      warnings.push("ANTHROPIC_API_KEY is not set — summaries and intelligence will be skipped");
+    }
+    if (result.totalFetched > 0 && result.totalStored === 0 && result.totalErrors === 0) {
+      warnings.push("Articles were fetched but none stored and no errors reported — check Supabase configuration");
+    }
+
     return NextResponse.json({
       success: true,
       duration: `${duration}ms`,
@@ -281,6 +292,7 @@ export async function GET(request: NextRequest) {
       totalStored: result.totalStored,
       totalDuplicates: result.totalDuplicates,
       totalErrors: result.totalErrors,
+      ...(warnings.length > 0 && { warnings }),
       summaryStats,
       decipheringStats,
       intelligenceStats,

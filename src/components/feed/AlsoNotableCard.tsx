@@ -94,7 +94,20 @@ export function AlsoNotableCard({
       />
 
       {/* Headline area */}
-      <div className="cursor-pointer p-4 pl-5 sm:p-5 sm:pl-6" onClick={handleExpand}>
+      <div
+        className="cursor-pointer p-4 pl-5 sm:p-5 sm:pl-6"
+        onClick={handleExpand}
+        role="button"
+        tabIndex={0}
+        aria-expanded={isExpanded}
+        aria-label={`Expand article: ${article.title}`}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            handleExpand();
+          }
+        }}
+      >
         <div className="mb-2 flex flex-wrap items-center gap-2">
           <span
             className="rounded-full px-2.5 py-0.5 text-xs font-medium"
@@ -156,6 +169,7 @@ export function AlsoNotableCard({
               {getRelativeTime(article.publishedAt)}
             </span>
             <button
+              type="button"
               onClick={handleSave}
               className="rounded-md p-1 text-text-tertiary hover:text-accent-primary transition-colors"
               aria-label={isSaved ? "Unsave" : "Save"}
@@ -167,6 +181,7 @@ export function AlsoNotableCard({
               )}
             </button>
             <button
+              type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 handleExpand();

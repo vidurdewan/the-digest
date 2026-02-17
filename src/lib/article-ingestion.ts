@@ -3,7 +3,7 @@ import { fetchAllRssFeeds, type RawArticle } from "./rss-fetcher";
 import { fetchNewsApi } from "./news-api";
 import { scrapeArticle } from "./article-scraper";
 import { estimateReadingTime } from "./article-utils";
-import { supabase, isSupabaseConfigured } from "./supabase";
+import { supabaseAdmin as supabase, isSupabaseAdminConfigured as isSupabaseConfigured } from "./supabase";
 import { filterSECFilings } from "./sec-filter";
 
 // ─── Promo / Coupon Filter ────────────────────────────────────
@@ -41,8 +41,77 @@ export interface IngestionResult {
   totalStored: number;
   totalDuplicates: number;
   totalErrors: number;
+  errorMessages: string[];
   bySource: Record<string, number>;
   articles: RawArticle[];
+}
+
+interface ArticleInsertRow {
+  title: string;
+  url: string;
+  author: string | null;
+  content: string | null;
+  image_url: string | null;
+  published_at: string | null;
+  topic: string;
+  reading_time_minutes: number;
+  content_hash: string;
+  source_tier?: number;
+  document_type?: string | null;
+}
+
+function normalizePublishedAt(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return date.toISOString();
+}
+
+function buildInsertRows(articles: RawArticle[]): ArticleInsertRow[] {
+  return articles.map((article) => ({
+    title: article.title,
+    url: article.url,
+    author: article.author,
+    content: article.content,
+    image_url: article.imageUrl,
+    published_at: normalizePublishedAt(article.publishedAt),
+    topic: article.topic,
+    reading_time_minutes: estimateReadingTime(article.content || ""),
+    content_hash: article.contentHash,
+    source_tier: article.sourceTier,
+    document_type: article.documentType || null,
+  }));
+}
+
+function removeColumns(rows: ArticleInsertRow[], columns: string[]): ArticleInsertRow[] {
+  if (columns.length === 0) return rows;
+  return rows.map((row) => {
+    const nextRow = { ...row };
+    for (const col of columns) {
+      delete nextRow[col as keyof ArticleInsertRow];
+    }
+    return nextRow;
+  });
+}
+
+function extractMissingColumn(error: unknown): string | null {
+  const message =
+    error && typeof error === "object" && "message" in error
+      ? String((error as { message?: string }).message)
+      : "";
+  const match = message.match(/column\s+"([a-z_]+)"\s+of relation\s+"articles"\s+does not exist/i);
+  return match?.[1] || null;
+}
+
+function isDuplicateContentHashError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const err = error as { code?: string; message?: string };
+  if (err.code === "23505") return true;
+  return /duplicate key value violates unique constraint\s+"articles_content_hash_key"/i.test(
+    err.message || ""
+  );
 }
 
 /**
@@ -60,6 +129,7 @@ export async function ingestAllNews(options?: {
     totalStored: 0,
     totalDuplicates: 0,
     totalErrors: 0,
+    errorMessages: [],
     bySource: {},
     articles: [],
   };
@@ -134,45 +204,130 @@ export async function ingestAllNews(options?: {
       (result.bySource[article.sourceName] || 0) + 1;
   }
 
-  // Store in Supabase — parallel batch upserts
+  // Store in Supabase
+  if (!isSupabaseConfigured() || !supabase) {
+    const msg = "Supabase admin client is NOT configured — articles will not be stored. " +
+      "Ensure NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are set in environment variables.";
+    console.error(`[Ingest] ${msg}`);
+    result.errorMessages.push(msg);
+  }
   if (isSupabaseConfigured() && supabase) {
-    const rows = uniqueArticles.map((article) => ({
-      title: article.title,
-      url: article.url,
-      author: article.author,
-      content: article.content,
-      image_url: article.imageUrl,
-      published_at: article.publishedAt,
-      topic: article.topic,
-      reading_time_minutes: estimateReadingTime(article.content || ""),
-      content_hash: article.contentHash,
-      source_tier: article.sourceTier,
-      document_type: article.documentType || null,
-    }));
+    const rows = buildInsertRows(uniqueArticles);
 
-    // Batch in groups of 50, run all batches in parallel
-    const BATCH_SIZE = 50;
-    const batches: (typeof rows)[] = [];
-    for (let i = 0; i < rows.length; i += BATCH_SIZE) {
-      batches.push(rows.slice(i, i + BATCH_SIZE));
+    // Step 1: Check which content_hashes already exist in the DB.
+    // This avoids relying on upsert/onConflict which requires a unique constraint.
+    const existingHashes = new Set<string>();
+    const allHashes = rows.map((r) => r.content_hash);
+    const HASH_CHUNK = 500;
+    for (let i = 0; i < allHashes.length; i += HASH_CHUNK) {
+      const chunk = allHashes.slice(i, i + HASH_CHUNK);
+      try {
+        const { data: existingRows } = await supabase
+          .from("articles")
+          .select("content_hash")
+          .in("content_hash", chunk);
+        if (existingRows) {
+          for (const r of existingRows) {
+            existingHashes.add(r.content_hash as string);
+          }
+        }
+      } catch (err) {
+        // If we can't check for existing hashes, proceed with all rows
+        // (inserts may fail for duplicates, but at least new articles get through)
+        console.warn("[Ingest] Could not check existing hashes:", err);
+      }
     }
 
-    const batchResults = await Promise.allSettled(
-      batches.map(async (batch) => {
-        const { error, count } = await supabase!
-          .from("articles")
-          .upsert(batch, { onConflict: "content_hash", count: "exact" });
-        if (error) throw error;
-        return count ?? batch.length;
-      })
-    );
+    // Step 2: Filter to only new articles
+    const newRows = rows.filter((r) => !existingHashes.has(r.content_hash));
+    result.totalDuplicates += rows.length - newRows.length;
 
-    for (const r of batchResults) {
-      if (r.status === "fulfilled") {
-        result.totalStored += r.value;
-      } else {
-        result.totalErrors += BATCH_SIZE;
-        console.error("Batch upsert error:", r.reason);
+    if (newRows.length === 0) {
+      console.log("[Ingest] All articles already exist in database — nothing to insert.");
+    }
+
+    // Step 3: Insert new articles in sequential batches
+    const BATCH_SIZE = 50;
+    const missingColumns = new Set<string>();
+
+    for (let i = 0; i < newRows.length; i += BATCH_SIZE) {
+      let currentBatch = newRows.slice(i, i + BATCH_SIZE);
+
+      // Remove any columns already known to be missing from the DB schema
+      if (missingColumns.size > 0) {
+        currentBatch = removeColumns(currentBatch, [...missingColumns]);
+      }
+
+      let stored = false;
+      let batchErrorCounted = false;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const { data, error } = await supabase
+          .from("articles")
+          .insert(currentBatch)
+          .select("content_hash");
+
+        if (!error) {
+          result.totalStored += data?.length ?? currentBatch.length;
+          stored = true;
+          break;
+        }
+
+        // A concurrent ingest may insert a matching hash between the pre-check
+        // and batch insert. Fall back to conflict-safe upsert so fresh rows still land.
+        if (isDuplicateContentHashError(error)) {
+          const { data: upserted, error: upsertError } = await supabase
+            .from("articles")
+            .upsert(currentBatch, {
+              onConflict: "content_hash",
+              ignoreDuplicates: true,
+            })
+            .select("content_hash");
+
+          if (!upsertError) {
+            result.totalStored += upserted?.length ?? 0;
+            stored = true;
+            break;
+          }
+
+          const errMsg = upsertError.message;
+          console.error(`[Ingest] Upsert fallback error: ${errMsg}`);
+          if (result.errorMessages.length < 3 && !result.errorMessages.includes(errMsg)) {
+            result.errorMessages.push(errMsg);
+          }
+          result.totalErrors += currentBatch.length;
+          batchErrorCounted = true;
+          break;
+        }
+
+        const missingColumn = extractMissingColumn(error);
+        if (!missingColumn) {
+          // Not a missing-column error — log and move to next batch
+          const errMsg = error.message;
+          console.error(`[Ingest] Batch insert error: ${errMsg}`);
+          if (result.errorMessages.length < 3 && !result.errorMessages.includes(errMsg)) {
+            result.errorMessages.push(errMsg);
+          }
+          result.totalErrors += currentBatch.length;
+          batchErrorCounted = true;
+          break;
+        }
+
+        missingColumns.add(missingColumn);
+        currentBatch = removeColumns(
+          newRows.slice(i, i + BATCH_SIZE),
+          [...missingColumns]
+        );
+        console.warn(
+          `[Ingest] Retrying insert without column "${missingColumn}". ` +
+            "Run pending database migrations to restore full schema support."
+        );
+      }
+
+      if (!stored && !batchErrorCounted) {
+        result.totalErrors += currentBatch.length;
+        if (result.errorMessages.length < 3) {
+          result.errorMessages.push("Insert failed after retrying with fallback columns");
+        }
       }
     }
   }
@@ -217,33 +372,47 @@ export async function getStoredArticles(options?: {
     return { articles: (data as Record<string, unknown>[]) || [], count: count || 0 };
   }
 
-  // If the error is about a missing relationship, retry without intelligence join
-  if (error.message.includes("relationship")) {
-    console.warn("Falling back to query without article_intelligence join");
+  // Fallback 1: retry without article_intelligence + article_signals joins
+  console.warn(`[getStoredArticles] Full query failed: ${error.message}. Trying without intelligence/signals joins.`);
 
-    let fallbackQuery = supabase
-      .from("articles")
-      .select(
-        "*, summaries(id, brief, the_news, why_it_matters, the_context, key_entities, deciphering, generated_at)",
-        { count: "exact" }
-      )
-      .order("published_at", { ascending: false })
-      .range(offset, offset + limit - 1);
+  let fb1Query = supabase
+    .from("articles")
+    .select(
+      "*, summaries(id, brief, the_news, why_it_matters, the_context, key_entities, deciphering, generated_at)",
+      { count: "exact" }
+    )
+    .order("published_at", { ascending: false })
+    .range(offset, offset + limit - 1);
 
-    if (topic) {
-      fallbackQuery = fallbackQuery.eq("topic", topic);
-    }
-
-    const { data: fbData, error: fbError, count: fbCount } = await fallbackQuery;
-
-    if (!fbError) {
-      return { articles: (fbData as Record<string, unknown>[]) || [], count: fbCount || 0 };
-    }
-
-    console.error("Fallback query also failed:", fbError.message);
-    return { articles: [], count: 0 };
+  if (topic) {
+    fb1Query = fb1Query.eq("topic", topic);
   }
 
-  console.error("Failed to fetch articles:", error.message);
+  const { data: fb1Data, error: fb1Error, count: fb1Count } = await fb1Query;
+
+  if (!fb1Error) {
+    return { articles: (fb1Data as Record<string, unknown>[]) || [], count: fb1Count || 0 };
+  }
+
+  // Fallback 2: retry with just the articles table, no joins at all
+  console.warn(`[getStoredArticles] Summaries join also failed: ${fb1Error.message}. Trying articles-only query.`);
+
+  let fb2Query = supabase
+    .from("articles")
+    .select("*", { count: "exact" })
+    .order("published_at", { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (topic) {
+    fb2Query = fb2Query.eq("topic", topic);
+  }
+
+  const { data: fb2Data, error: fb2Error, count: fb2Count } = await fb2Query;
+
+  if (!fb2Error) {
+    return { articles: (fb2Data as Record<string, unknown>[]) || [], count: fb2Count || 0 };
+  }
+
+  console.error("[getStoredArticles] All queries failed:", fb2Error.message);
   return { articles: [], count: 0 };
 }

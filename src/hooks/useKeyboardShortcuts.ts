@@ -142,9 +142,8 @@ export function useKeyboardShortcuts({
   useEffect(() => {
     if (!enabled) return;
 
-    const listener = (e: KeyboardEvent) => handleKeyDown(e);
-    window.addEventListener("keydown", listener);
-    return () => window.removeEventListener("keydown", listener);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [enabled, handleKeyDown]);
 }
 

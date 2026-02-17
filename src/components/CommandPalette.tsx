@@ -69,33 +69,13 @@ interface CommandPaletteProps {
   onOpenReader: (article: Article & { summary?: Summary }) => void;
 }
 
-export function CommandPalette(props: CommandPaletteProps) {
-  const commandPaletteOpen = useOverlayStore((state) => state.commandPaletteOpen);
-
-  // Global Cmd+K / Ctrl+K listener
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        useOverlayStore.getState().toggleCommandPalette();
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, []);
-
-  if (!commandPaletteOpen) return null;
-
-  return <CommandPaletteDialog {...props} />;
-}
-
-function CommandPaletteDialog({ articles, onOpenReader }: CommandPaletteProps) {
-  const closeCommandPalette = useOverlayStore((state) => state.closeCommandPalette);
-  const openSearchOverlay = useOverlayStore((state) => state.openSearchOverlay);
-  const openChatPanel = useOverlayStore((state) => state.openChatPanel);
-  const setActiveSection = useSidebarStore((state) => state.setActiveSection);
+export function CommandPalette({ articles, onOpenReader }: CommandPaletteProps) {
+  const { commandPaletteOpen, closeCommandPalette, openSearchOverlay, openChatPanel } =
+    useOverlayStore();
+  const { setActiveSection } = useSidebarStore();
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
   // Build flat item list
@@ -106,33 +86,18 @@ function CommandPaletteDialog({ articles, onOpenReader }: CommandPaletteProps) {
     const navGroups = navigationGroups.filter((g) => g.label !== "Tools");
     for (const group of navGroups) {
       for (const section of group.items) {
-        items.push({
-          id: section.id,
-          label: section.label,
-          icon: section.icon,
-          type: "nav",
-        });
+        items.push({ id: section.id, label: section.label, icon: section.icon, type: "nav" });
       }
     }
     for (const section of bottomNavSections) {
-      items.push({
-        id: section.id,
-        label: section.label,
-        icon: section.icon,
-        type: "nav",
-      });
+      items.push({ id: section.id, label: section.label, icon: section.icon, type: "nav" });
     }
 
     // Tools
     const toolsGroup = navigationGroups.find((g) => g.label === "Tools");
     if (toolsGroup) {
       for (const section of toolsGroup.items) {
-        items.push({
-          id: section.id,
-          label: section.label,
-          icon: section.icon,
-          type: "tool",
-        });
+        items.push({ id: section.id, label: section.label, icon: section.icon, type: "tool" });
       }
     }
 
@@ -170,17 +135,26 @@ function CommandPaletteDialog({ articles, onOpenReader }: CommandPaletteProps) {
     () => [...groupedItems.nav, ...groupedItems.tools, ...groupedItems.articles],
     [groupedItems]
   );
-  const maxIndex = Math.max(0, flatFiltered.length - 1);
-  const clampedSelectedIndex = Math.min(selectedIndex, maxIndex);
+
+  // Reset on open
+  useEffect(() => {
+    if (!commandPaletteOpen) return;
+
+    const timer = setTimeout(() => {
+      setQuery("");
+      setSelectedIndex(0);
+      inputRef.current?.focus();
+    }, 10);
+
+    return () => clearTimeout(timer);
+  }, [commandPaletteOpen]);
 
   // Scroll selected item into view
   useEffect(() => {
     if (!listRef.current) return;
-    const el = listRef.current.querySelector(
-      `[data-palette-index="${clampedSelectedIndex}"]`
-    );
+    const el = listRef.current.querySelector(`[data-palette-index="${selectedIndex}"]`);
     if (el) el.scrollIntoView({ block: "nearest" });
-  }, [clampedSelectedIndex, flatFiltered.length]);
+  }, [selectedIndex]);
 
   const selectItem = useCallback(
     (item: PaletteItem) => {
@@ -200,13 +174,12 @@ function CommandPaletteDialog({ articles, onOpenReader }: CommandPaletteProps) {
       // All other items (nav, brief, weekly-synthesis) navigate
       setActiveSection(item.id);
     },
-    [
-      closeCommandPalette,
-      onOpenReader,
-      openChatPanel,
-      openSearchOverlay,
-      setActiveSection,
-    ]
+    [closeCommandPalette, openSearchOverlay, openChatPanel, setActiveSection, onOpenReader]
+  );
+
+  const clampedSelectedIndex = Math.min(
+    selectedIndex,
+    Math.max(0, flatFiltered.length - 1)
   );
 
   const handleKeyDown = useCallback(
@@ -214,11 +187,11 @@ function CommandPaletteDialog({ articles, onOpenReader }: CommandPaletteProps) {
       switch (e.key) {
         case "ArrowDown":
           e.preventDefault();
-          setSelectedIndex(Math.min(clampedSelectedIndex + 1, maxIndex));
+          setSelectedIndex((prev) => Math.min(prev + 1, flatFiltered.length - 1));
           break;
         case "ArrowUp":
           e.preventDefault();
-          setSelectedIndex(Math.max(clampedSelectedIndex - 1, 0));
+          setSelectedIndex((prev) => Math.max(prev - 1, 0));
           break;
         case "Enter":
           e.preventDefault();
@@ -232,14 +205,22 @@ function CommandPaletteDialog({ articles, onOpenReader }: CommandPaletteProps) {
           break;
       }
     },
-    [
-      clampedSelectedIndex,
-      closeCommandPalette,
-      flatFiltered,
-      maxIndex,
-      selectItem,
-    ]
+    [flatFiltered, clampedSelectedIndex, selectItem, closeCommandPalette]
   );
+
+  // Global Cmd+K / Ctrl+K listener
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        useOverlayStore.getState().toggleCommandPalette();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
+  if (!commandPaletteOpen) return null;
 
   const renderSection = (
     label: string,
@@ -305,13 +286,13 @@ function CommandPaletteDialog({ articles, onOpenReader }: CommandPaletteProps) {
         <div className="flex items-center gap-3 border-b border-border-secondary px-4 py-3">
           <Search size={18} className="shrink-0 text-text-tertiary" />
           <input
+            ref={inputRef}
             type="text"
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
               setSelectedIndex(0);
             }}
-            autoFocus
             placeholder="Search commands, pages, articles..."
             className="flex-1 bg-transparent text-sm text-text-primary placeholder-text-tertiary outline-none"
           />
@@ -330,11 +311,7 @@ function CommandPaletteDialog({ articles, onOpenReader }: CommandPaletteProps) {
             <>
               {renderSection("Navigation", groupedItems.nav, navStart)}
               {renderSection("Tools", groupedItems.tools, toolsStart)}
-              {renderSection(
-                "Recent Articles",
-                groupedItems.articles,
-                articlesStart
-              )}
+              {renderSection("Recent Articles", groupedItems.articles, articlesStart)}
             </>
           )}
         </div>
