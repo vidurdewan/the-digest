@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import type { Newsletter, Article, Summary } from "@/types";
-import { ScannableSection, CalloutBlock, SectionBody, SectionHeader, DigestSectionBody } from "@/components/ui/ScannableText";
+import { ScannableSection, CalloutBlock, SectionHeader, DigestSectionBody } from "@/components/ui/ScannableText";
 import { useReadStateStore } from "@/lib/store";
 import { findMatchingArticleIds } from "@/lib/cross-references";
 

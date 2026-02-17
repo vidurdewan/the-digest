@@ -1,11 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 const STORAGE_KEY = "the-digest-shortcut-hint-seen";
 
 export function ShortcutHintToast() {
   const [visible, setVisible] = useState(false);
+  const dismiss = useCallback(() => {
+    setVisible(false);
+    if (typeof window !== "undefined") {
+      localStorage.setItem(STORAGE_KEY, "true");
+    }
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -28,14 +34,7 @@ export function ShortcutHintToast() {
       clearTimeout(hideTimer);
       window.removeEventListener("keydown", onKey);
     };
-  }, []);
-
-  function dismiss() {
-    setVisible(false);
-    if (typeof window !== "undefined") {
-      localStorage.setItem(STORAGE_KEY, "true");
-    }
-  }
+  }, [dismiss]);
 
   if (!visible) return null;
 

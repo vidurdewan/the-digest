@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Search,
   X,
@@ -39,29 +39,38 @@ export function SearchOverlay({
   onRequestSummary,
   onExpand,
 }: SearchOverlayProps) {
-  const { searchOverlayOpen, closeSearchOverlay } = useOverlayStore();
+  const searchOverlayOpen = useOverlayStore((state) => state.searchOverlayOpen);
+
+  if (!searchOverlayOpen) return null;
+
+  return (
+    <SearchOverlayDialog
+      articles={articles}
+      onSave={onSave}
+      onOpenReader={onOpenReader}
+      onRequestSummary={onRequestSummary}
+      onExpand={onExpand}
+    />
+  );
+}
+
+function SearchOverlayDialog({
+  articles,
+  onSave,
+  onOpenReader,
+  onRequestSummary,
+  onExpand,
+}: SearchOverlayProps) {
+  const closeSearchOverlay = useOverlayStore((state) => state.closeSearchOverlay);
   const [query, setQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [selectedTopic, setSelectedTopic] = useState<TopicCategory | "all">("all");
   const [dateRange, setDateRange] = useState<"today" | "week" | "month" | "all">("all");
   const [specificDate, setSpecificDate] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  // Focus input on open
-  useEffect(() => {
-    if (searchOverlayOpen) {
-      setQuery("");
-      setShowFilters(false);
-      setSelectedTopic("all");
-      setDateRange("all");
-      setSpecificDate("");
-      setTimeout(() => inputRef.current?.focus(), 10);
-    }
-  }, [searchOverlayOpen]);
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
 
   // Esc to close
   useEffect(() => {
-    if (!searchOverlayOpen) return;
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         closeSearchOverlay();
@@ -69,7 +78,14 @@ export function SearchOverlay({
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [searchOverlayOpen, closeSearchOverlay]);
+  }, [closeSearchOverlay]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 60000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const filteredArticles = useMemo(() => {
     let results = articles;
@@ -98,7 +114,6 @@ export function SearchOverlay({
         return articleDate === specificDate;
       });
     } else if (dateRange !== "all") {
-      const now = Date.now();
       const cutoffs: Record<string, number> = {
         today: 24 * 60 * 60 * 1000,
         week: 7 * 24 * 60 * 60 * 1000,
@@ -107,13 +122,13 @@ export function SearchOverlay({
       const cutoff = cutoffs[dateRange];
       if (cutoff) {
         results = results.filter(
-          (a) => now - new Date(a.publishedAt).getTime() < cutoff
+          (a) => currentTime - new Date(a.publishedAt).getTime() < cutoff
         );
       }
     }
 
     return results;
-  }, [articles, query, selectedTopic, dateRange, specificDate]);
+  }, [articles, query, selectedTopic, dateRange, specificDate, currentTime]);
 
   const handleClearDate = useCallback(() => {
     setSpecificDate("");
@@ -122,8 +137,6 @@ export function SearchOverlay({
 
   const hasActiveFilters =
     query || selectedTopic !== "all" || dateRange !== "all" || specificDate;
-
-  if (!searchOverlayOpen) return null;
 
   return (
     <div
@@ -139,10 +152,10 @@ export function SearchOverlay({
         <div className="flex items-center gap-3 border-b border-border-secondary px-4 py-3">
           <Search size={18} className="shrink-0 text-text-tertiary" />
           <input
-            ref={inputRef}
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            autoFocus
             placeholder="Search articles, topics, companies, people..."
             className="flex-1 bg-transparent text-sm text-text-primary placeholder-text-tertiary outline-none"
           />

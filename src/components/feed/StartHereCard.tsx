@@ -12,7 +12,7 @@ import {
   ArrowRight,
   TrendingUp,
 } from "lucide-react";
-import type { Article, Summary, ArticleIntelligence, ArticleWithIntelligence, TopicCategory, Entity, StoryType } from "@/types";
+import type { Article, Summary, ArticleWithIntelligence, TopicCategory, Entity, StoryType } from "@/types";
 import { topicLabels, getRelativeTime } from "@/lib/mock-data";
 import { AnnotationsPanel } from "@/components/articles/AnnotationsPanel";
 import { QuickReactions } from "@/components/intelligence/QuickReactions";

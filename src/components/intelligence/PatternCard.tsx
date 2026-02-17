@@ -8,7 +8,7 @@ interface PatternCardProps {
   variant?: "thread" | "signal";
 }
 
-export function PatternCard({ pattern, index, variant = "signal" }: PatternCardProps) {
+export function PatternCard({ pattern, variant = "signal" }: PatternCardProps) {
   const isThread = variant === "thread";
 
   return (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback, useRef } from "react";
+import { useEffect, useCallback } from "react";
 
 export interface KeyboardAction {
   key: string;
@@ -43,8 +43,6 @@ export function useKeyboardShortcuts({
   onJumpToSection,
   enabled = true,
 }: UseKeyboardShortcutsOptions) {
-  const handlerRef = useRef<(e: KeyboardEvent) => void>(undefined);
-
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       // Don't handle shortcuts when typing in inputs
@@ -141,15 +139,13 @@ export function useKeyboardShortcuts({
     [onNavigateNext, onNavigatePrev, onSave, onExpand, onOpenSourceUrl, onCloseReader, onShowHelp, onDismiss, onToggleBriefing, onOpenSearch, onOpenChat, onMarkRead, onJumpToSection]
   );
 
-  handlerRef.current = handleKeyDown;
-
   useEffect(() => {
     if (!enabled) return;
 
-    const listener = (e: KeyboardEvent) => handlerRef.current?.(e);
+    const listener = (e: KeyboardEvent) => handleKeyDown(e);
     window.addEventListener("keydown", listener);
     return () => window.removeEventListener("keydown", listener);
-  }, [enabled]);
+  }, [enabled, handleKeyDown]);
 }
 
 export interface ShortcutSection {

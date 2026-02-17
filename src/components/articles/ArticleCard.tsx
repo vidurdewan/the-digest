@@ -8,8 +8,6 @@ import {
   Bookmark,
   BookmarkCheck,
   Check,
-  ExternalLink,
-  Share2,
   Eye,
   Loader2,
 } from "lucide-react";
@@ -228,4 +226,3 @@ export function ArticleCard({
     </div>
   );
 }
-

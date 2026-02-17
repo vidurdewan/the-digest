@@ -11,7 +11,12 @@ interface UseServiceWorkerReturn {
 
 export function useServiceWorker(): UseServiceWorkerReturn {
   const [isRegistered, setIsRegistered] = useState(false);
-  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
+    if (typeof window === "undefined" || !("Notification" in window)) {
+      return false;
+    }
+    return Notification.permission === "granted";
+  });
   const isSupported =
     typeof window !== "undefined" && "serviceWorker" in navigator;
 
@@ -28,11 +33,6 @@ export function useServiceWorker(): UseServiceWorkerReturn {
       .catch((err) => {
         console.error("[SW] Registration failed:", err);
       });
-
-    // Check notification permission
-    if ("Notification" in window) {
-      setNotificationsEnabled(Notification.permission === "granted");
-    }
   }, [isSupported]);
 
   const requestNotificationPermission =
