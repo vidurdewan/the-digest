@@ -13,6 +13,7 @@ export function PatternCard({ pattern, index, variant = "signal" }: PatternCardP
 
   return (
     <div
+      style={{ animationDelay: `${index * 30}ms` }}
       className={`flex items-start gap-3 rounded-lg border px-3 py-2.5 transition-colors ${
         isThread
           ? "border-accent-primary/20 bg-accent-primary/5 hover:border-accent-primary/30"

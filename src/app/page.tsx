@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
-import { BackToTop } from "@/components/ui/BackToTop";
 import { useSidebarStore } from "@/lib/store";
 import { useToastStore } from "@/components/ui/Toast";
 import type { Article, Summary } from "@/types";
@@ -61,9 +60,11 @@ export default function Home() {
   const engagement = useEngagement();
   const preferences = usePreferences();
 
+  const setAutoRefreshFn = autoRefresh.setRefreshFn;
+
   useEffect(() => {
-    autoRefresh.setRefreshFn(articleData.refresh);
-  }, [autoRefresh.setRefreshFn, articleData.refresh]);
+    setAutoRefreshFn(articleData.refresh);
+  }, [setAutoRefreshFn, articleData.refresh]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -222,10 +223,8 @@ export default function Home() {
             onExpand={handleExpand}
             newCount={autoRefresh.newCount}
             onShowNew={autoRefresh.showNew}
-            lastUpdated={autoRefresh.lastUpdated}
             onForceRefresh={handleForceRefresh}
             isRefreshing={articleData.isIngesting}
-            onMarkAllRead={handleMarkAllRead}
             onPanelStateChange={handlePanelStateChange}
             error={articleData.error}
           />
@@ -317,10 +316,8 @@ export default function Home() {
             onExpand={handleExpand}
             newCount={autoRefresh.newCount}
             onShowNew={autoRefresh.showNew}
-            lastUpdated={autoRefresh.lastUpdated}
             onForceRefresh={handleForceRefresh}
             isRefreshing={articleData.isIngesting}
-            onMarkAllRead={handleMarkAllRead}
             onPanelStateChange={handlePanelStateChange}
             error={articleData.error}
           />
@@ -334,7 +331,6 @@ export default function Home() {
         articles: articlesWithMatches,
         newsletters: newsletterData.newsletters,
         onNavigateToArticle: handleNavigateToArticle,
-        unreadNewsletterCount: newsletterData.newsletters.filter((n) => !n.isRead).length,
         onMarkAllRead: handleMarkAllRead,
         onForceRefresh: handleForceRefresh,
         isRefreshing: articleData.isIngesting,
@@ -356,7 +352,6 @@ export default function Home() {
           onRequestSummary={articleData.requestFullSummary}
         />
       )}
-      <BackToTop />
       <CommandPalette
         articles={rankedArticles}
         onOpenReader={handleOpenReader}

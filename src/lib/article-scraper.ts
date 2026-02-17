@@ -76,7 +76,7 @@ export async function scrapeArticle(
 
     const html = await response.text();
     return extractArticleContent(html);
-  } catch (error) {
+  } catch {
     // Timeout, network error, or abort — silently fail
     return null;
   }

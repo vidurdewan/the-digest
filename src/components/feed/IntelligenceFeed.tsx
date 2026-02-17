@@ -1,6 +1,7 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 
-import { useMemo, useState, useEffect, useCallback, useRef } from "react";
+import { Fragment, useMemo, useState, useEffect, useCallback, useRef } from "react";
 import {
   ArrowUp,
   Loader2,
@@ -30,10 +31,9 @@ import {
   detectDevelopingStories,
   getTimeGroup,
   getTimeGroupLabel,
-  type TimeGroup,
 } from "@/lib/surfacing";
 import { getSourceType, getSourceTypeConfig, findCoverageDensity } from "@/lib/source-provenance";
-import { findRelatedForArticle, type RelatedItem } from "@/lib/cross-references";
+import { findRelatedForArticle } from "@/lib/cross-references";
 
 
 function getCurationReason(
@@ -64,10 +64,8 @@ interface IntelligenceFeedProps {
   onExpand?: (articleId: string) => void;
   newCount?: number;
   onShowNew?: () => void;
-  lastUpdated?: Date | null;
   onForceRefresh?: () => void;
   isRefreshing?: boolean;
-  onMarkAllRead?: (articleIds: string[]) => void;
   onPanelStateChange?: (isOpen: boolean) => void;
   error?: string | null;
 }
@@ -82,10 +80,8 @@ export function IntelligenceFeed({
   onRequestSummary,
   newCount = 0,
   onShowNew,
-  lastUpdated,
   onForceRefresh,
   isRefreshing,
-  onMarkAllRead,
   onPanelStateChange,
   error,
 }: IntelligenceFeedProps) {
@@ -385,16 +381,18 @@ export function IntelligenceFeed({
       {/* ═══ HERO STORY ═══ */}
       {heroArticle && !isCaughtUp && (
         <section className="pb-10 border-b border-border-primary">
-          <div
-            className="flex flex-col md:flex-row gap-6 md:gap-8 cursor-pointer group"
+          <button
+            type="button"
+            className="flex w-full flex-col gap-6 text-left md:flex-row md:gap-8 group"
             onClick={() => onOpenReader(heroArticle)}
+            aria-label={`Open top story: ${heroArticle.title}`}
           >
             {/* Mobile: image on top */}
             {heroArticle.imageUrl && (
               <div className="md:hidden w-full overflow-hidden rounded-lg">
                 <img
                   src={heroArticle.imageUrl}
-                  alt=""
+                  alt={heroArticle.title}
                   className="w-full max-h-[180px] object-cover hero-image-zoom"
                 />
               </div>
@@ -442,12 +440,12 @@ export function IntelligenceFeed({
               <div className="hidden md:block md:w-[45%] overflow-hidden">
                 <img
                   src={heroArticle.imageUrl}
-                  alt=""
+                  alt={heroArticle.title}
                   className="w-full h-full object-cover hero-image-zoom"
                 />
               </div>
             )}
-          </div>
+          </button>
         </section>
       )}
 
@@ -540,23 +538,33 @@ export function IntelligenceFeed({
           const showGroupHeader = currentGroup !== prevGroup;
 
           return (
-            <div key={article.id}>
+            <Fragment key={article.id}>
               {/* Time group header */}
               {showGroupHeader && (
                 <div className="feed-time-group">{getTimeGroupLabel(currentGroup)}</div>
               )}
-              <div
+              <article
                 data-article-id={article.id}
                 className={`feed-item-row rounded-sm feed-item-enter transition-opacity duration-300 ${isRead ? "opacity-55" : ""} ${isPrimary ? "feed-item-primary" : ""}`}
                 style={{ animationDelay: `${idx * 50}ms` }}
               >
-                <div
-                  className="flex items-start gap-4 py-7 px-4 md:py-9 md:px-0 cursor-pointer group"
-                  onClick={() => handleArticleClick(article)}
-                  data-feed-index={idx}
-                >
+                <div className="flex items-start gap-4 py-7 px-4 md:py-9 md:px-0">
                   {/* Left side */}
-                  <div className="flex-1 min-w-0">
+                  <div
+                    className="flex-1 min-w-0 cursor-pointer group"
+                    data-feed-index={idx}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Open article: ${article.title}`}
+                    aria-expanded={isExpanded}
+                    onClick={() => handleArticleClick(article)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        handleArticleClick(article);
+                      }
+                    }}
+                  >
                     {/* Line 1: dot + topic + timestamp */}
                     <div className="flex items-center gap-2 mb-2">
                       <span
@@ -676,6 +684,7 @@ export function IntelligenceFeed({
                   </div>
                   {/* Right side: save icon */}
                   <button
+                    type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       onSave(article.id);
@@ -686,8 +695,8 @@ export function IntelligenceFeed({
                     <Bookmark size={18} className={article.isSaved ? "fill-current" : ""} />
                   </button>
                 </div>
-              </div>
-            </div>
+              </article>
+            </Fragment>
           );
         })}
 

@@ -4,8 +4,6 @@ import { useState } from "react";
 import {
   Plus,
   Trash2,
-  Zap,
-  X,
   Loader2,
 } from "lucide-react";
 import { useSources, type Source } from "@/hooks/useSources";

@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import { Search, X, SlidersHorizontal, Calendar, Tag, TrendingUp } from "lucide-react";
+import { Search, X, SlidersHorizontal, Calendar, Tag } from "lucide-react";
 import type { Article, Summary, TopicCategory, ArticleIntelligence } from "@/types";
-import { topicLabels, getRelativeTime } from "@/lib/mock-data";
+import { topicLabels } from "@/lib/mock-data";
 import { ArticleCard } from "@/components/articles/ArticleCard";
 
 interface SearchViewProps {
