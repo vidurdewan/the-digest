@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin as supabase, isSupabaseAdminConfigured as isSupabaseConfigured } from "@/lib/supabase";
+import {
+  supabase,
+  supabaseAdmin,
+  isSupabaseConfigured,
+  isSupabaseAdminConfigured,
+} from "@/lib/supabase";
 
 /**
  * GET /api/newsletters
@@ -8,7 +13,8 @@ import { supabaseAdmin as supabase, isSupabaseAdminConfigured as isSupabaseConfi
  */
 export async function GET(request: NextRequest) {
   try {
-    if (!isSupabaseConfigured() || !supabase) {
+    const db = supabaseAdmin || supabase;
+    if (!db || (!isSupabaseAdminConfigured() && !isSupabaseConfigured())) {
       return NextResponse.json({ newsletters: [], source: "none" });
     }
 
@@ -16,7 +22,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "50", 10);
     const offset = parseInt(searchParams.get("offset") || "0", 10);
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("newsletters")
       .select("*")
       .order("received_at", { ascending: false })
@@ -31,7 +37,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       newsletters: data || [],
-      source: "supabase",
+      source: supabaseAdmin ? "supabase-admin" : "supabase-anon",
       count: data?.length || 0,
     });
   } catch (error) {
