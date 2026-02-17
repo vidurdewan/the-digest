@@ -9,7 +9,6 @@ import {
   BookmarkCheck,
   Eye,
   Loader2,
-  TrendingUp,
 } from "lucide-react";
 import type { Article, Summary, ArticleWithIntelligence, TopicCategory, StoryType } from "@/types";
 import { topicLabels, getRelativeTime } from "@/lib/mock-data";

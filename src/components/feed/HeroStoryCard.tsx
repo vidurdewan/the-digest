@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 
 import { useState, useEffect } from "react";
 import {
@@ -11,7 +12,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { useToastStore } from "@/components/ui/Toast";
-import type { Article, Summary, ArticleIntelligence, ArticleWithIntelligence, TopicCategory, StoryType } from "@/types";
+import type { Article, Summary, ArticleWithIntelligence, TopicCategory, StoryType } from "@/types";
 import { topicLabels, getRelativeTime } from "@/lib/mock-data";
 import { QuickReactions } from "@/components/intelligence/QuickReactions";
 import { GoDeeper } from "@/components/intelligence/GoDeeper";

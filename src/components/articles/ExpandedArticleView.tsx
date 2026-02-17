@@ -28,11 +28,8 @@ interface ExpandedArticleViewProps {
 
 export function ExpandedArticleView({
   summary,
-  onOpenFull,
-  onOpenSource,
   sourceUrl,
   articleId,
-  intelligence,
   signals,
   articleTitle,
   articleContent,
@@ -63,7 +60,6 @@ export function ExpandedArticleView({
     // Find a sentence from the original that overlaps with the summary section
     const words = sectionText.split(/\s+/).slice(0, 5).map(w => w.toLowerCase().replace(/[^a-z0-9]/g, "")).filter(w => w.length > 3);
     if (words.length === 0) return null;
-    const contentLower = articleContent.toLowerCase();
     // Look for a sentence containing at least 2 of the first 5 significant words
     const sentences = articleContent.split(/(?<=[.!?])\s+/);
     for (const sentence of sentences) {
@@ -278,4 +274,3 @@ export function ExpandedArticleView({
     </div>
   );
 }
-

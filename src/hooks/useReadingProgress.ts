@@ -34,5 +34,5 @@ export function useReadingProgress(data: ReadingProgressData) {
   useEffect(() => {
     if (data.totalPriorityItems === 0) return;
     save(data);
-  }, [data.totalPriorityItems, data.itemsRead, save]);
+  }, [data, save]);
 }

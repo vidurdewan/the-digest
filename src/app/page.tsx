@@ -48,7 +48,10 @@ export default function Home() {
   const [readerArticle, setReaderArticle] = useState<
     (Article & { summary?: Summary }) | null
   >(null);
-  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return !localStorage.getItem("the-digest-onboarded");
+  });
 
   useServiceWorker();
 
@@ -60,19 +63,11 @@ export default function Home() {
   const watchlist = useWatchlist();
   const engagement = useEngagement();
   const preferences = usePreferences();
+  const { setRefreshFn } = autoRefresh;
 
   useEffect(() => {
-    autoRefresh.setRefreshFn(articleData.refresh);
-  }, [autoRefresh.setRefreshFn, articleData.refresh]);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const hasOnboarded = localStorage.getItem("the-digest-onboarded");
-      if (!hasOnboarded) {
-        setShowOnboarding(true);
-      }
-    }
-  }, []);
+    setRefreshFn(articleData.refresh);
+  }, [setRefreshFn, articleData.refresh]);
 
   const handleOnboardingComplete = async (data: OnboardingData) => {
     for (const [topic, level] of Object.entries(data.topicPreferences)) {
@@ -153,10 +148,10 @@ export default function Home() {
     }
   };
 
-  const handleOpenReader = (article: Article & { summary?: Summary }) => {
+  const handleOpenReader = useCallback((article: Article & { summary?: Summary }) => {
     engagement.trackEvent(article.id, "read");
     setReaderArticle(article);
-  };
+  }, [engagement]);
 
   const handleExpand = (articleId: string) => {
     engagement.trackEvent(articleId, "expand");
@@ -187,7 +182,7 @@ export default function Home() {
       const article = articlesWithMatches.find((a) => a.id === articleId);
       if (article) handleOpenReader(article);
     },
-    [articlesWithMatches]
+    [articlesWithMatches, handleOpenReader]
   );
 
   const renderSection = () => {

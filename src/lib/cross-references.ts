@@ -5,7 +5,7 @@
  * Operates entirely on client-side data — no API calls.
  */
 
-import type { Article, Summary, Entity, Newsletter, NewsletterSummary } from "@/types";
+import type { Article, Summary, Newsletter } from "@/types";
 
 export interface RelatedItem {
   type: "article" | "newsletter" | "primary";
@@ -171,7 +171,6 @@ export function findRelatedForNewsletter(
   allNewsletters: Newsletter[],
 ): RelatedItem[] {
   // Get newsletter entities (text fields for matching)
-  const ns = newsletter.newsletterSummary;
   const nlSummary = newsletter.summary;
 
   // Collect entity names from newsletter.summary.keyEntities if available
@@ -263,7 +262,6 @@ export function findMatchingArticleIds(
   newsletter: Newsletter,
   articles: (Article & { summary?: Summary })[],
 ): string[] {
-  const ns = newsletter.newsletterSummary;
   const nlSummary = newsletter.summary;
   const entityNames: string[] = [];
 

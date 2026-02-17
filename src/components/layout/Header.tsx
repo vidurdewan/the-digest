@@ -11,8 +11,6 @@ import {
   Rss,
   Eye,
   Mail,
-  CheckCheck,
-  RefreshCw,
   Loader2,
 } from "lucide-react";
 import type { Theme, Article, Newsletter } from "@/types";
@@ -144,7 +142,6 @@ export function EditorialHeader({
   articles,
   newsletters,
   onNavigateToArticle,
-  unreadNewsletterCount = 0,
   onMarkAllRead,
   onForceRefresh,
   isRefreshing,

@@ -9,7 +9,6 @@ import {
   BookmarkCheck,
   Clock,
   Loader2,
-  ExternalLink,
 } from "lucide-react";
 import type { Article, Summary, ArticleWithIntelligence } from "@/types";
 import { topicLabels, getRelativeTime } from "@/lib/mock-data";
