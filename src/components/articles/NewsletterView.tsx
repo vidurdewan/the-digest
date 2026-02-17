@@ -9,11 +9,6 @@ import {
   Download,
   Sparkles,
   Loader2,
-  Newspaper,
-  Lightbulb,
-  Globe,
-  Zap,
-  Eye,
   Bookmark,
   BookmarkCheck,
   Check,
@@ -25,7 +20,7 @@ import {
 } from "lucide-react";
 import type { Newsletter, Article, Summary } from "@/types";
 import { getRelativeTime } from "@/lib/mock-data";
-import { findRelatedForNewsletter, type RelatedItem } from "@/lib/cross-references";
+import { findRelatedForNewsletter } from "@/lib/cross-references";
 import { NewsletterCardSkeleton } from "@/components/ui/LoadingSkeleton";
 import { SectionHeader, SectionBody, CalloutBlock, SubtleCallout } from "@/components/ui/ScannableText";
 import { useReadStateStore } from "@/lib/store";
@@ -63,22 +58,6 @@ interface NewsletterViewProps {
   onToggleVip: (publication: string) => void;
   articles?: (Article & { summary?: Summary })[];
   onNavigateToArticle?: (articleId: string) => void;
-}
-
-function formatDateLabel(dateStr: string): string {
-  const date = new Date(dateStr + "T12:00:00");
-  const today = new Date();
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-
-  if (dateStr === today.toISOString().slice(0, 10)) return "Today";
-  if (dateStr === yesterday.toISOString().slice(0, 10)) return "Yesterday";
-
-  return date.toLocaleDateString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
 }
 
 function formatFullDate(dateStr: string): string {

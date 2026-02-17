@@ -7,7 +7,6 @@ import {
   Bookmark,
   BookmarkCheck,
   ExternalLink,
-  Share2,
   Minus,
   Plus,
 } from "lucide-react";

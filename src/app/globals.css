@@ -25,6 +25,7 @@
 
   --accent-primary: #C67A6B;
   --accent-primary-hover: #B66A5B;
+  --accent-primary-muted: color-mix(in srgb, var(--accent-primary) 12%, transparent);
   --accent-secondary: #FAF0EE;
   --accent-warning: #D4A020;
   --accent-danger: #C44040;
@@ -146,6 +147,7 @@
 
   --accent-primary: #E09A8B;
   --accent-primary-hover: #EBB0A3;
+  --accent-primary-muted: color-mix(in srgb, var(--accent-primary) 16%, transparent);
   --accent-secondary: #2a1f1d;
   --accent-warning: #D4A020;
   --accent-danger: #C44040;
@@ -267,6 +269,7 @@
 
   --accent-primary: #c0392b;
   --accent-primary-hover: #a93226;
+  --accent-primary-muted: color-mix(in srgb, var(--accent-primary) 14%, transparent);
   --accent-secondary: #fde8cd;
   --accent-warning: #d4a020;
   --accent-danger: #c0392b;
@@ -417,7 +420,7 @@
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.11em;
 }
 .typo-body {
   font-family: var(--font-body);
@@ -428,15 +431,15 @@
 .typo-metadata {
   font-family: var(--font-body);
   font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.02em;
   color: var(--text-secondary);
 }
 .typo-nav {
   font-family: var(--font-body);
-  font-size: 0.875rem;
+  font-size: 0.82rem;
+  font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.06em;
 }
 .typo-rail-headline {
   font-family: var(--font-heading);
@@ -1145,10 +1148,11 @@ h1, h2, h3, h4, h5, h6 {
 
 /* ===== FEED ITEM HOVER STATES ===== */
 .feed-item-row {
-  transition: background-color 150ms ease;
+  transition: background-color 150ms ease, transform 150ms ease-out;
 }
 .feed-item-row:hover {
   background-color: color-mix(in srgb, var(--bg-secondary) 50%, transparent);
+  transform: translateY(-1px);
 }
 .feed-item-row .feed-save-icon {
   opacity: 0.3;
@@ -1173,14 +1177,6 @@ h1, h2, h3, h4, h5, h6 {
 }
 .feed-item-enter {
   animation: feedItemFadeIn 200ms ease-out both;
-}
-
-/* Article card hover lift */
-.feed-item-row {
-  transition: background-color 150ms ease, transform 150ms ease-out;
-}
-.feed-item-row:hover {
-  transform: translateY(-1px);
 }
 
 /* Newsletter rail card hover */
@@ -1233,8 +1229,10 @@ h1, h2, h3, h4, h5, h6 {
 .hero-image-zoom {
   transition: transform 300ms ease-out;
 }
-.hero-image-zoom:hover {
-  transform: scale(1.02);
+@media (hover: hover) and (pointer: fine) {
+  .hero-image-zoom:hover {
+    transform: scale(1.02);
+  }
 }
 
 /* Tab scroll fade edges on mobile */
@@ -1405,4 +1403,21 @@ h1, h2, h3, h4, h5, h6 {
 @keyframes toast-in {
   from { opacity: 0; transform: translateX(-50%) translateY(12px); }
   to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* ===== ACCESSIBILITY + REDUCED MOTION ===== */
+:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -5,7 +5,7 @@
  * developing story detection, and time-based feed grouping.
  */
 
-import type { Article, Summary, TopicCategory } from "@/types";
+import type { Article, Summary } from "@/types";
 
 // ─── Reading Patterns ────────────────────────────────────────
 
