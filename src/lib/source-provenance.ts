@@ -9,7 +9,7 @@
  *   general   — Standard news coverage (CNBC, TechCrunch, The Verge, etc.)
  */
 
-import type { DocumentType, SourceTier, Article, Summary } from "@/types";
+import type { DocumentType, Article, Summary } from "@/types";
 
 export type SourceType = "primary" | "exclusive" | "wire" | "analysis" | "general";
 

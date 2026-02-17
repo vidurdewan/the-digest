@@ -1,4 +1,4 @@
-import type { Article, Summary, ArticleIntelligence, ArticleWithIntelligence, TopicCategory } from "@/types";
+import type { Article, Summary, ArticleIntelligence, TopicCategory } from "@/types";
 
 type ArticleWithMeta = Article & { summary?: Summary; intelligence?: ArticleIntelligence };
 

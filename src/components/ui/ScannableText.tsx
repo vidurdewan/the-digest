@@ -1,20 +1,32 @@
 "use client";
 
 import React from "react";
+import type { LucideIcon } from "lucide-react";
+import {
+  AlertTriangle,
+  BarChart3,
+  Eye,
+  Globe,
+  Lightbulb,
+  Newspaper,
+  TrendingUp,
+  User,
+  Zap,
+} from "lucide-react";
 
 // ─── Shared Icons for Section Headers ─────────────────────
-// Map section labels to emoji/icon identifiers for consistent styling
-const SECTION_ICONS: Record<string, { icon: string; color: string }> = {
-  "The News": { icon: "🔴", color: "var(--accent-primary)" },
-  "Why It Matters": { icon: "💡", color: "var(--accent-warning)" },
-  "The Context": { icon: "🌐", color: "var(--accent-success)" },
-  "So What": { icon: "⚡", color: "var(--accent-primary)" },
-  "Watch Next": { icon: "👁", color: "var(--text-tertiary)" },
-  "Contrarian Take": { icon: "⚠️", color: "var(--accent-warning)" },
-  "Top Stories": { icon: "📰", color: "var(--accent-primary)" },
-  "Trends & Signals": { icon: "📊", color: "var(--accent-primary)" },
-  "Market & Deal Activity": { icon: "📈", color: "var(--accent-success)" },
-  "People Moves": { icon: "👤", color: "var(--text-secondary)" },
+// Map section labels to icon identifiers for consistent styling.
+const SECTION_ICONS: Record<string, { Icon: LucideIcon; color: string }> = {
+  "The News": { Icon: Newspaper, color: "var(--accent-primary)" },
+  "Why It Matters": { Icon: Lightbulb, color: "var(--accent-warning)" },
+  "The Context": { Icon: Globe, color: "var(--accent-success)" },
+  "So What": { Icon: Zap, color: "var(--accent-primary)" },
+  "Watch Next": { Icon: Eye, color: "var(--text-tertiary)" },
+  "Contrarian Take": { Icon: AlertTriangle, color: "var(--accent-warning)" },
+  "Top Stories": { Icon: Newspaper, color: "var(--accent-primary)" },
+  "Trends & Signals": { Icon: BarChart3, color: "var(--accent-primary)" },
+  "Market & Deal Activity": { Icon: TrendingUp, color: "var(--accent-success)" },
+  "People Moves": { Icon: User, color: "var(--text-secondary)" },
 };
 
 // Sections that should use elevated callout styling
@@ -135,6 +147,7 @@ export function SectionHeader({
   const resolvedTier = tier || getSectionTier(label);
   const iconConfig = SECTION_ICONS[label];
   const fontSize = resolvedTier === "primary" ? "text-[16px]" : resolvedTier === "secondary" ? "text-[14px]" : "text-[13px]";
+  const Icon = iconConfig?.Icon;
 
   return (
     <div className="mt-6 mb-3 pb-2 border-b border-border-primary/50">
@@ -142,7 +155,7 @@ export function SectionHeader({
         className={`flex items-center gap-2 ${fontSize} font-semibold uppercase tracking-[0.08em]`}
         style={{ color: iconConfig?.color || "var(--text-primary)" }}
       >
-        {iconConfig && <span>{iconConfig.icon}</span>}
+        {Icon && <Icon size={14} strokeWidth={2} aria-hidden="true" />}
         {label}
       </h4>
     </div>
@@ -189,11 +202,14 @@ export function SubtleCallout({
   text: string;
 }) {
   const bullets = hasBulletItems(text) ? splitBulletItems(text) : [];
+  const iconConfig = SECTION_ICONS[label];
+  const Icon = iconConfig?.Icon;
 
   return (
     <div className="mt-4 border-l-[3px] border-dashed border-border-primary bg-bg-secondary/50 p-4">
-      <p className="text-[12px] uppercase tracking-[0.08em] font-semibold mb-2 text-text-tertiary">
-        {SECTION_ICONS[label]?.icon} {label}
+      <p className="flex items-center gap-1.5 text-[12px] uppercase tracking-[0.08em] font-semibold mb-2 text-text-tertiary">
+        {Icon && <Icon size={13} strokeWidth={2} aria-hidden="true" />}
+        {label}
       </p>
       {bullets.length > 0 ? (
         <div className="space-y-2">

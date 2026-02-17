@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Palette, Bell, Database, User, Loader2, Brain, DollarSign, SlidersHorizontal, Save, Star, X, Plus } from "lucide-react";
+import { Loader2, DollarSign, Save, Star, X, Plus } from "lucide-react";
 import { useThemeStore } from "@/lib/store";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { isSupabaseConfigured } from "@/lib/supabase";

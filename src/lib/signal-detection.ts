@@ -715,7 +715,7 @@ async function detectSentimentShift(
     entityHistory.get(entity)!.scores.push(score);
   }
 
-  for (const [entity, data] of entityHistory) {
+  for (const [, data] of entityHistory) {
     data.avg = data.scores.reduce((a, b) => a + b, 0) / data.scores.length;
   }
 

@@ -11,8 +11,6 @@ import {
   Rss,
   Eye,
   Mail,
-  CheckCheck,
-  RefreshCw,
   Loader2,
 } from "lucide-react";
 import type { Theme, Article, Newsletter } from "@/types";
@@ -134,7 +132,6 @@ export interface EditorialHeaderProps {
   articles?: Article[];
   newsletters?: Newsletter[];
   onNavigateToArticle?: (articleId: string) => void;
-  unreadNewsletterCount?: number;
   onMarkAllRead?: (articleIds: string[]) => void;
   onForceRefresh?: () => void;
   isRefreshing?: boolean;
@@ -144,7 +141,6 @@ export function EditorialHeader({
   articles,
   newsletters,
   onNavigateToArticle,
-  unreadNewsletterCount = 0,
   onMarkAllRead,
   onForceRefresh,
   isRefreshing,
@@ -234,7 +230,7 @@ export function EditorialHeader({
         {/* Right: Nav links + theme + notifications */}
         <div className="flex items-center gap-6">
           {/* Nav links — hidden below lg */}
-          <nav className="hidden items-center gap-5 lg:flex">
+          <nav className="hidden items-center gap-5 lg:flex" aria-label="Primary navigation">
             {NAV_LINKS.map((link) => {
               const isActive = activeSection === link.section;
               // Compute unread newsletter count including Zustand state
