@@ -11,8 +11,8 @@ interface StoredTokens {
 }
 
 const COOKIE_NAME = "gmail-tokens";
-const TOKEN_ROW_ID = "default-user";
-const LEGACY_TOKEN_ROW_ID = "default";
+const TOKEN_ROW_ID: string = "default-user";
+const LEGACY_TOKEN_ROW_ID: string = "default";
 
 // Derive a 32-byte key from the Google client secret
 function getEncryptionKey(): Buffer {
@@ -121,8 +121,10 @@ export function buildClearTokenCookieHeader(): string {
 export async function getStoredTokens(): Promise<StoredTokens | null> {
   // Try Supabase first
   if (isSupabaseConfigured() && supabase) {
+    const supabaseClient = supabase;
+
     const loadById = async (id: string): Promise<StoredTokens | null> => {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseClient
         .from("gmail_tokens")
         .select("*")
         .eq("id", id)
@@ -147,7 +149,7 @@ export async function getStoredTokens(): Promise<StoredTokens | null> {
     if (TOKEN_ROW_ID !== LEGACY_TOKEN_ROW_ID) {
       const legacy = await loadById(LEGACY_TOKEN_ROW_ID);
       if (legacy) {
-        await supabase.from("gmail_tokens").upsert(
+        await supabaseClient.from("gmail_tokens").upsert(
           {
             id: TOKEN_ROW_ID,
             access_token: legacy.access_token,

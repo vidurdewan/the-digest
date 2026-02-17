@@ -105,6 +105,15 @@ function extractMissingColumn(error: unknown): string | null {
   return match?.[1] || null;
 }
 
+function isDuplicateContentHashError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const err = error as { code?: string; message?: string };
+  if (err.code === "23505") return true;
+  return /duplicate key value violates unique constraint\s+"articles_content_hash_key"/i.test(
+    err.message || ""
+  );
+}
+
 /**
  * Main ingestion function: fetches articles from all active sources,
  * deduplicates, optionally scrapes full content, and stores in Supabase.
@@ -260,6 +269,33 @@ export async function ingestAllNews(options?: {
         if (!error) {
           result.totalStored += data?.length ?? currentBatch.length;
           stored = true;
+          break;
+        }
+
+        // A concurrent ingest may insert a matching hash between the pre-check
+        // and batch insert. Fall back to conflict-safe upsert so fresh rows still land.
+        if (isDuplicateContentHashError(error)) {
+          const { data: upserted, error: upsertError } = await supabase
+            .from("articles")
+            .upsert(currentBatch, {
+              onConflict: "content_hash",
+              ignoreDuplicates: true,
+            })
+            .select("content_hash");
+
+          if (!upsertError) {
+            result.totalStored += upserted?.length ?? 0;
+            stored = true;
+            break;
+          }
+
+          const errMsg = upsertError.message;
+          console.error(`[Ingest] Upsert fallback error: ${errMsg}`);
+          if (result.errorMessages.length < 3 && !result.errorMessages.includes(errMsg)) {
+            result.errorMessages.push(errMsg);
+          }
+          result.totalErrors += currentBatch.length;
+          batchErrorCounted = true;
           break;
         }
 
